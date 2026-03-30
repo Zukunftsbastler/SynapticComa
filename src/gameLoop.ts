@@ -7,6 +7,9 @@ import { APSystem } from '@/systems/APSystem';
 import { RoundSystem } from '@/systems/RoundSystem';
 import { MovementSystem } from '@/systems/MovementSystem';
 import { CollectionSystem } from '@/systems/CollectionSystem';
+import { MatrixInsertSystem } from '@/systems/MatrixInsertSystem';
+import { MatrixRotateSystem } from '@/systems/MatrixRotateSystem';
+import { ScrapPoolSystem } from '@/systems/ScrapPoolSystem';
 import type { PixiDriver } from '@/rendering/PixiDriver';
 import { GameState } from '@/state/GameState';
 
@@ -30,7 +33,10 @@ function runSystems(w: IWorld): void {
   RoundSystem(w, GameState);
   MovementSystem(w, GameState);
   CollectionSystem(w, GameState);
-  // Sprint 6+: PushSystem, ThresholdSystem, MatrixInsertSystem,
+  MatrixInsertSystem(w, GameState);
+  MatrixRotateSystem(w, GameState);
+  ScrapPoolSystem(w, GameState);
+  // Sprint 7+: PushSystem, ThresholdSystem, MatrixRoutingSystem,
   //            MatrixRotateSystem, ScrapPoolSystem, MatrixRoutingSystem, AbilitySystem,
   //            CollisionSystem, ExitSystem, LevelTransitionSystem, NetworkSystem
 }

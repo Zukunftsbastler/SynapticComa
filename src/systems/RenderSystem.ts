@@ -1,25 +1,18 @@
 import type { IWorld } from 'bitecs';
-import { Position, Renderable, Dimension, Avatar, MatrixNode } from '@/components';
-import { renderableQuery, avatarQuery, matrixNodeQuery } from '@/queries';
+import { Position, Renderable, Dimension, Avatar } from '@/components';
+import { renderableQuery, avatarQuery } from '@/queries';
 import { renderCommandBuffer } from '@/rendering/RenderCommandBuffer';
+import { renderMatrix } from '@/rendering/MatrixRenderer';
 import type { PixiDriver } from '@/rendering/PixiDriver';
-import { HEX_SIZE, MATRIX_ROWS, MATRIX_COLS } from '@/constants';
+import { HEX_SIZE } from '@/constants';
 
 // Art palette — Medical Macabre Diorama (docs/art_and_ui.md)
 // Dim A (The Id): bruised purples, sickly crimson
-const COLOR_DIM_A_FLOOR   = 0x2A1A2E;  // deep bruised purple (velvet)
-const COLOR_DIM_A_TINT    = 0x4A1530;  // crimson undertone
-const COLOR_AVATAR_P1     = 0x8B2FC9;  // obsidian-violet
+const COLOR_DIM_A_FLOOR = 0x2A1A2E; // deep bruised purple (velvet)
+const COLOR_AVATAR_P1   = 0x8B2FC9; // obsidian-violet
 // Dim B (The Superego): cold clinical steel, icy blue
-const COLOR_DIM_B_FLOOR   = 0x0D1F2D;  // near-black steel
-const COLOR_DIM_B_TINT    = 0x1A3A4A;  // frosted glass blue
-const COLOR_AVATAR_P2     = 0x3AAED8;  // surgical cyan
-
-// Matrix panel
-const COLOR_MATRIX_BG     = 0x1A1008;  // deep walnut / rusted metal specimen tray
-const COLOR_MATRIX_CELL   = 0x2A2010;  // faded velvet cell
-const COLOR_MATRIX_ACTIVE = 0x7FFF7A;  // powered node: viscous nerve-fluid green
-const MATRIX_CELL_SIZE    = 48;        // px per cell
+const COLOR_DIM_B_FLOOR = 0x0D1F2D; // near-black steel
+const COLOR_AVATAR_P2   = 0x3AAED8; // surgical cyan
 
 export function RenderSystem(world: IWorld, driver: PixiDriver, localPlayerId: 0 | 1): void {
   renderCommandBuffer.clear();
@@ -80,38 +73,7 @@ export function RenderSystem(world: IWorld, driver: PixiDriver, localPlayerId: 0
   // ── DNA Matrix ─────────────────────────────────────────────────────────────
   // Always visible on both screens — it is the shared workspace.
   const origin = driver.getMatrixOrigin();
-
-  // Background tray
-  renderCommandBuffer.push({
-    cmd:       'drawRect',
-    x:         origin.x - 4,
-    y:         origin.y - 4,
-    width:     MATRIX_COLS * MATRIX_CELL_SIZE + 8,
-    height:    MATRIX_ROWS * MATRIX_CELL_SIZE + 8,
-    fillColor: COLOR_MATRIX_BG,
-    alpha:     1,
-  });
-
-  // Individual cells (placeholder until MatrixUI is built in Sprint 6)
-  const matrixNodes = matrixNodeQuery(world);
-  for (let i = 0; i < matrixNodes.length; i++) {
-    const eid = matrixNodes[i];
-    const col  = MatrixNode.column[eid] - 1; // 1-indexed → 0-indexed
-    const row  = MatrixNode.row[eid];
-    const active = MatrixNode.active[eid] === 1;
-
-    const x = origin.x + col * MATRIX_CELL_SIZE + 2;
-    const y = origin.y + row * MATRIX_CELL_SIZE + 2;
-
-    renderCommandBuffer.push({
-      cmd:       'drawRect',
-      x, y,
-      width:     MATRIX_CELL_SIZE - 4,
-      height:    MATRIX_CELL_SIZE - 4,
-      fillColor: active ? COLOR_MATRIX_ACTIVE : COLOR_MATRIX_CELL,
-      alpha:     1,
-    });
-  }
+  renderMatrix(world, renderCommandBuffer, origin.x, origin.y);
 
   // Flush commands to PixiDriver
   const cmds = renderCommandBuffer.drain();

@@ -10,7 +10,9 @@ import {
 import { entityRegistry } from '@/registry/EntityRegistry';
 import { registerForCollection } from '@/systems/CollectionSystem';
 import { inventory } from '@/state/InventoryState';
+import { MatrixUI } from '@/ui/MatrixUI';
 import { ConduitShape } from '@/types';
+import { computeFaceMask } from '@/utils/ConduitFaceMask';
 import { SpriteId } from '@/registry/SpriteRegistry';
 import { GameState, resetGameState } from '@/state/GameState';
 import { initKeyboardInput } from '@/input/KeyboardInput';
@@ -165,16 +167,35 @@ async function main(): Promise<void> {
     }
   });
 
-  // ── DNA Matrix (5×5 placeholder nodes) ───────────────────────────────────
+  // ── DNA Matrix ────────────────────────────────────────────────────────────
+  // Source nodes (col 1) — always powered, no conduit component.
+  // Ability nodes (col 3, 5) — powered by routing, no conduit component.
+  // Conduit slots (col 2, 4) — start empty; players insert plates via MatrixUI.
   for (let row = 0; row < MATRIX_ROWS; row++) {
-    for (let col = 1; col <= MATRIX_COLS; col++) {
+    for (const col of [1, 3, 5]) {
       const eid = addEntity(world);
       addComponent(world, MatrixNode, eid);
       MatrixNode.column[eid]      = col;
       MatrixNode.row[eid]         = row;
-      MatrixNode.abilityType[eid] = 0;
-      MatrixNode.active[eid]      = (col === 1 || (col === 3 && row === 0)) ? 1 : 0;
+      MatrixNode.abilityType[eid] = col === 1 ? 0 : row + 1; // simple test ability IDs
+      MatrixNode.active[eid]      = col === 1 ? 1 : 0; // source nodes always on
     }
+  }
+
+  // Pre-populate column 2 with one Straight conduit at row 0 as a test.
+  {
+    const eid = addEntity(world);
+    addComponent(world, Conduit,    eid);
+    addComponent(world, MatrixNode, eid);
+    const shape    = ConduitShape.STRAIGHT;
+    const rotation = 0;
+    Conduit.shape[eid]          = shape;
+    Conduit.rotation[eid]       = rotation;
+    Conduit.faceMask[eid]       = computeFaceMask(shape, rotation);
+    MatrixNode.column[eid]      = 2;
+    MatrixNode.row[eid]         = 0;
+    MatrixNode.abilityType[eid] = 0;
+    MatrixNode.active[eid]      = 0;
   }
 
   // ── Keyboard input ────────────────────────────────────────────────────────
@@ -193,6 +214,10 @@ async function main(): Promise<void> {
       controlledAvatar = 'avatar_p2';
     }
   });
+
+  // ── MatrixUI ──────────────────────────────────────────────────────────────
+  const matrixOrigin = driver.getMatrixOrigin();
+  new MatrixUI(matrixOrigin.x, matrixOrigin.y);
 
   startLoop();
 }
