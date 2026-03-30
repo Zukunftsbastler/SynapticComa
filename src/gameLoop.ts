@@ -1,23 +1,31 @@
 import { createWorld } from 'bitecs';
 import type { IWorld } from 'bitecs';
 import { FIXED_TIMESTEP, MAX_DELTA } from '@/constants';
+import { RenderSystem } from '@/systems/RenderSystem';
+import type { PixiDriver } from '@/rendering/PixiDriver';
 
 export let world: IWorld = createWorld();
 
-let accumulator = 0;
-let lastTime = 0;
-let tickCount = 0;
+// Set by main.ts after PixiDriver is initialised.
+let _driver: PixiDriver | null = null;
+let _localPlayerId: 0 | 1 = 0;
 
-function runSystems(_world: IWorld): void {
-  // Sprint 1 stub — systems added in subsequent sprints
-  tickCount++;
-  if (tickCount % 60 === 0) {
-    console.log(`tick ${tickCount}`);
-  }
+export function setDriver(driver: PixiDriver, localPlayerId: 0 | 1): void {
+  _driver = driver;
+  _localPlayerId = localPlayerId;
 }
 
-function renderFrame(_world: IWorld): void {
-  // Sprint 1 stub — RenderSystem + PixiDriver added in Sprint 3
+let accumulator = 0;
+let lastTime = 0;
+
+function runSystems(_world: IWorld): void {
+  // Systems added sprint-by-sprint. Rendering is done in renderFrame (outside the fixed step).
+}
+
+function renderFrame(w: IWorld): void {
+  if (_driver) {
+    RenderSystem(w, _driver, _localPlayerId);
+  }
 }
 
 function tick(timestamp: number): void {
