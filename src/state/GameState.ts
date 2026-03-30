@@ -1,6 +1,13 @@
 import type { GameMessage } from '@/network/messages';
 import { AP_DEFAULT } from '@/constants';
 
+export interface PushAttempt {
+  avatarEid: number;
+  pushableEid: number;
+  dq: number;
+  dr: number;
+}
+
 export interface GameStateData {
   apPool:           number;
   apMax:            number;
@@ -20,6 +27,8 @@ export interface GameStateData {
   p1HasExited:      boolean;
   // Failure count for the current level (0 = first attempt, 1 = second = Neural Collapse).
   failureCount:     number;
+  // Push attempts written by MovementSystem, consumed by PushSystem each tick.
+  pushAttempts:     PushAttempt[];
 }
 
 function makeInitialState(): GameStateData {
@@ -38,6 +47,7 @@ function makeInitialState(): GameStateData {
     apPoolEid:        -1,
     p1HasExited:      false,
     failureCount:     0,
+    pushAttempts:     [],
   };
 }
 

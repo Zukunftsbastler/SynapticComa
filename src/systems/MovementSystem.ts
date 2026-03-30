@@ -2,29 +2,46 @@
 // validates passability and AP budget, mutates Position, and broadcasts STATE_UPDATE.
 //
 // Passability rules:
-//  - Target hex must be within the grid (checked via hex-in-radius; deferred to
-//    level data in Sprint 9 — for now any hex is in-bounds).
 //  - Target hex must not contain a Static entity in the same dimension.
-//  - Target hex must not contain a PhaseBarrier entity unless Phase Shift is active
-//    for that dimension (checked via AbilitySystem flags; deferred to Sprint 7).
-//  - Target hex must not be a Chasm/Lethal hex (movement is blocked; damage is
-//    applied by CollisionSystem after movement in Sprint 8).
+//  - Target hex must not contain a PhaseBarrier entity unless Phase Shift is active.
 //  - Cost: 1 AP per move.
 //
-// Push interaction: if the target hex contains a Pushable entity, MovementSystem
-// aborts the avatar's move and instead writes a PUSH_ATTEMPT into the push queue
-// for PushSystem to resolve (Sprint 7).
+// JUMP ability: when jumpActive, the avatar may move 2 hexes in a straight line
+//   (same dq/dr direction applied twice). The intermediate hex must be free; the
+//   landing hex is checked for passability as normal. Costs 1 AP total.
+//
+// PHASE_SHIFT ability: PhaseBarrier entities no longer block movement.
+//
+// Push interaction: if the target hex contains a Pushable entity and pushActive,
+//   the avatar's move is aborted. A PushAttempt is written to GameState.pushAttempts
+//   for PushSystem to resolve. Costs 1 AP.
 
 import type { IWorld } from 'bitecs';
 import {
-  Position, Renderable, Movable, Static, PhaseBarrier,
+  Position, Renderable, Movable, Static, PhaseBarrier, Pushable,
 } from '@/components';
-import { staticQuery } from '@/queries';
+import { staticQuery, phaseBarrierQuery, pushableQuery } from '@/queries';
 import { entityRegistry } from '@/registry/EntityRegistry';
 import type { GameStateData } from '@/state/GameState';
+import { abilityFlags } from '@/systems/AbilitySystem';
 import type { MoveAvatarMessage, StateUpdateMessage } from '@/network/messages';
 
+// Returns the eid of a Pushable entity at (tq, tr, tz), or -1 if none.
+function pushableAt(world: IWorld, tq: number, tr: number, tz: number): number {
+  const pushables = pushableQuery(world);
+  for (let i = 0; i < pushables.length; i++) {
+    const eid = pushables[i];
+    if (
+      Position.q[eid] === tq &&
+      Position.r[eid] === tr &&
+      Position.z[eid] === tz
+    ) return eid;
+  }
+  return -1;
+}
+
 // Checks whether (tq, tr, tz) is freely passable this tick.
+// PhaseBarrier passability depends on phaseShiftActive flag.
 function isHexPassable(world: IWorld, tq: number, tr: number, tz: number): boolean {
   const statics = staticQuery(world);
   for (let i = 0; i < statics.length; i++) {
@@ -33,11 +50,21 @@ function isHexPassable(world: IWorld, tq: number, tr: number, tz: number): boole
       Position.q[eid] === tq &&
       Position.r[eid] === tr &&
       Position.z[eid] === tz
-    ) {
-      return false; // blocked by a Static entity (wall, locked door)
+    ) return false;
+  }
+
+  if (!abilityFlags.phaseShiftActive) {
+    const barriers = phaseBarrierQuery(world);
+    for (let i = 0; i < barriers.length; i++) {
+      const eid = barriers[i];
+      if (
+        Position.q[eid] === tq &&
+        Position.r[eid] === tr &&
+        Position.z[eid] === tz
+      ) return false;
     }
   }
-  // PhaseBarrier and Pushable checks deferred to Sprint 7.
+
   return true;
 }
 
@@ -53,29 +80,68 @@ export function MovementSystem(world: IWorld, state: GameStateData): void {
     if (!entityRegistry.has(input.entityId)) continue;
     const eid = entityRegistry.get(input.entityId);
 
-    // Entity must be movable and have AP budget.
     if (Movable.canMove[eid] !== 1) continue;
     if (state.apPool < 1) continue;
 
+    const tz = Position.z[eid];
+
+    // ── JUMP: 2-hex straight-line move ─────────────────────────────────────
+    if (abilityFlags.jumpActive) {
+      const midQ = Position.q[eid] + input.dq;
+      const midR = Position.r[eid] + input.dr;
+      const tq   = midQ + input.dq;
+      const tr   = midR + input.dr;
+
+      // Intermediate hex must be clear (or a PhaseBarrier when phase-shift is on).
+      // Landing hex must be passable. Both checks use isHexPassable.
+      if (isHexPassable(world, midQ, midR, tz) && isHexPassable(world, tq, tr, tz)) {
+        Position.q[eid]       = tq;
+        Position.r[eid]       = tr;
+        Renderable.dirty[eid] = 1;
+        state.apPool         -= 1;
+
+        const update: StateUpdateMessage = {
+          type: 'STATE_UPDATE', entityId: input.entityId,
+          q: tq, r: tr, apPool: state.apPool,
+        };
+        state.outboundMessages.push(update);
+        continue;
+      }
+      // If jump path is blocked, fall through to normal 1-hex logic.
+    }
+
+    // ── Normal 1-hex move ───────────────────────────────────────────────────
     const tq = Position.q[eid] + input.dq;
     const tr = Position.r[eid] + input.dr;
-    const tz = Position.z[eid];
+
+    // Push interaction: pushable on target hex + PUSH ability active.
+    if (abilityFlags.pushActive) {
+      const peid = pushableAt(world, tq, tr, tz);
+      if (peid !== -1) {
+        // Do not move avatar; queue push attempt for PushSystem.
+        state.pushAttempts.push({ avatarEid: eid, pushableEid: peid, dq: input.dq, dr: input.dr });
+        state.apPool -= 1;
+
+        const update: StateUpdateMessage = {
+          type: 'STATE_UPDATE', entityId: input.entityId,
+          q: Position.q[eid], r: Position.r[eid], apPool: state.apPool,
+        };
+        state.outboundMessages.push(update);
+        continue;
+      }
+    }
 
     if (!isHexPassable(world, tq, tr, tz)) continue;
 
     // Commit the move.
-    Position.q[eid]      = tq;
-    Position.r[eid]      = tr;
+    Position.q[eid]       = tq;
+    Position.r[eid]       = tr;
     Renderable.dirty[eid] = 1;
     state.apPool         -= 1;
 
-    // Broadcast authoritative result to Guest.
     const update: StateUpdateMessage = {
-      type:     'STATE_UPDATE',
-      entityId: input.entityId,
-      q:        tq,
-      r:        tr,
-      apPool:   state.apPool,
+      type: 'STATE_UPDATE', entityId: input.entityId,
+      q: tq, r: tr, apPool: state.apPool,
     };
     state.outboundMessages.push(update);
   }

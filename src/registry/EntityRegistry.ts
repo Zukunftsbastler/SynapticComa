@@ -25,6 +25,10 @@ export class EntityRegistry {
   clear(): void {
     this.map.clear();
   }
+
+  entries(): IterableIterator<[string, number]> {
+    return this.map.entries();
+  }
 }
 
 export const entityRegistry = new EntityRegistry();

@@ -4,10 +4,11 @@
 import { defineQuery } from 'bitecs';
 import {
   Position, Renderable, Dimension,
-  Avatar, Movable,
+  Avatar, Movable, Pushable,
   MatrixNode, Conduit,
-  Collectible, Hazard,
-  Threshold, Static,
+  Collectible, Hazard, Lethal,
+  Health, Resistances,
+  Threshold, Static, PhaseBarrier,
   Exit,
   BoardFlipEvent, LevelCompleteEvent, AvatarDestroyedEvent, P1ExitedEvent,
   APPool,
@@ -24,6 +25,11 @@ export const thresholdQuery     = defineQuery([Threshold, Position]);
 export const staticQuery        = defineQuery([Static, Position]);
 export const exitQuery          = defineQuery([Exit, Position]);
 export const apPoolQuery        = defineQuery([APPool]);
+
+export const pushableQuery       = defineQuery([Pushable, Position]);
+export const lethalQuery         = defineQuery([Lethal, Position]);
+export const healthQuery         = defineQuery([Health]);
+export const phaseBarrierQuery   = defineQuery([PhaseBarrier, Position]);
 
 // Event entity queries — used by LevelTransitionSystem to consume and destroy events.
 export const boardFlipQuery         = defineQuery([BoardFlipEvent]);
