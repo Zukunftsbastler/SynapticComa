@@ -14,6 +14,8 @@ import { MatrixRoutingSystem } from '@/systems/MatrixRoutingSystem';
 import { AbilitySystem } from '@/systems/AbilitySystem';
 import { CollisionSystem } from '@/systems/CollisionSystem';
 import { PushSystem } from '@/systems/PushSystem';
+import { ThresholdSystem } from '@/systems/ThresholdSystem';
+import { LevelTransitionSystem } from '@/systems/LevelTransitionSystem';
 import type { PixiDriver } from '@/rendering/PixiDriver';
 import { GameState } from '@/state/GameState';
 
@@ -41,10 +43,12 @@ function runSystems(w: IWorld): void {
   PushSystem(w, GameState);
   CollectionSystem(w, GameState);
   CollisionSystem(w, GameState);
+  ThresholdSystem(w, GameState);
   MatrixInsertSystem(w, GameState);
   MatrixRotateSystem(w, GameState);
   ScrapPoolSystem(w, GameState);
-  // Sprint 8+: ThresholdSystem, ExitSystem, LevelTransitionSystem, NetworkSystem
+  LevelTransitionSystem(w, GameState);
+  // Sprint 9+: ExitSystem, LevelLoaderSystem, NetworkSystem
 }
 
 function renderFrame(w: IWorld): void {
