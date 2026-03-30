@@ -156,19 +156,29 @@ The repository is structured by ECS domain rather than by feature.
 └── main.ts
 /public
 ├── /sprites
-│   ├── hex_id_floor.webp
-│   ├── hex_superego_floor.webp
-│   └── avatar_id.png
+│   ├── hex_id_floor.webp          # Dim A: dark bruised velvet / aged leather mat
+│   ├── hex_superego_floor.webp    # Dim B: frosted glass / scratched surgical steel
+│   ├── avatar_p1.webp             # Dim A: jagged obsidian / coagulated resin / yellowed bone
+│   ├── avatar_p2.webp             # Dim B: tarnished surgical steel / brushed aluminum
+│   ├── hazard_lethal_a.webp       # Dim A lethal: shards of blackened glass (Repressed Fears)
+│   ├── hazard_lethal_b.webp       # Dim B lethal: electrical arcs (Firewall Laser)
+│   ├── hazard_locked_red.webp     # Dim A locked door: fleshy sphincter / braided thorns
+│   ├── hazard_locked_blue.webp    # Dim B locked door: rusted vault door / jammed puzzle-lock
+│   ├── hazard_phase_barrier.webp  # Phase barrier hex (passable only under Phase Shift)
+│   ├── hazard_fire.webp           # Fire hazard tile
+│   ├── exit_nexus_a.webp          # Dim A exit (Nexus Hex)
+│   └── exit_nexus_b.webp          # Dim B exit (Nexus Hex)
 ├── /ui
 │   ├── icon_phase_shift.svg
 │   ├── icon_jump.svg
 │   ├── icon_push.svg
+│   ├── icon_fire_immunity.svg
 │   ├── conduit_straight.svg
 │   ├── conduit_curved.svg
 │   ├── conduit_t.svg
 │   ├── conduit_cross.svg
 │   ├── conduit_splitter.svg
-│   └── conduit_unknown.svg  # The ??? face-down icon
+│   └── conduit_unknown.svg        # The ??? face-down icon for uncollected floor conduits
 └── /cutscenes
     ├── intro_01_flatline.webp
     ├── intro_02_split.webp
@@ -216,7 +226,7 @@ To maintain a stable architecture, development follows sequential, isolated spri
 
 Canonical sprint sequence:
 1. Project scaffold + game loop
-2. ECS components (all 18 components including Health, Resistances, Lethal, APPool, Exit)
+2. ECS components (all 23 components including Health, Resistances, Lethal, APPool, RoundState, Exit, Events, isTweening on Renderable)
 3. Hex grid rendering (PixiJS, axial math, dimension masking)
 4. Movement + AP system (real-time shared pool, lockout, Pass action)
 5. Collection system + inventory (hidden conduit reveal on collection)
