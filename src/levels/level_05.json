@@ -1,0 +1,25 @@
+{
+  "id": "level_05",
+  "name": "Shared Routing",
+  "thresholdEnabled": false,
+  "initialInventory": {
+    "player0": [{ "entityId": "inv_p1_tjunction", "shape": 2, "rotation": 0 }],
+    "player1": [{ "entityId": "inv_p2_straight",  "shape": 0, "rotation": 0 }]
+  },
+  "scrapPool": [],
+  "entities": [
+    { "type": "avatar",    "id": "avatar_p1",     "playerId": 0, "q": 0, "r": 2,  "z": 0 },
+    { "type": "avatar",    "id": "avatar_p2",     "playerId": 1, "q": 0, "r": 2,  "z": 1 },
+    { "type": "exit",      "id": "exit_p1",       "playerId": 0, "q": 0, "r": -2, "z": 0 },
+    { "type": "exit",      "id": "exit_p2",       "playerId": 1, "q": 0, "r": -2, "z": 1, "initiallyLocked": true },
+    { "type": "hazard",    "id": "door_red",      "hazardType": 1, "q": 0, "r": -1, "z": 0 },
+    { "type": "hazard",    "id": "door_blue",     "hazardType": 2, "q": 0, "r": -1, "z": 1 }
+  ],
+  "matrix": {
+    "nodes": [
+      { "id": "node_c3r0", "column": 3, "row": 0, "abilityType": 3 },
+      { "id": "node_c3r1", "column": 3, "row": 1, "abilityType": 4 }
+    ],
+    "conduits": []
+  }
+}

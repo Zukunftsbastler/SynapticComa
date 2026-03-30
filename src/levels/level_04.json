@@ -1,0 +1,31 @@
+{
+  "id": "level_04",
+  "name": "Column Shift",
+  "thresholdEnabled": false,
+  "initialInventory": {
+    "player0": [{ "entityId": "inv_p1_conduit_01", "shape": 0, "rotation": 0 }],
+    "player1": []
+  },
+  "scrapPool": [],
+  "entities": [
+    { "type": "avatar",    "id": "avatar_p1",   "playerId": 0, "q": 0, "r": 2,  "z": 0 },
+    { "type": "avatar",    "id": "avatar_p2",   "playerId": 1, "q": 0, "r": 2,  "z": 1 },
+    { "type": "exit",      "id": "exit_p1",     "playerId": 0, "q": 0, "r": -2, "z": 0 },
+    { "type": "exit",      "id": "exit_p2",     "playerId": 1, "q": 0, "r": -2, "z": 1, "initiallyLocked": true },
+    { "type": "hazard",    "id": "chasm_c",     "hazardType": 0, "q": 0, "r": 0,  "z": 0 },
+    { "type": "wall",      "id": "wall_e",      "q":  1, "r": 0, "z": 0 },
+    { "type": "wall",      "id": "wall_w",      "q": -1, "r": 0, "z": 0 }
+  ],
+  "matrix": {
+    "nodes": [
+      { "id": "node_c3r0", "column": 3, "row": 0, "abilityType": 1 }
+    ],
+    "conduits": [
+      { "id": "matrix_col2_row0", "column": 2, "row": 0, "shape": 1, "rotation": 0 },
+      { "id": "matrix_col2_row1", "column": 2, "row": 1, "shape": 1, "rotation": 0 },
+      { "id": "matrix_col2_row2", "column": 2, "row": 2, "shape": 1, "rotation": 0 },
+      { "id": "matrix_col2_row3", "column": 2, "row": 3, "shape": 1, "rotation": 0 },
+      { "id": "matrix_col2_row4", "column": 2, "row": 4, "shape": 1, "rotation": 0 }
+    ]
+  }
+}

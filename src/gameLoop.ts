@@ -16,10 +16,16 @@ import { CollisionSystem } from '@/systems/CollisionSystem';
 import { PushSystem } from '@/systems/PushSystem';
 import { ThresholdSystem } from '@/systems/ThresholdSystem';
 import { LevelTransitionSystem } from '@/systems/LevelTransitionSystem';
+import { ExitSystem } from '@/systems/ExitSystem';
 import type { PixiDriver } from '@/rendering/PixiDriver';
 import { GameState } from '@/state/GameState';
 
 export let world: IWorld = createWorld();
+
+/** Called by LevelLoaderSystem after deleteWorld + createWorld. */
+export function setWorld(newWorld: IWorld): void {
+  world = newWorld;
+}
 
 // Set by main.ts after PixiDriver and GameState are initialised.
 let _driver: PixiDriver | null = null;
@@ -43,12 +49,13 @@ function runSystems(w: IWorld): void {
   PushSystem(w, GameState);
   CollectionSystem(w, GameState);
   CollisionSystem(w, GameState);
+  ExitSystem(w, GameState);
   ThresholdSystem(w, GameState);
   MatrixInsertSystem(w, GameState);
   MatrixRotateSystem(w, GameState);
   ScrapPoolSystem(w, GameState);
   LevelTransitionSystem(w, GameState);
-  // Sprint 9+: ExitSystem, LevelLoaderSystem, NetworkSystem
+  // Sprint 10+: NetworkSystem
 }
 
 function renderFrame(w: IWorld): void {
