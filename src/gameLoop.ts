@@ -17,6 +17,7 @@ import { PushSystem } from '@/systems/PushSystem';
 import { ThresholdSystem } from '@/systems/ThresholdSystem';
 import { LevelTransitionSystem } from '@/systems/LevelTransitionSystem';
 import { ExitSystem } from '@/systems/ExitSystem';
+import { NetworkSystem } from '@/network/NetworkSystem';
 import type { PixiDriver } from '@/rendering/PixiDriver';
 import { GameState } from '@/state/GameState';
 
@@ -55,7 +56,7 @@ function runSystems(w: IWorld): void {
   MatrixRotateSystem(w, GameState);
   ScrapPoolSystem(w, GameState);
   LevelTransitionSystem(w, GameState);
-  // Sprint 10+: NetworkSystem
+  NetworkSystem(w, GameState);
 }
 
 function renderFrame(w: IWorld): void {
