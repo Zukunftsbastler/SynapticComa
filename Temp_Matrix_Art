@@ -1,0 +1,165 @@
+# 🧬 DNA Matrix System – Game Design Overview
+
+## 🎮 Core Concept
+
+The DNA Matrix is a shared system where **5 players compete and influence each other** by inserting base pairs into a central grid.
+
+Each player:
+
+* Has **6 slots (base outputs)** aligned vertically
+* Starts with **no base pairs**
+* Collects base pairs (A, T, C, G) during gameplay
+* Inserts them into the matrix from the **top**
+
+The matrix then:
+
+* Pushes all bases downward
+* Outputs results that define each player's **abilities**
+
+---
+
+## 🧠 Key Mechanic: Push-Based DNA Flow
+
+The matrix works like a **vertical shifting system**:
+
+1. A player inserts a base (A, T, C, or G) at the top of a column
+2. All bases in that column are pushed down
+3. The bottom base exits the matrix
+4. This affects **ALL players simultaneously**
+
+👉 Every move changes the entire system
+
+---
+
+## 👥 Player Layout
+
+### Left Side: Players
+
+* 5 players listed vertically
+* Each player has:
+
+  * A name
+  * 6 output slots (their DNA row)
+
+Example:
+
+Player 1 → ● ● ● ● ● ●
+Player 2 → ● ● ● ● ● ●
+Player 3 → ● ● ● ● ● ●
+Player 4 → ● ● ● ● ● ●
+Player 5 → ● ● ● ● ● ●
+
+---
+
+## 🧬 DNA Rules (CRITICAL)
+
+Only **valid base pairs** create abilities:
+
+| Pair  | Valid |
+| ----- | ----- |
+| A + T | ✅     |
+| C + G | ✅     |
+| A + C | ❌     |
+| T + G | ❌     |
+
+---
+
+## ⚙️ Ability Calculation
+
+Each player's 6-base row is evaluated:
+
+### Example 1 (no abilities)
+
+ACACAC → ❌ No valid pairs → No abilities
+
+### Example 2 (abilities triggered)
+
+ACATCG →
+
+* AT = ✅ ability
+* CG = ✅ ability
+  → Total: 2 abilities
+
+---
+
+## 🔄 Dynamic System
+
+Every insertion:
+
+* Changes the entire matrix
+* Shifts all outputs
+* Recalculates all player abilities
+
+👉 This creates:
+
+* Constant tension
+* Strategic sabotage
+* Emergent gameplay
+
+---
+
+## ⬇️ Input / Output Flow
+
+### Input (Top)
+
+* Players insert bases into columns
+* Visual: arrows pointing downward
+
+### Matrix (Center)
+
+* Grid where bases move vertically
+* May contain modifiers (future feature)
+
+### Output (Bottom)
+
+* Each column feeds into player rows
+* Determines abilities
+
+---
+
+## 🎨 Visual Design Principles
+
+### 1. Flow First
+
+Players must instantly see:
+
+* Where input happens
+* How data moves
+* Where output goes
+
+### 2. Ownership
+
+* Left side = players
+* Right side = abilities
+
+### 3. Clarity Over Style
+
+* Arrows > decoration
+* Motion > static visuals
+
+### 4. System Feedback
+
+* Insert → push → output → update abilities
+* Always animated
+
+---
+
+## 🚀 Future Extensions
+
+* Cell modifiers (mutation, block, amplify)
+* Special base types
+* Combo bonuses
+* Player-specific mutations
+
+---
+
+## 🧩 Summary
+
+The DNA Matrix is a **shared, shifting system** where:
+
+* Players insert bases
+* The system evolves
+* Everyone is affected
+* Strategy emerges from interaction
+
+👉 “You don’t just build yourself — you reshape everyone else.”
