@@ -18,6 +18,10 @@ export class EntityRegistry {
     return this.map.has(key);
   }
 
+  delete(key: string): void {
+    this.map.delete(key);
+  }
+
   clear(): void {
     this.map.clear();
   }

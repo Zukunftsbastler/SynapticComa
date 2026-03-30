@@ -5,9 +5,12 @@ import { PixiDriver } from '@/rendering/PixiDriver';
 import { hexesInRadius } from '@/rendering/HexMath';
 import {
   Position, Renderable, Dimension, Avatar, MatrixNode,
-  Movable, APPool, Static,
+  Movable, APPool, Static, Collectible, Conduit,
 } from '@/components';
 import { entityRegistry } from '@/registry/EntityRegistry';
+import { registerForCollection } from '@/systems/CollectionSystem';
+import { inventory } from '@/state/InventoryState';
+import { ConduitShape } from '@/types';
 import { SpriteId } from '@/registry/SpriteRegistry';
 import { GameState, resetGameState } from '@/state/GameState';
 import { initKeyboardInput } from '@/input/KeyboardInput';
@@ -122,6 +125,45 @@ async function main(): Promise<void> {
     Renderable.layer[eid]    = 0;
     Dimension.layer[eid]     = 0;
   }
+
+  // ── Collectible conduits (test: 2 in Dim A, 1 in Dim B) ──────────────────
+  const testCollectibles = [
+    { key: 'conduit_a1', q:  2, r: -1, z: 0, shape: ConduitShape.STRAIGHT,   rotation: 0 },
+    { key: 'conduit_a2', q: -1, r:  2, z: 0, shape: ConduitShape.CURVED,     rotation: 1 },
+    { key: 'conduit_b1', q:  0, r:  2, z: 1, shape: ConduitShape.T_JUNCTION, rotation: 0 },
+  ];
+  for (const c of testCollectibles) {
+    const eid = addEntity(world);
+    addComponent(world, Position,    eid);
+    addComponent(world, Renderable,  eid);
+    addComponent(world, Dimension,   eid);
+    addComponent(world, Collectible, eid);
+    addComponent(world, Conduit,     eid);
+    Position.q[eid]          = c.q;
+    Position.r[eid]          = c.r;
+    Position.z[eid]          = c.z;
+    Renderable.spriteId[eid] = SpriteId.CONDUIT_UNKNOWN; // ??? until collected
+    Renderable.visible[eid]  = 1;
+    Renderable.layer[eid]    = 1;
+    Dimension.layer[eid]     = c.z;
+    Conduit.shape[eid]       = c.shape;
+    Conduit.rotation[eid]    = c.rotation;
+    Conduit.faceMask[eid]    = 0;
+    entityRegistry.register(c.key, eid);
+    registerForCollection(c.key, eid);
+  }
+
+  // ── Debug: F1 prints inventory counts to console ─────────────────────────
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'F1') {
+      console.log(
+        `[Inventory] P1: ${inventory.player0.length} conduit(s), ` +
+        `P2: ${inventory.player1.length} conduit(s)`,
+        '\nP1:', inventory.player0,
+        '\nP2:', inventory.player1,
+      );
+    }
+  });
 
   // ── DNA Matrix (5×5 placeholder nodes) ───────────────────────────────────
   for (let row = 0; row < MATRIX_ROWS; row++) {

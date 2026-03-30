@@ -6,6 +6,7 @@ import { InputSystem } from '@/systems/InputSystem';
 import { APSystem } from '@/systems/APSystem';
 import { RoundSystem } from '@/systems/RoundSystem';
 import { MovementSystem } from '@/systems/MovementSystem';
+import { CollectionSystem } from '@/systems/CollectionSystem';
 import type { PixiDriver } from '@/rendering/PixiDriver';
 import { GameState } from '@/state/GameState';
 
@@ -28,7 +29,8 @@ function runSystems(w: IWorld): void {
   APSystem(w, GameState);
   RoundSystem(w, GameState);
   MovementSystem(w, GameState);
-  // Sprint 5+: CollectionSystem, PushSystem, ThresholdSystem, MatrixInsertSystem,
+  CollectionSystem(w, GameState);
+  // Sprint 6+: PushSystem, ThresholdSystem, MatrixInsertSystem,
   //            MatrixRotateSystem, ScrapPoolSystem, MatrixRoutingSystem, AbilitySystem,
   //            CollisionSystem, ExitSystem, LevelTransitionSystem, NetworkSystem
 }
