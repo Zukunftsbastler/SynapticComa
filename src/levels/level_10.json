@@ -1,0 +1,31 @@
+{
+  "id": "level_10",
+  "name": "Tight Budget",
+  "thresholdEnabled": false,
+  "initialInventory": {
+    "player0": [
+      { "entityId": "inv_p1_straight_a", "shape": 0, "rotation": 0 },
+      { "entityId": "inv_p1_straight_b", "shape": 0, "rotation": 0 },
+      { "entityId": "inv_p1_curved_a",   "shape": 1, "rotation": 0 }
+    ],
+    "player1": []
+  },
+  "scrapPool": [],
+  "entities": [
+    { "type": "avatar",  "id": "avatar_p1",   "playerId": 0, "q": -1, "r": 2,  "z": 0 },
+    { "type": "avatar",  "id": "avatar_p2",   "playerId": 1, "q":  1, "r": 2,  "z": 1 },
+    { "type": "exit",    "id": "exit_p1",     "playerId": 0, "q": -1, "r": -2, "z": 0 },
+    { "type": "exit",    "id": "exit_p2",     "playerId": 1, "q":  1, "r": -2, "z": 1, "initiallyLocked": true },
+    { "type": "hazard",  "id": "door_red_a",  "hazardType": 1, "q": 0, "r": -1, "z": 0 },
+    { "type": "hazard",  "id": "door_blue",   "hazardType": 2, "q": 0, "r": -1, "z": 1 },
+    { "type": "hazard",  "id": "chasm_a",     "hazardType": 0, "q": 0, "r":  0, "z": 0 }
+  ],
+  "matrix": {
+    "nodes": [
+      { "id": "node_c3r0", "column": 3, "row": 0, "abilityType": 3 },
+      { "id": "node_c3r2", "column": 3, "row": 2, "abilityType": 4 },
+      { "id": "node_c3r4", "column": 3, "row": 4, "abilityType": 1 }
+    ],
+    "conduits": []
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "id": "level_08",
+  "name": "Red Herring",
+  "thresholdEnabled": false,
+  "initialInventory": {
+    "player0": [
+      { "entityId": "inv_p1_curved_a", "shape": 1, "rotation": 0 },
+      { "entityId": "inv_p1_curved_b", "shape": 1, "rotation": 1 }
+    ],
+    "player1": []
+  },
+  "scrapPool": [
+    { "shape": 1, "rotation": 0 },
+    { "shape": 1, "rotation": 2 }
+  ],
+  "entities": [
+    { "type": "avatar",  "id": "avatar_p1",   "playerId": 0, "q": 0, "r": 2,  "z": 0 },
+    { "type": "avatar",  "id": "avatar_p2",   "playerId": 1, "q": 0, "r": 2,  "z": 1 },
+    { "type": "exit",    "id": "exit_p1",     "playerId": 0, "q": 0, "r": -2, "z": 0 },
+    { "type": "exit",    "id": "exit_p2",     "playerId": 1, "q": 0, "r": -2, "z": 1, "initiallyLocked": true },
+    { "type": "hazard",  "id": "door_red_a",  "hazardType": 1, "q": 0, "r": -1, "z": 0 },
+    { "type": "hazard",  "id": "door_red_b",  "hazardType": 1, "q": 1, "r": -1, "z": 0 }
+  ],
+  "matrix": {
+    "nodes": [
+      { "id": "node_c3r0", "column": 3, "row": 0, "abilityType": 3 },
+      { "id": "node_c3r1", "column": 3, "row": 1, "abilityType": 1 }
+    ],
+    "conduits": [
+      { "id": "matrix_col2_row0", "column": 2, "row": 0, "shape": 1, "rotation": 3 },
+      { "id": "matrix_col2_row2", "column": 2, "row": 2, "shape": 1, "rotation": 1 }
+    ]
+  }
+}
