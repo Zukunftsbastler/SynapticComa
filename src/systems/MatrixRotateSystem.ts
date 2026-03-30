@@ -2,6 +2,9 @@
 // Rotates an existing conduit plate 90° clockwise and recomputes its faceMask.
 // Cost: 1 AP.
 // After mutation, broadcasts MATRIX_STATE_UPDATE.
+//
+// Task 4 (SPRINT_006b): locates the target entity via explicit column + row
+// grid coordinates from the message, not via regex-parsed entityId strings.
 
 import type { IWorld } from 'bitecs';
 import { Conduit, MatrixNode } from '@/components';
@@ -23,9 +26,7 @@ export function MatrixRotateSystem(world: IWorld, state: GameStateData): void {
   for (const input of rotateInputs) {
     if (state.apPool < 1) continue;
 
-    // Find the matrix conduit entity identified by column + row encoded in entityId.
-    // entityId format: "matrix_col{C}_row{R}" (set during level load / insert).
-    const target = findMatrixConduit(world, input.entityId);
+    const target = findMatrixConduit(world, input.column, input.row);
     if (target === -1) continue;
 
     const newRotation = (Conduit.rotation[target] + 1) % 4;
@@ -47,17 +48,12 @@ export function MatrixRotateSystem(world: IWorld, state: GameStateData): void {
   state.pendingInputs = state.pendingInputs.filter(m => m.type !== 'ROTATE_CONDUIT');
 }
 
-// Resolves "matrix_col{C}_row{R}" entityId string to a bitECS entity ID.
-function findMatrixConduit(world: IWorld, entityId: string): number {
-  const match = entityId.match(/^matrix_col(\d)_row(\d)$/);
-  if (!match) return -1;
-  const col = parseInt(match[1], 10);
-  const row = parseInt(match[2], 10);
-
+// Locate a conduit entity by its exact grid coordinates.
+function findMatrixConduit(world: IWorld, column: number, row: number): number {
   const entities = conduitQuery(world);
   for (let i = 0; i < entities.length; i++) {
     const eid = entities[i];
-    if (MatrixNode.column[eid] === col && MatrixNode.row[eid] === row) return eid;
+    if (MatrixNode.column[eid] === column && MatrixNode.row[eid] === row) return eid;
   }
   return -1;
 }

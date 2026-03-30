@@ -5,8 +5,9 @@
 //
 // Broadcasts:
 //   - MATRIX_STATE_UPDATE (scrap pool count implicitly reflected in HUD)
-//   - INVENTORY_UPDATE { playerId, drawnShape } so the Guest's NetworkSystem
-//     can add the shape to the Guest's local inventory state, revealing it.
+//   - INVENTORY_UPDATE { playerId, drawnShape, rotation, entityId } so the
+//     Guest's NetworkSystem can register the drawn tile into local inventory,
+//     including the entityId needed for a future InsertConduitMessage.
 
 import type { IWorld } from 'bitecs';
 import { scrapPool } from '@/state/ScrapPoolState';
@@ -25,35 +26,34 @@ export function ScrapPoolSystem(world: IWorld, state: GameStateData): void {
 
   for (const input of drawInputs) {
     if (state.apPool < 1) continue;
-    if (scrapPool.plates.length === 0) continue; // pool empty — reject
+    if (scrapPool.plates.length === 0) continue;
 
     const pid = input.senderId;
     const playerInventory = pid === 0 ? inventory.player0 : inventory.player1;
+
+    // Deterministic ID — uses outSeq so Host and Guest agree on the string.
+    const entityId = `scrap_drawn_${state.outSeq++}`;
 
     // Pick a random plate (blind draw).
     const idx = Math.floor(Math.random() * scrapPool.plates.length);
     const plate = scrapPool.plates.splice(idx, 1)[0];
 
-    playerInventory.push({
-      entityId: `scrap_drawn_${Date.now()}`,
-      shape:    plate.shape,
-      rotation: plate.rotation,
-    });
-
+    playerInventory.push({ entityId, shape: plate.shape, rotation: plate.rotation });
     state.apPool -= 1;
 
-    // Broadcast matrix update (pool count changed).
     const matrixUpdate: MatrixStateUpdateMessage = {
       type: 'MATRIX_STATE_UPDATE',
       grid: buildMatrixStatePayload(world),
     };
     state.outboundMessages.push(matrixUpdate);
 
-    // Reveal the drawn shape to the Guest's client.
+    // Include entityId + rotation so the Guest can insert the tile later.
     const invUpdate: InventoryUpdateMessage = {
-      type:        'INVENTORY_UPDATE',
-      playerId:    pid,
-      drawnShape:  plate.shape,
+      type:       'INVENTORY_UPDATE',
+      playerId:   pid,
+      drawnShape: plate.shape,
+      rotation:   plate.rotation,
+      entityId,
     };
     state.outboundMessages.push(invUpdate);
   }

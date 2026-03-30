@@ -217,7 +217,9 @@ async function main(): Promise<void> {
 
   // ── MatrixUI ──────────────────────────────────────────────────────────────
   const matrixOrigin = driver.getMatrixOrigin();
-  new MatrixUI(matrixOrigin.x, matrixOrigin.y);
+  // Hold the reference so destroy() can be called on level reload.
+  const _matrixUI = new MatrixUI(matrixOrigin.x, matrixOrigin.y);
+  // Usage: _matrixUI.destroy() before calling loadLevel() in Sprint 9.
 
   startLoop();
 }

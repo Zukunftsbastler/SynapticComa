@@ -28,9 +28,10 @@ export interface InsertConduitMessage extends BaseMessage {
 }
 
 export interface RotateConduitMessage extends BaseMessage {
-  type:     'ROTATE_CONDUIT';
-  entityId: string;
-  apCost:   1;
+  type:   'ROTATE_CONDUIT';
+  column: 2 | 4;  // conduit-slot column (explicit coordinates, not a regex-parsed string)
+  row:    number; // 0-indexed row within the matrix
+  apCost: 1;
 }
 
 export interface DrawScrapMessage extends BaseMessage {
@@ -62,11 +63,15 @@ export interface MatrixStateUpdateMessage {
   grid: { shape: number; rotation: number; active: boolean }[][];
 }
 
-// Host → Guest only — reveals the shape drawn blind from the Scrap Pool
+// Host → Guest only — reveals the shape drawn blind from the Scrap Pool.
+// entityId and rotation are included so the Guest can reference the tile
+// in a subsequent InsertConduitMessage without a missing-ID error.
 export interface InventoryUpdateMessage {
-  type:        'INVENTORY_UPDATE';
-  playerId:    0 | 1;
-  drawnShape:  number;
+  type:       'INVENTORY_UPDATE';
+  playerId:   0 | 1;
+  drawnShape: number;
+  rotation:   number;
+  entityId:   string;
 }
 
 // Separate PeerJS channel — no ECS effect, not included in GameMessage union
