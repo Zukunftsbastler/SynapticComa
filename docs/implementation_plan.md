@@ -10,13 +10,15 @@ bitECS uses dense integer entity IDs (not UUIDs) internally. A separate `entityR
 ### Decision 2: Determinism Contract
 Both clients run the identical system pipeline in the identical order every tick. The game loop processes systems in a fixed sequence:
 ```
-InputSystem → APSystem → MovementSystem → CollectionSystem → TeleportSystem →
-ThresholdSystem → MatrixRoutingSystem → AbilitySystem → RuleParsingSystem → RenderSystem
+InputSystem → APSystem → RoundSystem → MovementSystem → CollectionSystem →
+TeleportSystem → PushSystem → ThresholdSystem → MatrixInsertSystem → MatrixRotateSystem →
+ScrapPoolSystem → MatrixRoutingSystem → AbilitySystem → CollisionSystem →
+ExitSystem → RuleParsingSystem → RenderSystem → NetworkSystem
 ```
 No system may read time-varying browser APIs. All randomness is seeded from the level ID and a shared pre-game handshake nonce.
 
-### Decision 3: AP as Shared Singleton
-AP is not a component on an entity. It lives in a plain TypeScript singleton `GameState` object (`{ apPool: number, apMax: number, pendingInputs: InputEvent[] }`). Both clients maintain this object identically because inputs are applied in arrival order, deduplicated by sequence number. The singleton is reset on level load.
+### Decision 3: AP as Shared Singleton + Real-Time Lockout
+AP lives in a plain TypeScript singleton `GameState` (`{ apPool: number, apMax: number, pendingInputs: InputEvent[], outboundMessages: GameMessage[] }`). Both clients maintain this identically. Both players may spend AP simultaneously in any order; the system enforces a lockout when the pool hits 0. A `Pass` action (0 AP) from either player triggers `RoundSystem` to reset AP. The singleton is reset on level load. A dedicated `APPool` singleton entity (bitECS components: `APPool { current: ui8, max: ui8 }`) mirrors this state for HUD rendering.
 
 ### Decision 4: Conduit Pipe Connectivity Model
 Each conduit shape encodes its open faces as a bitmask over 4 cardinal directions (East, South, West, North = bits 0–3). A straight conduit horizontal = `0b0101` (E+W open). Curved NE = `0b0011` (E+N). T-junction open to E/S/W = `0b0111`. Rotation applies a bit-rotate operation. Connection is valid if and only if adjacent conduit faces are both open toward each other.
@@ -90,6 +92,24 @@ export const Collectible = defineComponent({});
 
 // src/components/Static.ts — tag component
 export const Static = defineComponent({});
+
+// src/components/PhaseBarrier.ts — tag component
+export const PhaseBarrier = defineComponent({});
+
+// src/components/Lethal.ts
+export const Lethal = defineComponent({ hazardType: Types.ui8 });
+
+// src/components/Health.ts  — avatars only; max:1 current:1
+export const Health = defineComponent({ max: Types.ui8, current: Types.ui8 });
+
+// src/components/Resistances.ts — boolean flags as ui8 (0/1)
+export const Resistances = defineComponent({ fire: Types.ui8, void: Types.ui8, phase: Types.ui8 });
+
+// src/components/Exit.ts
+export const Exit = defineComponent({ playerId: Types.ui8 }); // which player's exit this is
+
+// src/components/APPool.ts — singleton entity only
+export const APPool = defineComponent({ current: Types.ui8, max: Types.ui8 });
 ```
 
 ### JSON Level Schema
@@ -166,9 +186,21 @@ interface InsertConduitMessage extends BaseMessage {
   type:           'INSERT_CONDUIT';
   column:         2 | 4;
   fromTop:        boolean;
-  shape:          0 | 1 | 2;
+  shape:          0 | 1 | 2 | 3 | 4;  // 3=Cross, 4=Splitter (Master Set)
   rotation:       0 | 1 | 2 | 3;
   sourceEntityId: string;
+  apCost:         2;                   // always 2 AP
+}
+
+interface RotateConduitMessage extends BaseMessage {
+  type:     'ROTATE_CONDUIT';
+  entityId: string;   // matrix conduit entity to rotate
+  apCost:   1;
+}
+
+interface DrawScrapMessage extends BaseMessage {
+  type:   'DRAW_SCRAP';
+  apCost: 1;
 }
 
 interface ThresholdReadyMessage extends BaseMessage {
@@ -176,7 +208,23 @@ interface ThresholdReadyMessage extends BaseMessage {
   ready: boolean;
 }
 
-type GameMessage = MoveAvatarMessage | InsertConduitMessage | ThresholdReadyMessage | { type: 'END_TURN' } & BaseMessage;
+interface PassMessage extends BaseMessage {
+  type: 'PASS';  // declares round end, 0 AP
+}
+
+interface ChatMessage {
+  type:     'CHAT';    // NOT a GameMessage — separate channel, no ECS effect
+  emoji:    string;    // single emoji character
+  senderId: 0 | 1;
+}
+
+type GameMessage =
+  | MoveAvatarMessage
+  | InsertConduitMessage
+  | RotateConduitMessage
+  | DrawScrapMessage
+  | ThresholdReadyMessage
+  | PassMessage;
 
 interface HandshakeMessage {
   type:    'HANDSHAKE';
@@ -238,7 +286,7 @@ function tick(timestamp: number) {
 
 ### Sprint 2 — ECS Component Definitions and Entity Registry
 
-**Goal**: All 13 bitECS components defined. Reusable `EntityRegistry` mapping string keys to bitECS IDs. `SpriteRegistry` mapping `spriteId` numbers to asset paths.
+**Goal**: All 22 bitECS components defined (including `Health`, `Resistances`, `Lethal`, `PhaseBarrier`, `Exit`, `APPool`). Reusable `EntityRegistry` mapping string keys to bitECS IDs. `SpriteRegistry` mapping `spriteId` numbers to asset paths.
 
 **Duration**: 1 day | **Depends on**: Sprint 1
 
@@ -263,10 +311,11 @@ export class EntityRegistry {
 export const entityRegistry = new EntityRegistry();
 ```
 
-`SpriteRegistry.ts` — `const enum SpriteId { HEX_ID_FLOOR=0, HEX_SUPEREGO_FLOOR=1, AVATAR_P1=2, AVATAR_P2=3, CONDUIT_STRAIGHT=4, CONDUIT_CURVED=5, CONDUIT_T=6, HAZARD_CHASM=7, ... }` mapped to asset paths.
+`SpriteRegistry.ts` — `const enum SpriteId { HEX_ID_FLOOR=0, HEX_SUPEREGO_FLOOR=1, AVATAR_P1=2, AVATAR_P2=3, CONDUIT_STRAIGHT=4, CONDUIT_CURVED=5, CONDUIT_T=6, CONDUIT_CROSS=7, CONDUIT_SPLITTER=8, CONDUIT_UNKNOWN=9, HAZARD_CHASM=10, ... }` mapped to asset paths. `CONDUIT_UNKNOWN` is the `???` icon used for uncollected floor conduits.
 
 **Acceptance Criteria**:
-- Smoke test: create 10 entities, add `Position` + `Dimension`, verify `Position.q` returns `Int16Array` and `Dimension.layer` returns `Uint8Array`.
+- Smoke test: create 10 entities, add `Position` + `Dimension` + `Health`, verify correct TypedArray types and default values.
+- `Health.max[eid] = 1; Health.current[eid] = 1` readable after `addComponent`.
 - Zero circular dependency errors.
 
 ---
@@ -338,7 +387,7 @@ export const teleporterQuery    = defineQuery([TeleporterComponent, Position]);
 
 ### Sprint 4 — Movement System and Avatar Input
 
-**Goal**: Avatars move on the hex grid via keyboard. Movement costs 1 AP. `APSystem` enforces the shared pool. Local input produces `MoveAvatarMessage` objects in `pendingInputs`. `MovementSystem` processes queued inputs against ECS state.
+**Goal**: Avatars move on the hex grid via keyboard. Movement costs 1 AP. `APSystem` enforces the real-time shared pool with global lockout. `RoundSystem` handles AP reset on Pass or pool depletion. A singleton `APPool` entity drives the HUD counter. Local input produces `MoveAvatarMessage` and `PassMessage` objects in `pendingInputs`.
 
 **Duration**: 2 days | **Depends on**: Sprint 3
 
@@ -392,8 +441,11 @@ export function MovementSystem(world: IWorld, state: GameStateData): void {
 
 **Acceptance Criteria**:
 - Avatar 1 moves on Dimension A via WASD; Avatar 2 on Dimension B via IJKL (local stub).
-- AP decrements from 4 to 0; inputs at 0 AP silently rejected.
+- Both players can spend AP simultaneously; pool decrements correctly from either player's input.
+- At AP=0, all further inputs are rejected (global lockout active).
+- `Pass` action (spacebar) resets AP pool to max and starts the next round.
 - Avatars cannot enter cells with `Static` entities.
+- `APPool.current[apPoolEid]` stays in sync with `GameState.apPool` every tick.
 
 ---
 
@@ -430,7 +482,7 @@ export const inventory = { player0: [] as CollectedConduit[], player1: [] as Col
 
 ### Sprint 6 — DNA Matrix Rendering and Conduit Insert Mechanic
 
-**Goal**: The DNA Matrix renders as a 5-column grid. Players insert conduit plates from inventory into column 2 or 4. The column-shift mechanic ejects the opposite-end tile into inventory (Das verrückte Labyrinth). Costs 1 AP.
+**Goal**: The DNA Matrix renders as a 5-column grid. Players insert conduit plates (costs **2 AP**) — the column-shift mechanic ejects the opposite-end tile **face-down into the shared Scrap Pool**. Players may also rotate an already-placed conduit for 1 AP (`MatrixRotateSystem`), or draw from the Scrap Pool blind for 1 AP (`ScrapPoolSystem`). New files: `src/state/ScrapPoolState.ts`.
 
 **Duration**: 3 days | **Depends on**: Sprint 5
 
@@ -469,21 +521,29 @@ export function facesConnect(maskA: number, maskB: number, direction: 0|1|2|3): 
 }
 ```
 
-`MatrixInsertSystem.ts` — on `INSERT_CONDUIT` input: collect all entities in the target column sorted by row; eject the last (or first) entity back into inventory; shift remaining entities by ±1 row; create new entity at row 0 or MATRIX_ROWS-1; deduct 1 AP; consume the conduit from player inventory.
+`MatrixInsertSystem.ts` — on `INSERT_CONDUIT` input: collect all entities in the target column sorted by row; eject the last (or first) entity **to the Scrap Pool** (as a face-down entry in `ScrapPoolState`); shift remaining entities by ±1 row; create new entity at row 0 or MATRIX_ROWS-1; deduct **2 AP**; consume the conduit from player inventory.
 
-`MatrixUI.ts` — handles mouse events on the matrix grid. Shows the local player's inventory as an insertion palette. `R` key rotates conduit before insertion. Only fires `InsertConduitMessage` for `senderId === GameState.localPlayerId`.
+`MatrixRotateSystem.ts` — on `ROTATE_CONDUIT` input: finds the entity by ID, increments `Conduit.rotation[eid]` by 1 (mod 4), recomputes `Conduit.faceMask[eid] = computeFaceMask(shape, rotation)`, sets `Renderable.dirty[eid] = 1`, deducts 1 AP. Triggers a re-run of `MatrixRoutingSystem` this tick.
+
+`ScrapPoolSystem.ts` — on `DRAW_SCRAP` input: if `scrapPool.plates.length > 0`, pops a random entry from `ScrapPoolState.plates`, reveals its shape, pushes it to the drawing player's inventory, deducts 1 AP.
+
+`ScrapPoolState.ts` — `{ plates: { shape: ConduitShape; rotation: number }[] }` — a plain TS singleton. Plates are stored with their shape (hidden from render until drawn). The HUD shows only `scrapPool.plates.length` (count), never the contents.
+
+`MatrixUI.ts` — handles mouse events on the matrix grid. Shows the local player's inventory as an insertion palette. `R` key pre-orients conduit before insertion (0 AP). Click on a column edge arrow fires `InsertConduitMessage`. Click on an existing matrix conduit fires `RotateConduitMessage`. Only fires messages for `senderId === GameState.localPlayerId`.
 
 **Acceptance Criteria**:
-- Insert from top shifts all tiles down; bottom tile ejected to inventory.
-- Insert from bottom shifts up; top tile ejected.
-- Conduit face masks visually rotate correctly.
+- Insert from top costs 2 AP, shifts all tiles down; bottom tile added to Scrap Pool (not inventory).
+- Insert from bottom costs 2 AP, shifts up; top tile added to Scrap Pool.
+- Rotate an inserted conduit costs 1 AP; face mask updates immediately; routing re-evaluates.
+- Draw from Scrap Pool costs 1 AP; shape revealed to drawing player only.
+- Scrap Pool count visible on HUD; contents never shown.
 - Player 2 inventory never visible in Player 1 UI.
 
 ---
 
 ### Sprint 7 — Matrix Routing System and Ability Activation
 
-**Goal**: After every matrix mutation, `MatrixRoutingSystem` runs BFS from source nodes to determine which ability nodes are powered. `AbilitySystem` applies ability effects (adding/removing components on avatar entities).
+**Goal**: After every matrix mutation, `MatrixRoutingSystem` runs BFS from source nodes to determine which ability nodes are powered. `AbilitySystem` applies exact ability effects. `CollisionSystem` handles lethal hazard contact using `Health`/`Lethal`/`Resistances` components. `PushSystem` handles the Push ability sokoban mechanic.
 
 **Duration**: 3 days | **Depends on**: Sprint 6
 
@@ -503,14 +563,26 @@ export function facesConnect(maskA: number, maskB: number, direction: 0|1|2|3): 
 - Reset `MatrixNode.active = 0` for all nodes at start of each run.
 
 `AbilitySystem.ts` — diffs the newly-active ability set against the previously-active set. For each ability transition:
-- `JUMP` active → add `JumpAbility` tag component to all avatars.
-- `UNLOCK_RED` active → remove `Static` from all `Hazard` entities with `hazardType === LOCKED_RED`.
-- Deactivation reverses all mutations. Instant door re-lock is intentional.
+**Ability effects (exact):**
+- `JUMP` active → `MovementSystem` allows the avatar to move up to 2 hexes in a straight axial line (bypassing intermediate hex), landing on any empty safe hex. No extra AP cost.
+- `PUSH` active → `PushSystem` activates. When `MovementSystem` detects an avatar attempting to move into a `Pushable` entity: cancel the avatar's movement, instead push the entity 1 hex in the same direction (if target hex is empty). Avatar stays in place. Costs 1 AP.
+- `PHASE_SHIFT` active → `MovementSystem` allows movement through `PhaseBarrier` entities for the standard 1 AP cost.
+- `UNLOCK_RED` active → remove `Static` from all `Hazard` entities with `hazardType === LOCKED_RED` in the avatar's dimension. Instant re-lock when path severs.
+- `FIRE_IMMUNITY` active → add `Resistances.fire = 1` to the sourced avatar. Remove on deactivation.
+
+`CollisionSystem.ts` — runs after `MovementSystem`. Queries all avatar entities. For each avatar at `(q,r,z)`, check for any `Lethal` entity at the same position. If found: check `Resistances` — if the resistance flag matching `Lethal.hazardType` is 0, set `Health.current[avatarEid] = 0` and emit `AVATAR_DESTROYED`. `GameState` handles the failure screen logic on `AVATAR_DESTROYED`.
+
+`PushSystem.ts` — processes `PUSH_ACTION` events emitted by `MovementSystem`. Validates target hex (must be empty). Moves `Pushable` entity 1 hex. No avatar movement occurs.
 
 **Acceptance Criteria**:
 - Straight pipe connecting source → ability node activates it each frame.
 - Breaking the path deactivates the ability on the next frame.
-- Locked red door has `Static` when `UNLOCK_RED` inactive; no `Static` when active.
+- Jump moves avatar 2 hexes, bypassing a blocked intermediate hex.
+- Push moves a Pushable block 1 hex without moving the avatar.
+- Phase Shift allows movement through PhaseBarrier; normal walls still block.
+- Locked red door has `Static` when `UNLOCK_RED` inactive; no `Static` when active; re-locks instantly on path break.
+- Avatar entering a Fire Hazard without Fire Immunity emits `AVATAR_DESTROYED`.
+- Avatar entering a Fire Hazard WITH Fire Immunity (`Resistances.fire = 1`) passes through safely.
 - T-junction simultaneously activates two ability nodes.
 - Full 5-column path activates a Tier 2 ability.
 
@@ -548,7 +620,7 @@ export function facesConnect(maskA: number, maskB: number, direction: 0|1|2|3): 
 
 ### Sprint 9 — Level Loader System and JSON Pipeline
 
-**Goal**: `LevelLoaderSystem` parses full JSON level schema, creates entities via factory functions, populates `EntityRegistry`, resets all state. Levels 1–5 authored in JSON.
+**Goal**: `LevelLoaderSystem` parses full JSON level schema, creates entities via factory functions, populates `EntityRegistry`, resets all state. `ExitSystem` implements sequential exit (P1 first → spectator → P2 exits → win). `CutscenePlayer` handles the intro panel sequence before Level 1. Levels 1–5 authored in JSON.
 
 **Duration**: 2 days | **Depends on**: Sprint 8
 
@@ -591,17 +663,49 @@ Level progression for levels 1–5:
 
 `levelIndex.ts` — `export const LEVEL_ORDER: string[] = ['level_01', 'level_02', ...]`.
 
+**ExitSystem (sequential exit):**
+```typescript
+export function ExitSystem(world: IWorld, state: GameStateData): void {
+  const exits = exitQuery(world);  // defineQuery([Exit, Position])
+  for (let i = 0; i < exits.length; i++) {
+    const exitEid = exits[i];
+    const playerId = Exit.playerId[exitEid];
+    const eq = Position.q[exitEid], er = Position.r[exitEid], ez = Position.z[exitEid];
+    // find the matching avatar
+    const avatars = avatarQuery(world);
+    for (let j = 0; j < avatars.length; j++) {
+      const aeid = avatars[j];
+      if (Avatar.playerId[aeid] !== playerId) continue;
+      if (Position.q[aeid] === eq && Position.r[aeid] === er && Position.z[aeid] === ez) {
+        if (playerId === 0 && !state.p1Exited) {
+          state.p1Exited = true;
+          state.phase = 'P1_SPECTATING';
+          removeComponent(world, Movable, aeid);  // P1 can no longer act
+          eventBus.emit('P1_EXITED');             // activates P2 exit hex
+        } else if (playerId === 1 && state.p1Exited) {
+          eventBus.emit('LEVEL_COMPLETE');
+        }
+      }
+    }
+  }
+}
+```
+P2's exit hex has `Static` initially. On `P1_EXITED`, `AbilitySystem` (responding to the event) removes `Static` from P2's exit, lighting it up.
+
 **Acceptance Criteria**:
-- `loadLevel(world, 'level_01', ...)` creates the correct entity count.
+- `loadLevel(world, 'level_01', ...)` creates the correct entity count (including APPool singleton entity).
 - All entities have correct component values.
 - Loading level 2 after level 1 leaves zero ghost entities.
-- Levels 1–5 playable end-to-end.
+- Intro cutscene (3 panels) plays before Level 1; skippable by click.
+- P1 stepping on exit removes P1 movement ability and activates P2 exit.
+- P2 stepping on (now-active) exit emits `LEVEL_COMPLETE`.
+- Levels 1–5 playable end-to-end with correct sequential exit.
 
 ---
 
 ### Sprint 10 — Networking (PeerJS WebRTC)
 
-**Goal**: Two browser tabs connect via PeerJS. Lobby generates a 6-character room code. `NetworkSystem` serializes and transmits `GameMessage` objects. Determinism validated by periodic state hash comparison.
+**Goal**: Two browser tabs connect via PeerJS. Lobby generates a 6-character room code. `NetworkSystem` serializes and transmits `GameMessage` objects. `ChatManager` routes emoji-only messages on a separate data channel with no ECS effect. Determinism validated by periodic state hash comparison.
 
 **Duration**: 3 days | **Depends on**: Sprint 9
 
@@ -610,7 +714,9 @@ Level progression for levels 1–5:
 - `src/network/NetworkSystem.ts`
 - `src/network/messages.ts`
 - `src/network/StateHasher.ts`
+- `src/network/ChatManager.ts`
 - `src/ui/LobbyUI.ts`
+- `src/ui/ChatUI.ts`
 
 **Key Logic**:
 
@@ -655,7 +761,10 @@ Handshake sequence: Host sends `HandshakeMessage { nonce, levelId, role: 1 }` �
 **Acceptance Criteria**:
 - Two browser tabs connect. Host = Player 0, Guest = Player 1.
 - Move input on host appears on both tabs within 1 frame.
-- Conduit insert on guest updates matrix on both tabs.
+- Conduit insert (2 AP) on guest updates matrix on both tabs.
+- Rotate conduit (1 AP) on host updates matrix on both tabs.
+- Emoji sent by Player 1 appears in Player 2's chat strip within 1 frame; no ECS state changes.
+- Chat UI shows only emoji picker (no text input field).
 - State hash matches after 60 seconds on LAN.
 - Disconnection pauses game and shows reconnection message.
 
@@ -691,9 +800,9 @@ Dimension masking: PixiJS mask (`PIXI.Graphics` rectangle) applied to the hex gr
 
 ---
 
-### Sprint 12 — Campaign Flow, Exit System, and Levels 6–10
+### Sprint 12 — Campaign Flow and Levels 6–10
 
-**Goal**: Progression system advancing through `LEVEL_ORDER`. Level Complete screen. `ExitSystem` detecting simultaneous avatar arrival at exit hexes. Levels 6–10 authored in JSON.
+**Goal**: Progression system advancing through `LEVEL_ORDER`. Level Complete screen. `NeuralCollapseScreen` (second-failure state). Levels 6–10 authored in JSON using the complete AP table (2 AP inserts, Scrap Pool economy, tight budgets). Level 8 red herring confirmed unsolvable.
 
 **Duration**: 3 days | **Depends on**: Sprint 11
 
@@ -716,15 +825,44 @@ Level design for levels 6–10:
 - **Level 6**: Column shift breaks an existing path. Players must plan insert order.
 - **Level 7**: Two conduit columns active simultaneously. First T-junction coordination puzzle.
 - **Level 8**: Red herring locked door — the required ability is impossible to route given available conduits.
-- **Level 9**: Teleporter chain — flip dimension, collect conduit, flip back, insert.
-- **Level 10**: Tight AP budget. Routing requires 3 inserts to unlock movement across a chasm.
+- **Level 9**: Teleporter chain — flip dimension, collect conduit, flip back, insert. Tests dimension-flip + Scrap Pool combo.
+- **Level 10**: Tight AP budget. All inserts cost 2 AP; routing requires 3 inserts. Sequential exit requires careful AP timing between P1 exit and P2 exit.
 
 **Acceptance Criteria**:
 - Completing level 1 shows Level Complete overlay.
 - "Next Level" loads level 2 on both clients simultaneously.
 - `localStorage` persists progress across browser refreshes.
+- First failure on any level reloads instantly.
+- Second failure shows `NeuralCollapseScreen` and returns to Level Select.
 - All 10 levels playable end-to-end.
 - Level 8's red herring confirmed unsolvable (regression test).
+
+---
+
+### Sprint 13 — Levels 11–15 (Threshold Mechanic)
+
+**Goal**: Author levels 11–15 in JSON. Level 11 introduces the Threshold for the first time: a tutorialized one-way board flip with asymmetric warning icons and a Fire Immunity pre-requisite. Levels 12–15 build on it with multi-route Threshold prep and Rotate action puzzles.
+
+**Duration**: 3 days | **Depends on**: Sprint 12
+
+**Files to Create**:
+- `src/levels/level_11.json` through `level_15.json`
+- Updated `src/levels/levelIndex.ts`
+
+**Level Design Notes**:
+
+- **Level 11 (Threshold Tutorial):** P1's board has a prominent fire hazard icon near the Threshold hex. P2 holds Fire Immunity conduit plates. No other Tier 2 abilities available. Players must route Fire Immunity on the matrix *before* stepping on Threshold hexes, or P1 is destroyed immediately on arrival. Tutorialization is environmental — no text.
+- **Level 12**: Matrix state from before the flip must include a routed Jump ability (needed to cross a post-flip chasm). Post-flip boards have no conduit pickups near the start.
+- **Level 13**: First use of the Rotate action as the critical move. A pre-placed conduit in the matrix is one rotation off from completing a path; players must spend 1 AP to rotate it instead of burning 2 AP on a new insert.
+- **Level 14**: Both players must coordinate to reach their Threshold hexes at low AP. Sequential exit is especially tight post-flip (P2 must navigate without matrix support after P1 exits).
+- **Level 15**: Master set conduit teaser — a Cross (+) piece appears in the Scrap Pool at game start. Drawing it (1 AP) enables the only viable routing solution.
+
+**Acceptance Criteria**:
+- Level 11 plays as a Threshold tutorial: Fire Immunity required, visible warning icon confirms cause.
+- Failing to route Fire Immunity before Threshold → P1 destroyed on arrival → retry.
+- Level 15 requires drawing from the Scrap Pool to win.
+- All 15 levels playable end-to-end.
+- `LEVEL_ORDER` contains all 15 entries in `levelIndex.ts`.
 
 ---
 
@@ -743,6 +881,7 @@ Sprint 1  (Scaffold)
                                                                                     └──► Sprint 10 (Networking)
                                                                                               └──► Sprint 11 (HUD + Polish)
                                                                                                         └──► Sprint 12 (Campaign + Levels 6-10)
+                                                                                                                  └──► Sprint 13 (Levels 11-15 + Threshold)
 ```
 
 The dependency is strictly sequential. No sprint can begin before the prior one passes its acceptance criteria.
@@ -780,16 +919,18 @@ Public PeerJS signaling server (`0.peerjs.com`) is used for development. For pro
 | `src/systems/LevelLoaderSystem.ts` | Teardown bugs create ghost entities corrupting all subsequent levels |
 | `src/network/PeerJSManager.ts` | Message sequencing race conditions are the hardest bugs to reproduce |
 | `src/systems/AbilitySystem.ts` | Transition diff logic must correctly re-lock doors on ability loss |
+| `src/systems/CollisionSystem.ts` | Must run after MovementSystem; missed collision = undetected player death |
+| `src/systems/MatrixRotateSystem.ts` | Must recompute faceMask and trigger routing re-run in same tick |
+| `src/state/ScrapPoolState.ts` | Shape data must be hidden from RenderSystem until a DRAW_SCRAP message resolves |
 
 ---
 
-## Post-Sprint 12 Roadmap
+## Post-Sprint 13 Roadmap (Post-MVP)
 
-- **Sprint 13**: Level editor UI for authoring levels 11–30.
-- **Sprint 14**: Levels 16–30 (Spatial Complexity — larger hex grids, tight AP management).
-- **Sprint 15**: Threshold mechanic levels 31–40 (one-way board flip, asymmetric pre-jump clues).
+- **Sprint 14**: Levels 16–30 (Spatial Complexity — larger hex grids, Master Set conduits in regular rotation).
+- **Sprint 15**: Levels 31–40 (Deep Subconscious — multiple Threshold flips, subtle asymmetric clues).
 - **Sprint 16**: Audio (neural/organic soundscape for Dimension A, electronic/sterile for Dimension B).
-- **Sprint 17**: Visual polish (Dimension A — pulsing purples/reds; Dimension B — cold blues/neon).
-- **Sprint 18**: Self-hosted PeerJS server deployment + matchmaking lobby.
+- **Sprint 17**: Visual polish (Dimension A — pulsing purples/reds; Dimension B — cold blues/neon; cutscene illustration assets).
+- **Sprint 18**: Self-hosted PeerJS server deployment.
 - **Sprint 19**: Accessibility pass (icon contrast, colorblind mode for conduit shapes).
-- **Sprint 20**: Physical board game asset export pipeline (generating printable hex grid PDFs from level JSON).
+- **Sprint 20**: Physical board game asset export pipeline (printable hex grid PDFs from level JSON).

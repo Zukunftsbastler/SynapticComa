@@ -45,7 +45,13 @@ To survive the Threshold, players must prepare the DNA Matrix *before* jumping.
 * *Example:* Player 1's board features a permanent, visual warning icon for "Fire Hazards" near the Threshold hex. Player 2's board does not, but Player 2 has access to the "Fire Immunity" Conduit Plates. Player 1 must warn Player 2 to route the Fire Immunity ability on the shared Matrix *before* they agree to flip the boards, otherwise they will instantly fail upon arriving in the new dimension.
 
 ## 5. Difficulty Progression (The Campaign)
-* **Levels 1-5 (The Basics):** Teach movement, basic Matrix routing, and strict communication rules.
-* **Levels 6-15 (The Shift):** Introduce the sliding mechanic, forcing players to break connections. Introduce Red Herrings and Decoy paths.
-* **Levels 16-30 (Spatial Complexity):** The Hex Grids become larger. Navigating to the Conduit Plates requires tight AP management.
-* **Levels 31-40+ (The Threshold):** Introduce the one-way board flip. Players must use asymmetric clues to prepare their Matrix loadout before jumping blind into the second half of the level.
+
+### MVP Scope (Levels 1–15)
+* **Levels 1–5 (The Basics):** Teach movement, the sequential exit win condition, basic Matrix routing, and the strict communication rules. Each level introduces exactly one new mechanic in isolation with obvious conduit placement.
+* **Levels 6–10 (The Shift):** Introduce the 2 AP Insert cost, forcing AP budget discipline. Introduce red herrings, decoy locks, and the Scrap Pool as a resource. First tight AP budgets.
+* **Level 11 (Threshold Introduction):** The first level with the Threshold mechanic. The pre-flip boards contain asymmetric warning icons. Tutorialization: Player 1's board has a prominent fire hazard icon near their Threshold hex; Player 2 holds the Fire Immunity conduit plates. Players must communicate and route the ability before agreeing to flip.
+* **Levels 12–15 (The Threshold — Advanced):** Multi-step Threshold puzzles. The Matrix state carries over; players must route abilities that are useful *after* the flip, not just before it. Introduce the Rotate action as a precision tool.
+
+### Post-MVP (Deferred — Levels 16–40)
+* **Levels 16–30 (Spatial Complexity):** Larger hex grids. Navigation to conduits requires multi-round AP planning. Master Set conduit shapes (Cross, Splitter) introduced.
+* **Levels 31–40+ (The Deep Subconscious):** Multiple Threshold flips per level. Asymmetric foresight clues become subtle and indirect. End-game puzzles designed for experienced cooperative pairs.

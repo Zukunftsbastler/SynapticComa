@@ -29,5 +29,6 @@ The game uses a "Talk about the Goal, Silence the Method" approach.
 ## 4. Matrix Manipulation Integrity
 Because communication is restricted during execution, every placement on the Matrix is a hard commitment.
 * Once a Conduit Plate is pushed into a column on the DNA Matrix, it is locked in place.
-* A plate can **only** be removed or shifted if a player spends an AP to push a *new* Conduit Plate into that same column, forcing the row to slide and ejecting the plate at the opposite end. 
-* Ejected plates are placed face-down in a shared "Scrap Pool" (or returned to a specific player's inventory, pending balance testing).
+* A plate can **only** be removed or shifted by inserting a new plate into that column (forcing the shift), or by spending 1 AP to rotate a plate already in place.
+* **The Scrap Pool:** When a plate is ejected from a column, it goes **face-down** into a central shared pile called the Scrap Pool. Neither player may look at the contents; the pool is known only by count. Either player may spend 1 AP to **draw one plate blind** from the pool into their private inventory.
+* This rule reinforces the silent execution principle: a player who ejects a piece they didn't intend to lose is silenced — they cannot warn their partner or describe what was lost. Their partner can draw from the pool blindly on their own action.

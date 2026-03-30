@@ -27,7 +27,25 @@ The shared square board in the center of the table represents the patient's core
 ## 4. The Threshold: Trauma Landmarks
 The mid-game board flips (The Threshold mechanic) represent diving deeper into the patient's subconscious. To progress, the fragments must push past "Trauma Landmarks"—core memories that caused the coma. Crossing a Threshold is a violent mental shift, instantly rewriting the landscape of both the Id and the Superego, which is why the Hex Grids must physically flip to the next phase of the puzzle.
 
-## 5. Language-Agnostic Translation
+## 5. Narrative Delivery: Static Silent Cutscenes
+
+The game's story is delivered through **language-agnostic static illustration panels** — no text, no voice, no subtitles. This preserves the language-agnostic design principle at the narrative layer.
+
+### 5.1 The Opening Sequence (Before Level 1)
+Before the first level loads, three full-screen illustration panels play in sequence:
+1. **Panel 1 — The Flatline:** A hospital bed in darkness. A monitor showing a flatline. Clinical, cold, silent.
+2. **Panel 2 — The Split:** A human brain, cracking down the center. Two voids open on either side — one warm and purple, one cold and blue.
+3. **Panel 3 — The Wisps:** Two small points of light awakening in their separate dark voids. Player 1's wisp (a chaotic, glowing orb) in the purple Id. Player 2's wisp (a geometric, structured spark) in the cold Superego.
+
+Players tap/click to advance panels. No button labels. The arrow icon is universal.
+
+### 5.2 Between-Level Narrative Beats
+After completing specific levels, a single narrative panel appears (not every level). These panels show fragments of the patient's memories surfacing — a child's toy, a broken relationship, a moment of trauma — rendered as surrealist imagery bleeding between the two dimensions. The sequence of panels across all 15 MVP levels forms a complete arc: coma onset → neural reactivation → confrontation with trauma → emergence.
+
+### 5.3 The Threshold Transition
+Crossing a Threshold triggers a brief full-screen visual event: the two hex grids convulse, a shockwave of light pulses through the DNA Matrix, and the boards slam into their new configurations. No text. The violence of the transition communicates the narrative weight (a Trauma Landmark is being crossed) through pure visual and audio response.
+
+## 6. Language-Agnostic Translation
 Because the game uses no text, the psychological theme must be conveyed entirely through art and icons.
 * **Avatars:** Player 1 is a chaotic, glowing wisp. Player 2 is a geometric, structured spark.
 * **Keys & Doors:** Instead of literal keys, the game uses matching abstract concepts. A "Key" ability on the Matrix might be an icon of an *Open Eye*, and the "Door" hazard on the Hex Grid is a *Closed Eye* that opens when the neural pathway is routed.

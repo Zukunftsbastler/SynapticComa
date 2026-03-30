@@ -13,15 +13,71 @@ Entities have no inherent logic or data; they are simply unique identifiers.
 ## 3. Components (The "Properties & State")
 Components are pure data. They dictate what an entity is and what state it is currently in. Because the game is language-agnostic, **every active component must have a direct visual representation**.
 * **Digital Implementation:** Structs or Data Classes (e.g., `Position {x, y, z}`, `Movable {true}`, `Teleporter {target_z}`). Tooltips handle the explanation of these components when hovered.
+
+**Complete Component List (bitECS TypedArrays):**
+
+| Component | Fields | Purpose |
+|-----------|--------|---------|
+| `Position` | `q: i16, r: i16, z: ui8` | Axial hex coordinates + dimension layer |
+| `Renderable` | `spriteId: ui16, visible: ui8, layer: ui8, dirty: ui8` | PixiJS rendering data |
+| `Dimension` | `layer: ui8` | Which dimension (0=Id, 1=Superego) owns this entity |
+| `Movable` | `canMove: ui8` | Avatar or block can be moved by input |
+| `Pushable` | `canBePushed: ui8` | Entity can be shoved by the Push ability |
+| `Conduit` | `shape: ui8, rotation: ui8, faceMask: ui8` | Pipe shape, orientation, and computed connectivity bitmask |
+| `MatrixNode` | `column: ui8, row: ui8, abilityType: ui8, active: ui8` | DNA Matrix cell data |
+| `Avatar` | `playerId: ui8` | Marks a wisp entity; stores which player controls it |
+| `Hazard` | `hazardType: ui8` | Type of obstacle (chasm, locked door, fire, laser, phase barrier) |
+| `Lethal` | `hazardType: ui8` | Entity kills avatars on contact without matching `Resistance` |
+| `Health` | `max: ui8, current: ui8` | Avatar vitality. `max: 1, current: 1` — one-hit destruction |
+| `Resistances` | `fire: ui8, void: ui8, phase: ui8` | Boolean flags (0/1) blocking matching `Lethal` damage types |
+| `Threshold` | `triggered: ui8` | Marks a Threshold hex; fires `BOARD_FLIP` when both avatars stand on their respective threshold hexes |
+| `TeleporterComponent` | `targetZ: ui8` | Automatically flips the avatar's dimension on contact |
+| `Collectible` | *(tag)* | Marks a conduit as collectible; renders as `???` icon until collected |
+| `Static` | *(tag)* | Entity blocks movement; used for walls, locked doors |
+| `PhaseBarrier` | *(tag)* | Passable only when `Phase Shift` ability is active for that dimension |
+| `Exit` | `playerId: ui8` | Marks a Nexus Hex; P1 exit activates P2 exit on contact |
+
+**ActionManager (Singleton Entity):** A single entity holding the global AP state is created on level load and destroyed on level end. Its components are: `APPool { current: ui8, max: ui8 }` and `RoundState { phase: ui8 }` (0=Active, 1=RoundOver). This entity is not rendered; it is queried by `APSystem` and `RoundSystem` each tick.
 * **Physical Implementation:** * **Inherent Components:** Printed icons on the tokens (e.g., a "Lock" icon represents the `Static` component).
     * **Dynamic Components:** Colored bases, stacking chips, or slotted tokens attached to the main entity (e.g., a blue ring slipped over a meeple grants the `Phase_Shift` component).
 * **The "Tooltip" Board Margin:** The physical board features a printed legend/margin. If a complex mechanic needs explanation, players place the relevant component token into a designated slot on the board's edge, which visually links the icon to its mechanical function using universally understood flowcharts (e.g., `[Player Icon] -> [Arrow] -> [Portal Icon]`).
 
 ## 4. Systems (The "Logic & Rules")
 Systems contain all the logic. They iterate through entities that possess specific components and execute changes.
-* **Digital Implementation:** The game loop functions (`MovementSystem`, `RuleEvaluationSystem`, `TeleportSystem`).
-* **Physical Implementation:** The turn phases. The physical rulebook acts as the initialization script, teaching players the "algorithm" they must execute. 
-    * *Example:* The `Movement System` in code checks input and `Movable` components. In the board game, the rule is simply: "During the Move Phase, a player may push an adjacent token with a [Push Icon] one space."
+* **Digital Implementation:** The game loop functions executed in strict order every tick:
+
+```
+InputSystem → APSystem → RoundSystem → MovementSystem → CollectionSystem →
+TeleportSystem → PushSystem → ThresholdSystem → MatrixInsertSystem →
+MatrixRotateSystem → ScrapPoolSystem → MatrixRoutingSystem → AbilitySystem →
+CollisionSystem → ExitSystem → RuleParsingSystem → RenderSystem → NetworkSystem
+```
+
+**System Responsibilities:**
+
+| System | Responsibility |
+|--------|---------------|
+| `InputSystem` | Reads keyboard/mouse; produces `GameMessage` objects in `pendingInputs` |
+| `APSystem` | Deducts AP costs; rejects inputs that exceed `apPool` |
+| `RoundSystem` | Detects AP=0 or Pass action; resets AP pool for next round |
+| `MovementSystem` | Moves avatars on Hex Grid; validates passability including ability checks |
+| `CollectionSystem` | Collects `Collectible` conduits; reveals shape; adds to player inventory |
+| `TeleportSystem` | Flips avatar Z-layer on teleporter contact (automatic, 0 AP) |
+| `PushSystem` | Handles Push ability: moves `Pushable` entities 1 hex without moving the avatar |
+| `ThresholdSystem` | Detects both avatars on threshold hexes; emits `BOARD_FLIP` |
+| `MatrixInsertSystem` | Column-slide insert: ejects plate to Scrap Pool, shifts column, inserts new plate (2 AP) |
+| `MatrixRotateSystem` | Rotates a single already-placed conduit 90° clockwise (1 AP); recomputes `faceMask` |
+| `ScrapPoolSystem` | Handles blind draw from Scrap Pool into player inventory (1 AP) |
+| `MatrixRoutingSystem` | BFS from source nodes; marks which ability nodes are powered |
+| `AbilitySystem` | Diffs active ability set; adds/removes `Resistances`, `Movable` etc. on avatars |
+| `CollisionSystem` | Checks avatar vs `Lethal` entities; applies `Health` damage; triggers failure |
+| `ExitSystem` | Detects sequential exit: P1 on exit → spectator mode; P2 on exit → `LEVEL_COMPLETE` |
+| `RuleParsingSystem` | Scans syntax hex positions; fires `RULE_CHANGED` on Baba Is You-style triplets |
+| `RenderSystem` | Writes `RenderCommandBuffer`; applies dimension visibility mask |
+| `NetworkSystem` | Drains `outboundMessages` via PeerJS; sorts incoming by `seq` into `pendingInputs` |
+
+* **Physical Implementation:** The turn phases. The physical rulebook acts as the initialization script, teaching players the "algorithm" they must execute.
+    * *Example:* The `MovementSystem` in code checks input and `Movable` components. In the board game, the rule is: "During the Move Phase, a player may move their wisp to an adjacent hex for 1 AP."
 
 ## 5. Architectural Handling of Core Mechanics
 
