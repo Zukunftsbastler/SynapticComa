@@ -3,10 +3,15 @@ import { addEntity, addComponent } from 'bitecs';
 import { startLoop, world, setDriver } from '@/gameLoop';
 import { PixiDriver } from '@/rendering/PixiDriver';
 import { hexesInRadius } from '@/rendering/HexMath';
-import { Position, Renderable, Dimension, Avatar, MatrixNode } from '@/components';
+import {
+  Position, Renderable, Dimension, Avatar, MatrixNode,
+  Movable, APPool, Static,
+} from '@/components';
 import { entityRegistry } from '@/registry/EntityRegistry';
 import { SpriteId } from '@/registry/SpriteRegistry';
-import { CANVAS_WIDTH, CANVAS_HEIGHT, MATRIX_ROWS, MATRIX_COLS } from '@/constants';
+import { GameState, resetGameState } from '@/state/GameState';
+import { initKeyboardInput } from '@/input/KeyboardInput';
+import { CANVAS_WIDTH, CANVAS_HEIGHT, MATRIX_ROWS, MATRIX_COLS, AP_DEFAULT } from '@/constants';
 
 async function main(): Promise<void> {
   const app = new Application();
@@ -18,10 +23,22 @@ async function main(): Promise<void> {
   document.body.appendChild(app.canvas);
 
   const driver = new PixiDriver(app);
+  setDriver(driver);
 
-  // ── Test World: Dimension A hex grid (radius 3) ──────────────────────────
-  const hexesA = hexesInRadius(3);
-  for (const { q, r } of hexesA) {
+  // ── GameState bootstrap (local single-machine dev mode, Player 1 = Host) ──
+  resetGameState({ localPlayerId: 0, phase: 'PLAYING' });
+
+  // ── APPool singleton entity ───────────────────────────────────────────────
+  {
+    const eid = addEntity(world);
+    addComponent(world, APPool, eid);
+    APPool.current[eid]    = AP_DEFAULT;
+    APPool.max[eid]        = AP_DEFAULT;
+    GameState.apPoolEid    = eid;
+  }
+
+  // ── Dimension A hex grid (radius 3) ──────────────────────────────────────
+  for (const { q, r } of hexesInRadius(3)) {
     const eid = addEntity(world);
     addComponent(world, Position,   eid);
     addComponent(world, Renderable, eid);
@@ -35,9 +52,8 @@ async function main(): Promise<void> {
     Dimension.layer[eid]     = 0;
   }
 
-  // ── Test World: Dimension B hex grid (radius 3) ──────────────────────────
-  const hexesB = hexesInRadius(3);
-  for (const { q, r } of hexesB) {
+  // ── Dimension B hex grid (radius 3) ──────────────────────────────────────
+  for (const { q, r } of hexesInRadius(3)) {
     const eid = addEntity(world);
     addComponent(world, Position,   eid);
     addComponent(world, Renderable, eid);
@@ -51,13 +67,14 @@ async function main(): Promise<void> {
     Dimension.layer[eid]     = 1;
   }
 
-  // ── Test World: P1 Avatar (Dimension A) ──────────────────────────────────
+  // ── P1 Avatar (Dimension A) ───────────────────────────────────────────────
   {
     const eid = addEntity(world);
     addComponent(world, Position,   eid);
     addComponent(world, Renderable, eid);
     addComponent(world, Dimension,  eid);
     addComponent(world, Avatar,     eid);
+    addComponent(world, Movable,    eid);
     Position.q[eid]          = 0;
     Position.r[eid]          = 0;
     Position.z[eid]          = 0;
@@ -66,16 +83,18 @@ async function main(): Promise<void> {
     Renderable.layer[eid]    = 1;
     Dimension.layer[eid]     = 0;
     Avatar.playerId[eid]     = 0;
+    Movable.canMove[eid]     = 1;
     entityRegistry.register('avatar_p1', eid);
   }
 
-  // ── Test World: P2 Avatar (Dimension B) ──────────────────────────────────
+  // ── P2 Avatar (Dimension B) ───────────────────────────────────────────────
   {
     const eid = addEntity(world);
     addComponent(world, Position,   eid);
     addComponent(world, Renderable, eid);
     addComponent(world, Dimension,  eid);
     addComponent(world, Avatar,     eid);
+    addComponent(world, Movable,    eid);
     Position.q[eid]          = 0;
     Position.r[eid]          = 0;
     Position.z[eid]          = 1;
@@ -84,10 +103,27 @@ async function main(): Promise<void> {
     Renderable.layer[eid]    = 1;
     Dimension.layer[eid]     = 1;
     Avatar.playerId[eid]     = 1;
+    Movable.canMove[eid]     = 1;
     entityRegistry.register('avatar_p2', eid);
   }
 
-  // ── Test World: DNA Matrix (5×5 placeholder nodes) ───────────────────────
+  // ── Static wall test: one blocked hex in Dim A ────────────────────────────
+  {
+    const eid = addEntity(world);
+    addComponent(world, Position,   eid);
+    addComponent(world, Renderable, eid);
+    addComponent(world, Dimension,  eid);
+    addComponent(world, Static,     eid);
+    Position.q[eid]          = 1;
+    Position.r[eid]          = 0;
+    Position.z[eid]          = 0;
+    Renderable.spriteId[eid] = SpriteId.HAZARD_LOCKED_RED;
+    Renderable.visible[eid]  = 1;
+    Renderable.layer[eid]    = 0;
+    Dimension.layer[eid]     = 0;
+  }
+
+  // ── DNA Matrix (5×5 placeholder nodes) ───────────────────────────────────
   for (let row = 0; row < MATRIX_ROWS; row++) {
     for (let col = 1; col <= MATRIX_COLS; col++) {
       const eid = addEntity(world);
@@ -95,18 +131,25 @@ async function main(): Promise<void> {
       MatrixNode.column[eid]      = col;
       MatrixNode.row[eid]         = row;
       MatrixNode.abilityType[eid] = 0;
-      // Mark source nodes (col 1) and the top-left ability node as active for visibility.
       MatrixNode.active[eid]      = (col === 1 || (col === 3 && row === 0)) ? 1 : 0;
     }
   }
 
-  // Start as Player 1 (Dimension A). Press '2' to toggle to Player 2 for testing.
-  let localPlayerId: 0 | 1 = 0;
-  setDriver(driver, localPlayerId);
+  // ── Keyboard input ────────────────────────────────────────────────────────
+  // In local dev mode: Q/W/E/A/S/D move P1 avatar.
+  // Press '1'/'2' to switch which avatar you're controlling (and which dimension renders).
+  let controlledAvatar = 'avatar_p1';
+  initKeyboardInput(() => controlledAvatar);
 
   window.addEventListener('keydown', (e) => {
-    if (e.key === '1') { localPlayerId = 0; setDriver(driver, localPlayerId); }
-    if (e.key === '2') { localPlayerId = 1; setDriver(driver, localPlayerId); }
+    if (e.key === '1') {
+      GameState.localPlayerId = 0;
+      controlledAvatar = 'avatar_p1';
+    }
+    if (e.key === '2') {
+      GameState.localPlayerId = 1;
+      controlledAvatar = 'avatar_p2';
+    }
   });
 
   startLoop();

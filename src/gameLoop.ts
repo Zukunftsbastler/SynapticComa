@@ -2,29 +2,40 @@ import { createWorld } from 'bitecs';
 import type { IWorld } from 'bitecs';
 import { FIXED_TIMESTEP, MAX_DELTA } from '@/constants';
 import { RenderSystem } from '@/systems/RenderSystem';
+import { InputSystem } from '@/systems/InputSystem';
+import { APSystem } from '@/systems/APSystem';
+import { RoundSystem } from '@/systems/RoundSystem';
+import { MovementSystem } from '@/systems/MovementSystem';
 import type { PixiDriver } from '@/rendering/PixiDriver';
+import { GameState } from '@/state/GameState';
 
 export let world: IWorld = createWorld();
 
-// Set by main.ts after PixiDriver is initialised.
+// Set by main.ts after PixiDriver and GameState are initialised.
 let _driver: PixiDriver | null = null;
-let _localPlayerId: 0 | 1 = 0;
 
-export function setDriver(driver: PixiDriver, localPlayerId: 0 | 1): void {
+export function setDriver(driver: PixiDriver): void {
   _driver = driver;
-  _localPlayerId = localPlayerId;
 }
 
 let accumulator = 0;
 let lastTime = 0;
 
-function runSystems(_world: IWorld): void {
-  // Systems added sprint-by-sprint. Rendering is done in renderFrame (outside the fixed step).
+function runSystems(w: IWorld): void {
+  // Fixed-step system pipeline (Decision 2 — Host Authority).
+  // Systems that are Host-only guard themselves internally.
+  InputSystem(w, GameState);
+  APSystem(w, GameState);
+  RoundSystem(w, GameState);
+  MovementSystem(w, GameState);
+  // Sprint 5+: CollectionSystem, PushSystem, ThresholdSystem, MatrixInsertSystem,
+  //            MatrixRotateSystem, ScrapPoolSystem, MatrixRoutingSystem, AbilitySystem,
+  //            CollisionSystem, ExitSystem, LevelTransitionSystem, NetworkSystem
 }
 
 function renderFrame(w: IWorld): void {
   if (_driver) {
-    RenderSystem(w, _driver, _localPlayerId);
+    RenderSystem(w, _driver, GameState.localPlayerId);
   }
 }
 
