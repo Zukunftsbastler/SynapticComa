@@ -7,18 +7,19 @@ Before sprints begin, these architectural commitments are locked and must never 
 ### Decision 1: bitECS Entity Addressing
 bitECS uses dense integer entity IDs (not UUIDs) internally. A separate `entityRegistry: Map<string, number>` maps designer-facing string keys (e.g., `"avatar_p1"`, `"conduit_7"`) to bitECS numeric IDs at load time. UUID strings appear only in JSON level files and network messages, never in hot-path ECS queries.
 
-### Decision 2: Determinism Contract
-Both clients run the identical system pipeline in the identical order every tick. The game loop processes systems in a fixed sequence:
+### Decision 2: The "Host Authority" Network Pattern
+Lockstep networking with simultaneous AP expenditure is mathematically impossible without desyncs. Instead, the game uses strict **Host Authority**. Player 0 (Host) runs the authoritative ECS simulation. Player 1 (Guest) runs a predictive client. When Player 1 presses a key, the input is sent directly to the Host. The Host queues all inputs, evaluates them in sequence against the AP pool, mutates the ECS, and sends `STATE_UPDATE` messages back to the Guest. This guarantees 100% determinism.
+
+The system pipeline runs strictly on the Host:
 ```
 InputSystem → APSystem → RoundSystem → MovementSystem → CollectionSystem →
 TeleportSystem → PushSystem → ThresholdSystem → MatrixInsertSystem → MatrixRotateSystem →
 ScrapPoolSystem → MatrixRoutingSystem → AbilitySystem → CollisionSystem →
 ExitSystem → RuleParsingSystem → RenderSystem → NetworkSystem
 ```
-No system may read time-varying browser APIs. All randomness is seeded from the level ID and a shared pre-game handshake nonce.
 
-### Decision 3: AP as Shared Singleton + Real-Time Lockout
-AP lives in a plain TypeScript singleton `GameState` (`{ apPool: number, apMax: number, pendingInputs: InputEvent[], outboundMessages: GameMessage[] }`). Both clients maintain this identically. Both players may spend AP simultaneously in any order; the system enforces a lockout when the pool hits 0. A `Pass` action (0 AP) from either player triggers `RoundSystem` to reset AP. The singleton is reset on level load. A dedicated `APPool` singleton entity (bitECS components: `APPool { current: ui8, max: ui8 }`) mirrors this state for HUD rendering.
+### Decision 3: AP as Shared Singleton (Host-Authoritative)
+AP lives in a plain TypeScript singleton `GameState` (`{ apPool: number, apMax: number }`). **Only the Host mutates this pool.** A dedicated `APPool` singleton entity (bitECS components: `APPool { current: ui8, max: ui8 }`) mirrors this state for HUD rendering on both clients. The Guest's AP display is updated by incoming `STATE_UPDATE` messages from the Host.
 
 ### Decision 4: Conduit Pipe Connectivity Model
 Each conduit shape encodes its open faces as a bitmask over 4 cardinal directions (East, South, West, North = bits 0–3). A straight conduit horizontal = `0b0101` (E+W open). Curved NE = `0b0011` (E+N). T-junction open to E/S/W = `0b0111`. Rotation applies a bit-rotate operation. Connection is valid if and only if adjacent conduit faces are both open toward each other.
@@ -28,6 +29,12 @@ The `RenderSystem` does not directly drive PixiJS. Instead it writes to a `Rende
 
 ### Decision 6: Two-Layer Matrix Routing
 The DNA Matrix uses two independent 2D arrays: `conduitGrid` for columns 2 and 4, and `nodeGrid` for columns 1, 3, and 5. `MatrixRoutingSystem` performs breadth-first traversal from each source node (col 1) and marks which ability nodes (col 3 and 5) are reachable. Routing re-runs every time any matrix mutation occurs.
+
+### Decision 7: Event Entities (No Pub/Sub)
+Standard JavaScript Event Emitters (Pub/Sub) break the linear, data-oriented flow of an ECS. Systems communicate via **data**, not callbacks. If a system needs to broadcast an event (e.g., a Board Flip), it creates a new blank entity and attaches a specific tag component (e.g., `BoardFlipEvent`). Downstream systems query for that component, react, and destroy the event entity at the end of the tick. There is no `EventBus.ts`.
+
+### Decision 8: Separation of Logical and Visual State
+To prevent the ECS and the Tween engine from fighting over sprite positions, `Renderable` entities use an `isTweening: ui8` flag. When `MovementSystem` updates `Position`, `RenderSystem` detects the coordinate delta, hands the animation off to `TweenManager`, and sets `Renderable.isTweening[eid] = 1`. While `isTweening` is `1`, `RenderSystem` does not overwrite the sprite's screen position with the ECS `Position` coordinates, preventing visual stuttering.
 
 ---
 
@@ -45,10 +52,11 @@ export const Position = defineComponent({
 
 // src/components/Renderable.ts
 export const Renderable = defineComponent({
-  spriteId: Types.ui16,
-  visible:  Types.ui8,
-  layer:    Types.ui8,   // PixiJS z-order layer index
-  dirty:    Types.ui8,   // 1 = needs re-render this frame
+  spriteId:   Types.ui16,
+  visible:    Types.ui8,
+  layer:      Types.ui8,   // PixiJS z-order layer index
+  dirty:      Types.ui8,   // 1 = needs re-render this frame
+  isTweening: Types.ui8,   // 1 = tween owns the sprite position; RenderSystem ignores ECS coords
 });
 
 // src/components/Dimension.ts
@@ -110,6 +118,12 @@ export const Exit = defineComponent({ playerId: Types.ui8 }); // which player's 
 
 // src/components/APPool.ts — singleton entity only
 export const APPool = defineComponent({ current: Types.ui8, max: Types.ui8 });
+
+// src/components/Events.ts — tag components; created and destroyed within a single tick
+export const BoardFlipEvent    = defineComponent({});
+export const LevelCompleteEvent = defineComponent({});
+export const AvatarDestroyedEvent = defineComponent({ playerId: Types.ui8 });
+export const P1ExitedEvent     = defineComponent({});
 ```
 
 ### JSON Level Schema
@@ -212,6 +226,16 @@ interface PassMessage extends BaseMessage {
   type: 'PASS';  // declares round end, 0 AP
 }
 
+// Host → Guest only: authoritative state snapshot after each mutation
+interface StateUpdateMessage {
+  type:    'STATE_UPDATE';
+  entityId: string;
+  q:       number;
+  r:       number;
+  z?:      number;   // only present on teleport/threshold
+  apPool:  number;
+}
+
 interface ChatMessage {
   type:     'CHAT';    // NOT a GameMessage — separate channel, no ECS effect
   emoji:    string;    // single emoji character
@@ -258,9 +282,11 @@ interface HandshakeMessage {
 
 `src/world.ts` — calls `createWorld()` from bitECS, exports the singleton `world`.
 
-`src/gameLoop.ts` — fixed-timestep accumulator loop:
+`src/gameLoop.ts` — fixed-timestep accumulator loop. `world` is declared with `let` (not `const`) so `loadLevel()` can replace it:
 ```typescript
 let accumulator = 0, lastTime = 0;
+export let world = createWorld();  // reassigned by loadLevel()
+
 function tick(timestamp: number) {
   const delta = Math.min(timestamp - lastTime, MAX_DELTA);
   lastTime = timestamp;
@@ -286,12 +312,12 @@ function tick(timestamp: number) {
 
 ### Sprint 2 — ECS Component Definitions and Entity Registry
 
-**Goal**: All 22 bitECS components defined (including `Health`, `Resistances`, `Lethal`, `PhaseBarrier`, `Exit`, `APPool`). Reusable `EntityRegistry` mapping string keys to bitECS IDs. `SpriteRegistry` mapping `spriteId` numbers to asset paths.
+**Goal**: All 26 bitECS components defined (including `Health`, `Resistances`, `Lethal`, `PhaseBarrier`, `Exit`, `APPool`, `Events`, and the `isTweening` field on `Renderable`). Reusable `EntityRegistry` mapping string keys to bitECS IDs. `SpriteRegistry` mapping `spriteId` numbers to asset paths.
 
 **Duration**: 1 day | **Depends on**: Sprint 1
 
 **Files to Create**:
-- `src/components/Position.ts`, `Renderable.ts`, `Dimension.ts`, `Movable.ts`, `Pushable.ts`, `Conduit.ts`, `MatrixNode.ts`, `Avatar.ts`, `Hazard.ts`, `Threshold.ts`, `TeleporterComponent.ts`, `Collectible.ts`, `Static.ts`, `index.ts`
+- `src/components/Position.ts`, `Renderable.ts` (with `isTweening`), `Dimension.ts`, `Movable.ts`, `Pushable.ts`, `Conduit.ts`, `MatrixNode.ts`, `Avatar.ts`, `Hazard.ts`, `Threshold.ts`, `TeleporterComponent.ts`, `Collectible.ts`, `Static.ts`, `PhaseBarrier.ts`, `Lethal.ts`, `Health.ts`, `Resistances.ts`, `Exit.ts`, `APPool.ts`, `Events.ts`, `index.ts`
 - `src/registry/EntityRegistry.ts`, `SpriteRegistry.ts`
 
 **Key Logic**:
@@ -385,9 +411,9 @@ export const teleporterQuery    = defineQuery([TeleporterComponent, Position]);
 
 ---
 
-### Sprint 4 — Movement System and Avatar Input
+### Sprint 4 — Movement System and Avatar Input (Host Authority)
 
-**Goal**: Avatars move on the hex grid via keyboard. Movement costs 1 AP. `APSystem` enforces the real-time shared pool with global lockout. `RoundSystem` handles AP reset on Pass or pool depletion. A singleton `APPool` entity drives the HUD counter. Local input produces `MoveAvatarMessage` and `PassMessage` objects in `pendingInputs`.
+**Goal**: Avatars move on the hex grid via keyboard. Movement costs 1 AP. `APSystem` enforces the shared pool with global lockout. Local input on the Guest client is routed to the Host for authoritative processing; the Guest never mutates ECS state directly.
 
 **Duration**: 2 days | **Depends on**: Sprint 3
 
@@ -416,36 +442,51 @@ export interface GameStateData {
 }
 ```
 
-`KeyboardInput.ts` — flat-top hex direction mapping: `W/S` → `(0,-1)/(0,1)`, `Q/E` → `(-1,0)/(1,0)`, `A/D` → `(-1,1)/(1,-1)`. On keydown, create `MoveAvatarMessage` with `dq`/`dr` and push to `GameState.pendingInputs`.
+`KeyboardInput.ts` — Flat-top hex direction mapping: `W/S` → `(0,-1)/(0,1)`, `Q/E` → `(-1,0)/(1,0)`, `A/D` → `(-1,1)/(1,-1)`. On keydown, create a `MoveAvatarMessage`.
+- If `GameState.localPlayerId === 0` (Host): push directly to `GameState.pendingInputs`.
+- If `localPlayerId === 1` (Guest): call `peerManager.send(msg)` immediately and **do not** add to `pendingInputs` — the Guest never executes movement locally.
 
-`MovementSystem.ts`:
+`MovementSystem.ts` — Runs strictly on the Host. Returns immediately if called on Guest:
 ```typescript
 export function MovementSystem(world: IWorld, state: GameStateData): void {
+  if (state.localPlayerId !== 0) return;  // Host-only
+
   const moveInputs = state.pendingInputs.filter(m => m.type === 'MOVE_AVATAR');
   for (const input of moveInputs) {
     const eid = entityRegistry.get(input.entityId);
     if (Movable.canMove[eid] !== 1) continue;
     const tq = Position.q[eid] + input.dq;
     const tr = Position.r[eid] + input.dr;
-    const tz = Position.z[eid];
-    if (!isHexPassable(world, tq, tr, tz)) continue;
+    if (!isHexPassable(world, tq, tr, Position.z[eid])) continue;
     if (state.apPool < 1) continue;
+
     Position.q[eid] = tq;
     Position.r[eid] = tr;
     state.apPool -= 1;
     Renderable.dirty[eid] = 1;
+
+    // Broadcast authoritative result to Guest
+    state.outboundMessages.push({
+      type: 'STATE_UPDATE',
+      entityId: input.entityId,
+      q: tq, r: tr,
+      apPool: state.apPool,
+    });
   }
   state.pendingInputs = state.pendingInputs.filter(m => m.type !== 'MOVE_AVATAR');
 }
 ```
 
+`NetworkSystem` (Guest-side) — On receiving a `STATE_UPDATE` message: looks up the entity by `entityId`, sets `Position.q/r`, sets `APPool.current`, marks `Renderable.dirty = 1`. The Guest's visual state is entirely driven by these messages.
+
 **Acceptance Criteria**:
-- Avatar 1 moves on Dimension A via WASD; Avatar 2 on Dimension B via IJKL (local stub).
-- Both players can spend AP simultaneously; pool decrements correctly from either player's input.
-- At AP=0, all further inputs are rejected (global lockout active).
-- `Pass` action (spacebar) resets AP pool to max and starts the next round.
+- Guest key presses are sent over the network and **not** applied locally.
+- Host processes inputs, decrements AP, and broadcasts `STATE_UPDATE`.
+- Guest avatar position snaps to Host-authoritative coordinates on receipt.
+- At AP=0, Host rejects all inputs; Guest sees the locked pool immediately via `STATE_UPDATE.apPool`.
+- `Pass` action (spacebar) resets AP pool; Host broadcasts updated pool.
 - Avatars cannot enter cells with `Static` entities.
-- `APPool.current[apPoolEid]` stays in sync with `GameState.apPool` every tick.
+- `APPool.current[apPoolEid]` stays in sync with `GameState.apPool` every tick on both clients.
 
 ---
 
@@ -562,17 +603,43 @@ export function facesConnect(maskA: number, maskB: number, direction: 0|1|2|3): 
 - Ability nodes in col 2 propagate East toward col 3 when reached.
 - Reset `MatrixNode.active = 0` for all nodes at start of each run.
 
-`AbilitySystem.ts` — diffs the newly-active ability set against the previously-active set. For each ability transition:
+`AbilitySystem.ts` — Uses **continuous evaluation** (no state diffing or caching). Runs every tick; evaluates the current powered state and reconciles component presence directly:
+
+```typescript
+export function AbilitySystem(world: IWorld): void {
+  // UNLOCK_RED: continuous evaluation — no diff, no cache
+  const redDoors = lockedRedQuery(world);  // defineQuery([Hazard, Static]) filtered by hazardType
+  const unlockRedActive = checkNodeActive(world, AbilityType.UNLOCK_RED);
+  for (let i = 0; i < redDoors.length; i++) {
+    const eid = redDoors[i];
+    if (unlockRedActive) {
+      if (hasComponent(world, Static, eid)) removeComponent(world, Static, eid);
+    } else {
+      if (!hasComponent(world, Static, eid)) addComponent(world, Static, eid);
+    }
+  }
+  // FIRE_IMMUNITY: update Resistances on sourced avatars
+  const fireImmunityActive = checkNodeActive(world, AbilityType.FIRE_IMMUNITY);
+  const avatars = avatarQuery(world);
+  for (let i = 0; i < avatars.length; i++) {
+    Resistances.fire[avatars[i]] = fireImmunityActive ? 1 : 0;
+  }
+  // ... same pattern for all other abilities
+}
+```
+
+This pattern is safe for bitECS archetype migrations because `hasComponent` guards against redundant add/remove calls. It also eliminates the bug class where a missed deactivation transition leaves a door permanently unlocked.
+
 **Ability effects (exact):**
-- `JUMP` active → `MovementSystem` allows the avatar to move up to 2 hexes in a straight axial line (bypassing intermediate hex), landing on any empty safe hex. No extra AP cost.
-- `PUSH` active → `PushSystem` activates. When `MovementSystem` detects an avatar attempting to move into a `Pushable` entity: cancel the avatar's movement, instead push the entity 1 hex in the same direction (if target hex is empty). Avatar stays in place. Costs 1 AP.
-- `PHASE_SHIFT` active → `MovementSystem` allows movement through `PhaseBarrier` entities for the standard 1 AP cost.
-- `UNLOCK_RED` active → remove `Static` from all `Hazard` entities with `hazardType === LOCKED_RED` in the avatar's dimension. Instant re-lock when path severs.
-- `FIRE_IMMUNITY` active → add `Resistances.fire = 1` to the sourced avatar. Remove on deactivation.
+- `JUMP` → `MovementSystem` allows movement up to 2 hexes in a straight axial line, bypassing the intermediate hex. No extra AP.
+- `PUSH` → `PushSystem` activates: when the avatar attempts to enter a `Pushable` entity's hex, the entity is moved 1 hex in the same direction (target must be empty). Avatar stays in place. Costs 1 AP.
+- `PHASE_SHIFT` → `MovementSystem` allows movement through `PhaseBarrier` entities for standard 1 AP.
+- `UNLOCK_RED` → Continuous: remove `Static` from matching locked doors while active; add it back when inactive.
+- `FIRE_IMMUNITY` → Continuous: `Resistances.fire = 1` on all avatars while active; `0` when inactive.
 
-`CollisionSystem.ts` — runs after `MovementSystem`. Queries all avatar entities. For each avatar at `(q,r,z)`, check for any `Lethal` entity at the same position. If found: check `Resistances` — if the resistance flag matching `Lethal.hazardType` is 0, set `Health.current[avatarEid] = 0` and emit `AVATAR_DESTROYED`. `GameState` handles the failure screen logic on `AVATAR_DESTROYED`.
+`CollisionSystem.ts` — Runs after `MovementSystem`. For each avatar, checks for a `Lethal` entity at the same `(q,r,z)`. If found and matching `Resistance` flag is `0`: set `Health.current[avatarEid] = 0`, create an `AvatarDestroyedEvent` entity (Decision 7). `GameState` detects the event entity at end-of-tick and handles the failure screen.
 
-`PushSystem.ts` — processes `PUSH_ACTION` events emitted by `MovementSystem`. Validates target hex (must be empty). Moves `Pushable` entity 1 hex. No avatar movement occurs.
+`PushSystem.ts` — Runs after `MovementSystem`. Processes queued `PUSH_ATTEMPT` data written by `MovementSystem` to a plain array (not a callback). Validates target hex is empty; moves `Pushable` entity; does not move avatar.
 
 **Acceptance Criteria**:
 - Straight pipe connecting source → ability node activates it each frame.
@@ -590,7 +657,7 @@ export function facesConnect(maskA: number, maskB: number, direction: 0|1|2|3): 
 
 ### Sprint 8 — Teleport System, Threshold System, and Rule Parsing System
 
-**Goal**: `TeleportSystem` flips avatar Z-layer (same q/r). `ThresholdSystem` triggers board-flip when both avatars stand on threshold hexes simultaneously. `RuleParsingSystem` implements Baba Is You style: aligned entity-operator-property triples activate global rules.
+**Goal**: `TeleportSystem` flips avatar Z-layer (same q/r). `ThresholdSystem` triggers board-flip using an Event Entity. `RuleParsingSystem` implements Baba Is You style logic. **No `EventBus.ts`** — all inter-system signalling uses Event Entities (Decision 7).
 
 **Duration**: 3 days | **Depends on**: Sprint 7
 
@@ -598,29 +665,57 @@ export function facesConnect(maskA: number, maskB: number, direction: 0|1|2|3): 
 - `src/systems/TeleportSystem.ts`
 - `src/systems/ThresholdSystem.ts`
 - `src/systems/RuleParsingSystem.ts`
-- `src/events/EventBus.ts`
+- `src/components/Events.ts` (already defined in Sprint 2 component schema)
 
 **Key Logic**:
 
-`EventBus.ts` — typed pub/sub. Events: `ABILITY_ACTIVATED`, `ABILITY_DEACTIVATED`, `THRESHOLD_TRIGGERED`, `LEVEL_COMPLETE`, `BOARD_FLIP`, `RULE_CHANGED`, `ENTITY_MOVED`, `TELEPORT_OCCURRED`. Systems emit events; they never call other systems directly.
+`TeleportSystem.ts` — runs after `MovementSystem`. For each teleporter entity: if any avatar shares its `(q,r,z)`, set `Position.z[avatarEid] = TeleporterComponent.targetZ[teleporterEid]`. Cost: 0 AP (automatic on movement).
 
-`TeleportSystem.ts` — runs after `MovementSystem`. For each teleporter entity: if any avatar shares its `(q,r,z)`, set `Position.z[avatarEid] = TeleporterComponent.targetZ[teleporterEid]`. Cost: 0 AP (automatic on movement). Emits `TELEPORT_OCCURRED`.
+`ThresholdSystem.ts` — queries all threshold hexes. If P1 and P2 avatars are each on their respective threshold hexes in the same tick, creates a `BoardFlipEvent` entity (Decision 7). The threshold hexes gain a `Static` tag to prevent re-trigger:
+```typescript
+export function ThresholdSystem(world: IWorld, state: GameStateData): void {
+  if (!state.thresholdEnabled) return;
+  let p1OnThreshold = false, p2OnThreshold = false;
+  // ... position checks ...
+  if (p1OnThreshold && p2OnThreshold) {
+    const eventEid = addEntity(world);
+    addComponent(world, BoardFlipEvent, eventEid);
+    // Deactivate threshold hexes so this fires exactly once
+    thresholdEntities.forEach(eid => addComponent(world, Static, eid));
+  }
+}
+```
 
-`ThresholdSystem.ts` — queries all threshold hexes. If P1 avatar and P2 avatar are each on their respective threshold hexes in the same tick: emit `BOARD_FLIP`. The event is emitted exactly once; threshold hexes become inactive after firing.
+A `LevelTransitionSystem` runs at the end of the pipeline, queries `BoardFlipEvent` and `LevelCompleteEvent` entities, executes their effects, then destroys all event entities:
+```typescript
+export function LevelTransitionSystem(world: IWorld): void {
+  const flips = flipQuery(world);   // defineQuery([BoardFlipEvent])
+  if (flips.length > 0) {
+    executeBoardFlipLogic(world);
+    for (let i = 0; i < flips.length; i++) removeEntity(world, flips[i]);
+  }
+  const completes = completeQuery(world);  // defineQuery([LevelCompleteEvent])
+  if (completes.length > 0) {
+    triggerLevelCompleteScreen();
+    for (let i = 0; i < completes.length; i++) removeEntity(world, completes[i]);
+  }
+}
+```
 
-`RuleParsingSystem.ts` — only re-evaluates when `ENTITY_MOVED` fires for a `RuleWord` entity (dirty flag pattern). Scans designated `ruleSyntaxPositions` from the level JSON. On triplet match (`Subject IS Property`): emit `RULE_CHANGED` with payload. A `RuleEnforcerSystem` subscribes and adds/removes `Movable`, `Pushable`, `Static` etc. to the affected entity archetypes.
+`RuleParsingSystem.ts` — runs continuously (no dirty flag needed; the matrix is small). Scans designated `ruleSyntaxPositions` from the level JSON each tick. On triplet match (`Subject IS Property`): directly mutates components via the same continuous-evaluation pattern as `AbilitySystem`. No separate `RuleEnforcerSystem` needed.
 
 **Acceptance Criteria**:
-- Avatar on teleporter hex with `targetZ=1` changes `Position.z` to 1 in one tick.
-- Both avatars on threshold hexes emits `BOARD_FLIP` exactly once.
-- `WALL IS PUSH` syntax configuration grants `Movable` to all wall entities.
-- Removing one rule-word from a syntax position removes the conferred component on the next evaluation.
+- Avatar on teleporter hex with `targetZ=1` has `Position.z` changed to 1 in one tick.
+- `BoardFlipEvent` entity exists for exactly one tick; destroyed by `LevelTransitionSystem`.
+- Threshold cannot fire a second time after the first flip (threshold hexes have `Static`).
+- `WALL IS PUSH` syntax adds `Movable` to all matching entities; removing a rule-word removes it next tick.
+- No `EventBus.ts` file exists; no `.on()` / `.emit()` calls anywhere in the codebase.
 
 ---
 
 ### Sprint 9 — Level Loader System and JSON Pipeline
 
-**Goal**: `LevelLoaderSystem` parses full JSON level schema, creates entities via factory functions, populates `EntityRegistry`, resets all state. `ExitSystem` implements sequential exit (P1 first → spectator → P2 exits → win). `CutscenePlayer` handles the intro panel sequence before Level 1. Levels 1–5 authored in JSON.
+**Goal**: `LevelLoaderSystem` parses full JSON level schema. Prevents ECS memory leaks by **destroying and recreating the bitECS `world` object entirely** on level load (no manual `removeEntity` teardown). `ExitSystem` implements sequential exit. `CutscenePlayer` handles the intro panel sequence before Level 1. Levels 1–5 authored in JSON.
 
 **Duration**: 2 days | **Depends on**: Sprint 8
 
@@ -652,7 +747,41 @@ export function createAvatar(world: IWorld, def: AvatarDef): number {
 }
 ```
 
-`LevelLoaderSystem.ts` — on load: destroy all existing entities via `allEntitiesQuery`, clear `entityRegistry`, reset `GameState` and `inventory`, dispatch factory functions for each entity def, apply initial rules from JSON.
+`LevelLoaderSystem.ts` — **CRITICAL**: Do not manually iterate and `removeEntity`. Instead, nuke and recreate the world to prevent ECS TypedArray memory leaks from archetype migrations:
+```typescript
+import { createWorld, deleteWorld } from 'bitecs';
+
+export function loadLevel(currentWorld: IWorld, levelId: string): IWorld {
+  // 1. Destroy entire world — frees all SoA TypedArrays cleanly
+  deleteWorld(currentWorld);
+
+  // 2. Fresh world with zero residual component data
+  const newWorld = createWorld();
+
+  // 3. Reset all singletons
+  entityRegistry.clear();
+  GameState.reset();
+  inventory.player0 = [];
+  inventory.player1 = [];
+  scrapPool.plates = [];
+
+  // 4. Parse JSON and instantiate entities
+  const def = fetchLevelDef(levelId);
+  def.entities.forEach(e => dispatchEntityFactory(newWorld, e));
+  createMatrixFromDef(newWorld, def.matrix);
+  applyStaticRules(newWorld, def.rules);
+
+  return newWorld;  // caller must replace the world reference in the game loop
+}
+```
+
+The game loop in `main.ts` must accept and store the returned `world`:
+```typescript
+world = loadLevel(world, 'level_02');
+// Re-run all defineQuery registrations with the new world on next tick
+```
+
+**Note:** All `defineQuery` calls in `queries.ts` are registered against the world passed to them at query-time, not at define-time. After `deleteWorld`, the new world is clean; queries re-register automatically on first call in bitECS.
 
 Level progression for levels 1–5:
 - **Level 1**: Movement only. No hazards. Matrix has one pre-routed path. Teaches basic controls.
@@ -681,24 +810,26 @@ export function ExitSystem(world: IWorld, state: GameStateData): void {
           state.p1Exited = true;
           state.phase = 'P1_SPECTATING';
           removeComponent(world, Movable, aeid);  // P1 can no longer act
-          eventBus.emit('P1_EXITED');             // activates P2 exit hex
+          // Create a P1ExitedEvent entity — LevelTransitionSystem activates P2 exit
+          const evtEid = addEntity(world);
+          addComponent(world, P1ExitedEvent, evtEid);
         } else if (playerId === 1 && state.p1Exited) {
-          eventBus.emit('LEVEL_COMPLETE');
+          const evtEid = addEntity(world);
+          addComponent(world, LevelCompleteEvent, evtEid);
         }
       }
     }
   }
 }
 ```
-P2's exit hex has `Static` initially. On `P1_EXITED`, `AbilitySystem` (responding to the event) removes `Static` from P2's exit, lighting it up.
+P2's exit hex has `Static` initially. `LevelTransitionSystem` responds to the `P1ExitedEvent` entity by removing `Static` from P2's exit. No `EventBus.emit()` call — the event entity IS the signal.
 
 **Acceptance Criteria**:
-- `loadLevel(world, 'level_01', ...)` creates the correct entity count (including APPool singleton entity).
-- All entities have correct component values.
-- Loading level 2 after level 1 leaves zero ghost entities.
+- `loadLevel(world, 'level_01', ...)` returns a new world; the old world is fully deleted.
+- Loading level 2 after level 1 leaves zero ghost entities or residual TypedArray data.
 - Intro cutscene (3 panels) plays before Level 1; skippable by click.
-- P1 stepping on exit removes P1 movement ability and activates P2 exit.
-- P2 stepping on (now-active) exit emits `LEVEL_COMPLETE`.
+- P1 stepping on exit: `Movable` removed from P1 avatar; `P1ExitedEvent` entity created; P2 exit unlocked in same tick.
+- P2 stepping on (now-active) exit: `LevelCompleteEvent` entity created; `LevelTransitionSystem` shows win screen.
 - Levels 1–5 playable end-to-end with correct sequential exit.
 
 ---
@@ -916,9 +1047,10 @@ Public PeerJS signaling server (`0.peerjs.com`) is used for development. For pro
 |------|------|
 | `src/utils/ConduitFaceMask.ts` | Off-by-one in `rotateMask` creates invisible routing failures |
 | `src/systems/MatrixRoutingSystem.ts` | BFS direction logic must be strictly East-only between columns |
-| `src/systems/LevelLoaderSystem.ts` | Teardown bugs create ghost entities corrupting all subsequent levels |
-| `src/network/PeerJSManager.ts` | Message sequencing race conditions are the hardest bugs to reproduce |
-| `src/systems/AbilitySystem.ts` | Transition diff logic must correctly re-lock doors on ability loss |
+| `src/systems/LevelLoaderSystem.ts` | Must call `deleteWorld()` not `removeEntity()`; any direct entity removal leaks SoA TypedArray state |
+| `src/network/PeerJSManager.ts` | Guest inputs must never mutate local ECS; only Host-sent `STATE_UPDATE` messages may do so |
+| `src/systems/AbilitySystem.ts` | Continuous evaluation (no diff) — `hasComponent` guard is mandatory to avoid redundant archetype migrations |
+| `src/systems/LevelTransitionSystem.ts` | Must destroy all event entities at end of tick; surviving event entities re-trigger their effects next tick |
 | `src/systems/CollisionSystem.ts` | Must run after MovementSystem; missed collision = undetected player death |
 | `src/systems/MatrixRotateSystem.ts` | Must recompute faceMask and trigger routing re-run in same tick |
 | `src/state/ScrapPoolState.ts` | Shape data must be hidden from RenderSystem until a DRAW_SCRAP message resolves |

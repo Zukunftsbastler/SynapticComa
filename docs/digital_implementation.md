@@ -68,7 +68,7 @@ The repository is structured by ECS domain rather than by feature.
 /src
 ├── /components
 │   ├── Position.ts          # { q: i16, r: i16, z: ui8 }
-│   ├── Renderable.ts        # { spriteId: ui16, visible: ui8, layer: ui8, dirty: ui8 }
+│   ├── Renderable.ts        # { spriteId: ui16, visible: ui8, layer: ui8, dirty: ui8, isTweening: ui8 }
 │   ├── Dimension.ts         # { layer: ui8 }
 │   ├── Movable.ts
 │   ├── Pushable.ts
@@ -86,6 +86,7 @@ The repository is structured by ECS domain rather than by feature.
 │   ├── PhaseBarrier.ts      # tag
 │   ├── Exit.ts              # { playerId: ui8 }
 │   ├── APPool.ts            # { current: ui8, max: ui8 } — singleton entity
+│   ├── Events.ts            # tag components: BoardFlipEvent, LevelCompleteEvent, AvatarDestroyedEvent, P1ExitedEvent
 │   └── index.ts
 ├── /systems
 │   ├── InputSystem.ts
@@ -104,6 +105,7 @@ The repository is structured by ECS domain rather than by feature.
 │   ├── CollisionSystem.ts
 │   ├── ExitSystem.ts
 │   ├── RuleParsingSystem.ts
+│   ├── LevelTransitionSystem.ts  # consumes and destroys BoardFlipEvent / LevelCompleteEvent entities
 │   └── RenderSystem.ts
 ├── /entities
 │   ├── PlayerFactory.ts
@@ -149,7 +151,7 @@ The repository is structured by ECS domain rather than by feature.
 │   ├── ConduitFaceMask.ts
 │   └── MatrixGraph.ts
 ├── /events
-│   └── EventBus.ts
+│   └── (none — event signalling uses Event Entity tag components in /components/Events.ts)
 ├── /queries.ts
 ├── /constants.ts
 ├── /types.ts
