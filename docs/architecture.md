@@ -12,7 +12,7 @@ Entities have no inherent logic or data; they are simply unique identifiers.
 
 ## 3. Components (The "Properties & State")
 Components are pure data. They dictate what an entity is and what state it is currently in. Because the game is language-agnostic, **every active component must have a direct visual representation**.
-* **Digital Implementation:** Structs or Data Classes (e.g., `Position {x, y, z}`, `Movable {true}`, `Teleporter {target_z}`). Tooltips handle the explanation of these components when hovered.
+* **Digital Implementation:** Structs or Data Classes (e.g., `Position {q, r, z}`, `Movable {canMove}`, `Conduit {shape, rotation, faceMask}`). Tooltips handle the explanation of these components when hovered.
 
 **Complete Component List (bitECS TypedArrays):**
 
@@ -29,13 +29,13 @@ Components are pure data. They dictate what an entity is and what state it is cu
 | `Hazard` | `hazardType: ui8` | Type of obstacle (chasm, locked door, fire, laser, phase barrier) |
 | `Lethal` | `hazardType: ui8` | Entity kills avatars on contact without matching `Resistance` |
 | `Health` | `max: ui8, current: ui8` | Avatar vitality. `max: 1, current: 1` — one-hit destruction |
-| `Resistances` | `fire: ui8, void: ui8, phase: ui8` | Boolean flags (0/1) blocking matching `Lethal` damage types |
-| `Threshold` | `triggered: ui8` | Marks a Threshold hex; fires `BOARD_FLIP` when both avatars stand on their respective threshold hexes |
-| `TeleporterComponent` | `targetZ: ui8` | Automatically flips the avatar's dimension on contact |
+| `Resistances` | `fire: ui8, laser: ui8` | Boolean flags (0/1) blocking matching `Lethal` damage types |
+| `Threshold` | `triggered: ui8` | Marks a Threshold hex; fires `BOARD_FLIP` when both avatars stand on their respective threshold hexes AND both confirm ready |
 | `Collectible` | *(tag)* | Marks a conduit as collectible; renders as `???` icon until collected |
 | `Static` | *(tag)* | Entity blocks movement; used for walls, locked doors |
 | `PhaseBarrier` | *(tag)* | Passable only when `Phase Shift` ability is active for that dimension |
 | `Exit` | `playerId: ui8` | Marks a Nexus Hex; P1 exit activates P2 exit on contact |
+| `Events` | *(tags)* | Ephemeral signals: `BoardFlipEvent`, `LevelCompleteEvent`, `AvatarDestroyedEvent`, `P1ExitedEvent`. Created and destroyed within a single tick. |
 
 **ActionManager (Singleton Entity):** A single entity holding the global AP state is created on level load and destroyed on level end. Its components are: `APPool { current: ui8, max: ui8 }` and `RoundState { phase: ui8 }` (0=Active, 1=RoundOver). This entity is not rendered; it is queried by `APSystem` and `RoundSystem` each tick.
 * **Physical Implementation:** * **Inherent Components:** Printed icons on the tokens (e.g., a "Lock" icon represents the `Static` component).
@@ -48,9 +48,9 @@ Systems contain all the logic. They iterate through entities that possess specif
 
 ```
 InputSystem → APSystem → RoundSystem → MovementSystem → CollectionSystem →
-TeleportSystem → PushSystem → ThresholdSystem → MatrixInsertSystem →
+PushSystem → ThresholdSystem → MatrixInsertSystem →
 MatrixRotateSystem → ScrapPoolSystem → MatrixRoutingSystem → AbilitySystem →
-CollisionSystem → ExitSystem → RuleParsingSystem → RenderSystem → NetworkSystem
+CollisionSystem → ExitSystem → LevelTransitionSystem → RenderSystem → NetworkSystem
 ```
 
 **System Responsibilities:**
@@ -62,19 +62,18 @@ CollisionSystem → ExitSystem → RuleParsingSystem → RenderSystem → Networ
 | `RoundSystem` | Detects AP=0 or Pass action; resets AP pool for next round |
 | `MovementSystem` | Moves avatars on Hex Grid; validates passability including ability checks |
 | `CollectionSystem` | Collects `Collectible` conduits; reveals shape; adds to player inventory |
-| `TeleportSystem` | Flips avatar Z-layer on teleporter contact (automatic, 0 AP) |
 | `PushSystem` | Handles Push ability: moves `Pushable` entities 1 hex without moving the avatar |
-| `ThresholdSystem` | Detects both avatars on threshold hexes; emits `BOARD_FLIP` |
+| `ThresholdSystem` | Detects both avatars on threshold hexes AND both ready flags; creates `BoardFlipEvent` |
 | `MatrixInsertSystem` | Column-slide insert: ejects plate to Scrap Pool, shifts column, inserts new plate (2 AP) |
 | `MatrixRotateSystem` | Rotates a single already-placed conduit 90° clockwise (1 AP); recomputes `faceMask` |
 | `ScrapPoolSystem` | Handles blind draw from Scrap Pool into player inventory (1 AP) |
 | `MatrixRoutingSystem` | BFS from source nodes; marks which ability nodes are powered |
-| `AbilitySystem` | Diffs active ability set; adds/removes `Resistances`, `Movable` etc. on avatars |
-| `CollisionSystem` | Checks avatar vs `Lethal` entities; applies `Health` damage; triggers failure |
-| `ExitSystem` | Detects sequential exit: P1 on exit → spectator mode; P2 on exit → `LEVEL_COMPLETE` |
-| `RuleParsingSystem` | Scans syntax hex positions; fires `RULE_CHANGED` on Baba Is You-style triplets |
+| `AbilitySystem` | Continuous evaluation; adds/removes `Resistances`, `Movable` etc. on avatars |
+| `CollisionSystem` | Checks avatar vs `Lethal` entities; applies `Health` damage; creates `AvatarDestroyedEvent` |
+| `ExitSystem` | Detects sequential exit: P1 on exit → spectator mode + `P1ExitedEvent`; P2 on exit → `LevelCompleteEvent` |
+| `LevelTransitionSystem` | Queries all event entities; executes effects; destroys event entities at end of tick |
 | `RenderSystem` | Writes `RenderCommandBuffer`; applies dimension visibility mask |
-| `NetworkSystem` | Drains `outboundMessages` via PeerJS; sorts incoming by `seq` into `pendingInputs` |
+| `NetworkSystem` | Drains `outboundMessages` via PeerJS; applies incoming `STATE_UPDATE` / `MATRIX_STATE_UPDATE` messages |
 
 * **Physical Implementation:** The turn phases. The physical rulebook acts as the initialization script, teaching players the "algorithm" they must execute.
     * *Example:* The `MovementSystem` in code checks input and `Movable` components. In the board game, the rule is: "During the Move Phase, a player may move their wisp to an adjacent hex for 1 AP."
@@ -86,12 +85,11 @@ The board has two distinct states (Dimension A and Dimension B). Architecturally
 * **Digital:** The game holds two active grid arrays. Flipping the board toggles which grid array is rendered and which set of `GlobalRule` components is currently active.
 * **Physical:** The board is double-sided or uses transparent overlays. When flipped, new icons printed on the physical board dictate the active `GlobalRule` components. For example, in Dimension A, [Water Icon] = [Block Icon]. In Dimension B, [Water Icon] = [Movement Bonus Icon].
 
-### 5.2 Dimensional Teleportation (Z-Axis Shifting)
-Teleportation moves an entity between the two dimensional states.
-* **Digital Structure:** The position system uses X, Y, and Z coordinates. `Z=0` is Dimension A, `Z=1` is Dimension B. A `TeleporterComponent` simply updates an entity's Z-axis.
-* **Physical Structure:** When an entity steps on a [Portal Icon], the player physically picks up the token, flips the board (or moves to the secondary side board), and places the token on the exact same X/Y coordinate in the new dimension. 
+### 5.2 The Threshold (One-Way Dimensional Flip)
+The Threshold is the sole mechanism for changing the active Hex Grid layout mid-level. Both avatars must reach their respective Threshold hexes **and** both players must confirm ready before the flip triggers.
+* **Digital:** `ThresholdSystem` checks position AND `GameState.thresholdState.p1Ready && p2Ready`. On both conditions met, creates a `BoardFlipEvent` entity. `LevelTransitionSystem` loads the post-Threshold hex layout while preserving the DNA Matrix state.
+* **Physical:** Both players declare "Ready" verbally. The rule enforces that the flip cannot happen by accident — both must consent.
 
-### 5.3 Rule Modification (*Baba Is You* Style)
-Entities can change the rules of the game if they are pushed into specific configurations.
-* **Digital Architecture:** A `RuleParsingSystem` constantly checks designated "Syntax Grids" (specific coordinates on the board). If `Entity(Icon_Block)` + `Entity(Operator_Is)` + `Entity(Icon_Pushable)` are aligned, the system globally adds the `Movable` component to all blocks.
-* **Physical Architecture:** The board features "Rule Slots" cut into the margins. Players physically push icon tiles into these slots. The physical presence of the tiles in the slot dictates the active rules to the players.
+> **Note:** Dimensional switching (Z-axis movement between the Id and Superego) was removed from the design. There is no `TeleporterComponent` and no `TeleportSystem`. Each player's wisp exists only in their assigned dimension for the entirety of a level.
+
+> **Note:** Baba Is You-style rule modification (`RuleParsingSystem`) was removed. The DNA Matrix is the sole and complete mechanism for altering game rules. This keeps the rule system tractable for both players and the ECS implementation.

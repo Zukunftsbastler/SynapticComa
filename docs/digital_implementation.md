@@ -78,9 +78,8 @@ The repository is structured by ECS domain rather than by feature.
 │   ├── Hazard.ts            # { hazardType: ui8 }
 │   ├── Lethal.ts            # { hazardType: ui8 }
 │   ├── Health.ts            # { max: ui8, current: ui8 }
-│   ├── Resistances.ts       # { fire: ui8, void: ui8, phase: ui8 }
+│   ├── Resistances.ts       # { fire: ui8, laser: ui8 }
 │   ├── Threshold.ts         # { triggered: ui8 }
-│   ├── TeleporterComponent.ts
 │   ├── Collectible.ts       # tag
 │   ├── Static.ts            # tag
 │   ├── PhaseBarrier.ts      # tag
@@ -94,7 +93,6 @@ The repository is structured by ECS domain rather than by feature.
 │   ├── RoundSystem.ts
 │   ├── MovementSystem.ts
 │   ├── CollectionSystem.ts
-│   ├── TeleportSystem.ts
 │   ├── PushSystem.ts
 │   ├── ThresholdSystem.ts
 │   ├── MatrixInsertSystem.ts
@@ -104,7 +102,6 @@ The repository is structured by ECS domain rather than by feature.
 │   ├── AbilitySystem.ts
 │   ├── CollisionSystem.ts
 │   ├── ExitSystem.ts
-│   ├── RuleParsingSystem.ts
 │   ├── LevelTransitionSystem.ts  # consumes and destroys BoardFlipEvent / LevelCompleteEvent entities
 │   └── RenderSystem.ts
 ├── /entities
@@ -112,7 +109,6 @@ The repository is structured by ECS domain rather than by feature.
 │   ├── HazardFactory.ts
 │   ├── ConduitFactory.ts
 │   ├── MatrixNodeFactory.ts
-│   ├── TeleporterFactory.ts
 │   └── ExitFactory.ts
 ├── /levels
 │   ├── level_01.json … level_15.json
@@ -225,8 +221,8 @@ Canonical sprint sequence:
 4. Movement + AP system (real-time shared pool, lockout, Pass action)
 5. Collection system + inventory (hidden conduit reveal on collection)
 6. DNA Matrix rendering + Insert mechanic (2 AP) + Rotate mechanic (1 AP) + Scrap Pool
-7. Matrix routing (BFS) + Ability system (Jump, Push, Phase Shift, Unlock, Fire Immunity)
-8. Collision system (Health/Lethal/Resistances) + Teleport + Threshold + Rule parsing
+7. Matrix routing (BFS) + Ability system (Jump, Push, Phase Shift, Unlock, Fire Immunity) + CollisionSystem + PushSystem
+8. Collision system (Health/Lethal/Resistances) + ThresholdSystem (Ready-toggle) + LevelTransitionSystem (Event Entities)
 9. Level loader + JSON pipeline + Levels 1–5 + Cutscene player (intro sequence)
 10. Networking (PeerJS) + emoji-only chat + lobby UI
 11. HUD + inventory panel + ability panel + Neural Collapse screen

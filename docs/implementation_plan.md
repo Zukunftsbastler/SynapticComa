@@ -13,9 +13,9 @@ Lockstep networking with simultaneous AP expenditure is mathematically impossibl
 The system pipeline runs strictly on the Host:
 ```
 InputSystem → APSystem → RoundSystem → MovementSystem → CollectionSystem →
-TeleportSystem → PushSystem → ThresholdSystem → MatrixInsertSystem → MatrixRotateSystem →
+PushSystem → ThresholdSystem → MatrixInsertSystem → MatrixRotateSystem →
 ScrapPoolSystem → MatrixRoutingSystem → AbilitySystem → CollisionSystem →
-ExitSystem → RuleParsingSystem → RenderSystem → NetworkSystem
+ExitSystem → LevelTransitionSystem → RenderSystem → NetworkSystem
 ```
 
 ### Decision 3: AP as Shared Singleton (Host-Authoritative)
@@ -92,9 +92,6 @@ export const Hazard = defineComponent({ hazardType: Types.ui8 });
 // src/components/Threshold.ts
 export const Threshold = defineComponent({ triggered: Types.ui8 });
 
-// src/components/TeleporterComponent.ts
-export const TeleporterComponent = defineComponent({ targetZ: Types.ui8 });
-
 // src/components/Collectible.ts — tag component, no fields
 export const Collectible = defineComponent({});
 
@@ -111,7 +108,7 @@ export const Lethal = defineComponent({ hazardType: Types.ui8 });
 export const Health = defineComponent({ max: Types.ui8, current: Types.ui8 });
 
 // src/components/Resistances.ts — boolean flags as ui8 (0/1)
-export const Resistances = defineComponent({ fire: Types.ui8, void: Types.ui8, phase: Types.ui8 });
+export const Resistances = defineComponent({ fire: Types.ui8, laser: Types.ui8 });
 
 // src/components/Exit.ts
 export const Exit = defineComponent({ playerId: Types.ui8 }); // which player's exit this is
@@ -140,8 +137,7 @@ export const P1ExitedEvent     = defineComponent({});
       { "id": "avatar_p1",       "type": "avatar",    "q": 0,  "r": 0,  "z": 0, "playerId": 0 },
       { "id": "conduit_a1",      "type": "conduit",   "q": 2,  "r": -1, "z": 0, "shape": 0, "rotation": 0 },
       { "id": "hazard_chasm_a1", "type": "hazard",    "q": 1,  "r": 1,  "z": 0, "hazardType": 0 },
-      { "id": "exit_a1",         "type": "exit",      "q": 3,  "r": -2, "z": 0 },
-      { "id": "teleporter_a1",   "type": "teleporter","q": -1, "r": 2,  "z": 0, "targetZ": 1 }
+      { "id": "exit_a1",         "type": "exit",      "q": 3,  "r": -2, "z": 0 }
     ]
   },
   "dimensionB": {
@@ -172,9 +168,6 @@ export const P1ExitedEvent     = defineComponent({});
       "column4": []
     }
   },
-  "rules": [
-    { "type": "global", "effect": "wall_is_stop" }
-  ],
   "threshold": null
 }
 ```
@@ -226,14 +219,26 @@ interface PassMessage extends BaseMessage {
   type: 'PASS';  // declares round end, 0 AP
 }
 
-// Host → Guest only: authoritative state snapshot after each mutation
+// Host → Guest only: authoritative avatar/entity position after each mutation
 interface StateUpdateMessage {
   type:    'STATE_UPDATE';
   entityId: string;
   q:       number;
   r:       number;
-  z?:      number;   // only present on teleport/threshold
   apPool:  number;
+}
+
+// Host → Guest only: full 5×5 matrix state after any matrix mutation
+interface MatrixStateUpdateMessage {
+  type: 'MATRIX_STATE_UPDATE';
+  grid: { shape: number; rotation: number; active: boolean }[][];
+}
+
+// Host → Guest only: reveals the shape drawn blind from the Scrap Pool
+interface InventoryUpdateMessage {
+  type:        'INVENTORY_UPDATE';
+  playerId:    0 | 1;
+  drawnShape:  number;
 }
 
 interface ChatMessage {
@@ -248,7 +253,10 @@ type GameMessage =
   | RotateConduitMessage
   | DrawScrapMessage
   | ThresholdReadyMessage
-  | PassMessage;
+  | PassMessage
+  | StateUpdateMessage
+  | MatrixStateUpdateMessage
+  | InventoryUpdateMessage;
 
 interface HandshakeMessage {
   type:    'HANDSHAKE';
@@ -317,7 +325,7 @@ function tick(timestamp: number) {
 **Duration**: 1 day | **Depends on**: Sprint 1
 
 **Files to Create**:
-- `src/components/Position.ts`, `Renderable.ts` (with `isTweening`), `Dimension.ts`, `Movable.ts`, `Pushable.ts`, `Conduit.ts`, `MatrixNode.ts`, `Avatar.ts`, `Hazard.ts`, `Threshold.ts`, `TeleporterComponent.ts`, `Collectible.ts`, `Static.ts`, `PhaseBarrier.ts`, `Lethal.ts`, `Health.ts`, `Resistances.ts`, `Exit.ts`, `APPool.ts`, `Events.ts`, `index.ts`
+- `src/components/Position.ts`, `Renderable.ts` (with `isTweening`), `Dimension.ts`, `Movable.ts`, `Pushable.ts`, `Conduit.ts`, `MatrixNode.ts`, `Avatar.ts`, `Hazard.ts`, `Threshold.ts`, `Collectible.ts`, `Static.ts`, `PhaseBarrier.ts`, `Lethal.ts`, `Health.ts`, `Resistances.ts`, `Exit.ts`, `APPool.ts`, `Events.ts`, `index.ts`
 - `src/registry/EntityRegistry.ts`, `SpriteRegistry.ts`
 
 **Key Logic**:
@@ -398,7 +406,6 @@ export const movableAvatarQuery = defineQuery([Avatar, Position, Movable]);
 export const collectibleQuery   = defineQuery([Collectible, Position, Dimension]);
 export const hazardQuery        = defineQuery([Hazard, Position, Dimension]);
 export const thresholdQuery     = defineQuery([Threshold, Position]);
-export const teleporterQuery    = defineQuery([TeleporterComponent, Position]);
 ```
 
 `RenderSystem.ts` — dimension visibility mask: hex-grid entities (`Dimension` component) only drawn when `Dimension.layer[eid] === localPlayerId`. DNA Matrix entities (`MatrixNode`) always drawn.
@@ -562,11 +569,11 @@ export function facesConnect(maskA: number, maskB: number, direction: 0|1|2|3): 
 }
 ```
 
-`MatrixInsertSystem.ts` — on `INSERT_CONDUIT` input: collect all entities in the target column sorted by row; eject the last (or first) entity **to the Scrap Pool** (as a face-down entry in `ScrapPoolState`); shift remaining entities by ±1 row; create new entity at row 0 or MATRIX_ROWS-1; deduct **2 AP**; consume the conduit from player inventory.
+`MatrixInsertSystem.ts` — **Host-only** (`if (state.localPlayerId !== 0) return`). On `INSERT_CONDUIT` input: collect all entities in the target column sorted by row; eject the last (or first) entity to the Scrap Pool; shift remaining entities; create new entity; deduct **2 AP**; consume the conduit from player inventory. After mutation, push a `MATRIX_STATE_UPDATE` to `state.outboundMessages`.
 
-`MatrixRotateSystem.ts` — on `ROTATE_CONDUIT` input: finds the entity by ID, increments `Conduit.rotation[eid]` by 1 (mod 4), recomputes `Conduit.faceMask[eid] = computeFaceMask(shape, rotation)`, sets `Renderable.dirty[eid] = 1`, deducts 1 AP. Triggers a re-run of `MatrixRoutingSystem` this tick.
+`MatrixRotateSystem.ts` — **Host-only**. On `ROTATE_CONDUIT` input: increments `Conduit.rotation[eid]` by 1 (mod 4), recomputes `faceMask`, deducts 1 AP. After mutation, pushes `MATRIX_STATE_UPDATE` to `state.outboundMessages`.
 
-`ScrapPoolSystem.ts` — on `DRAW_SCRAP` input: if `scrapPool.plates.length > 0`, pops a random entry from `ScrapPoolState.plates`, reveals its shape, pushes it to the drawing player's inventory, deducts 1 AP.
+`ScrapPoolSystem.ts` — **Host-only**. On `DRAW_SCRAP` input: pops a random entry from `ScrapPoolState.plates`, reveals its shape, pushes it to the drawing player's inventory, deducts 1 AP. Pushes **both** a `MATRIX_STATE_UPDATE` (scrap pool count changed) and an `INVENTORY_UPDATE { playerId, drawnShape }` to `state.outboundMessages`. The Guest's `NetworkSystem` applies the `INVENTORY_UPDATE` to the Guest's local inventory state, revealing the drawn shape.
 
 `ScrapPoolState.ts` — `{ plates: { shape: ConduitShape; rotation: number }[] }` — a plain TS singleton. Plates are stored with their shape (hidden from render until drawn). The HUD shows only `scrapPool.plates.length` (count), never the contents.
 
@@ -639,7 +646,7 @@ This pattern is safe for bitECS archetype migrations because `hasComponent` guar
 
 `CollisionSystem.ts` — Runs after `MovementSystem`. For each avatar, checks for a `Lethal` entity at the same `(q,r,z)`. If found and matching `Resistance` flag is `0`: set `Health.current[avatarEid] = 0`, create an `AvatarDestroyedEvent` entity (Decision 7). `GameState` detects the event entity at end-of-tick and handles the failure screen.
 
-`PushSystem.ts` — Runs after `MovementSystem`. Processes queued `PUSH_ATTEMPT` data written by `MovementSystem` to a plain array (not a callback). Validates target hex is empty; moves `Pushable` entity; does not move avatar.
+`PushSystem.ts` — Runs after `MovementSystem`. When `MovementSystem` encounters a `Pushable` entity at the target hex and the `PUSH` ability is active, it: aborts the avatar's coordinate change, deducts **1 AP**, and writes a `PUSH_ATTEMPT { avatarEid, pushableEid, dq, dr }` object to a plain array on `GameState`. `PushSystem` reads that array, validates the hex behind the pushable entity is empty, moves the pushable entity 1 hex, and clears the array. Avatar does not move.
 
 **Acceptance Criteria**:
 - Straight pipe connecting source → ability node activates it each frame.
@@ -655,35 +662,39 @@ This pattern is safe for bitECS archetype migrations because `hasComponent` guar
 
 ---
 
-### Sprint 8 — Teleport System, Threshold System, and Rule Parsing System
+### Sprint 8 — Collision System and Threshold System
 
-**Goal**: `TeleportSystem` flips avatar Z-layer (same q/r). `ThresholdSystem` triggers board-flip using an Event Entity. `RuleParsingSystem` implements Baba Is You style logic. **No `EventBus.ts`** — all inter-system signalling uses Event Entities (Decision 7).
+**Goal**: `CollisionSystem` handles lethal hazard contact (Health/Lethal/Resistances). `ThresholdSystem` triggers board-flip using Event Entities, gated by a two-player Ready toggle. `LevelTransitionSystem` consumes all event entities. **No `EventBus.ts`**, no `TeleportSystem`, no `RuleParsingSystem`.
 
 **Duration**: 3 days | **Depends on**: Sprint 7
 
 **Files to Create**:
-- `src/systems/TeleportSystem.ts`
 - `src/systems/ThresholdSystem.ts`
-- `src/systems/RuleParsingSystem.ts`
+- `src/systems/LevelTransitionSystem.ts`
 - `src/components/Events.ts` (already defined in Sprint 2 component schema)
 
 **Key Logic**:
 
-`TeleportSystem.ts` — runs after `MovementSystem`. For each teleporter entity: if any avatar shares its `(q,r,z)`, set `Position.z[avatarEid] = TeleporterComponent.targetZ[teleporterEid]`. Cost: 0 AP (automatic on movement).
-
-`ThresholdSystem.ts` — queries all threshold hexes. If P1 and P2 avatars are each on their respective threshold hexes in the same tick, creates a `BoardFlipEvent` entity (Decision 7). The threshold hexes gain a `Static` tag to prevent re-trigger:
+`ThresholdSystem.ts` — Stepping on a Threshold hex does **not** instantly flip the board. It enables a per-player "Ready" toggle in the UI. The system only creates a `BoardFlipEvent` entity when all four conditions hold simultaneously:
 ```typescript
 export function ThresholdSystem(world: IWorld, state: GameStateData): void {
   if (!state.thresholdEnabled) return;
   let p1OnThreshold = false, p2OnThreshold = false;
-  // ... position checks ...
-  if (p1OnThreshold && p2OnThreshold) {
+  // ... position checks against thresholdQuery(world) ...
+  if (
+    p1OnThreshold && p2OnThreshold &&
+    state.thresholdState.p1Ready && state.thresholdState.p2Ready
+  ) {
     const eventEid = addEntity(world);
     addComponent(world, BoardFlipEvent, eventEid);
-    // Deactivate threshold hexes so this fires exactly once
+    // Lock threshold hexes so this fires exactly once
     thresholdEntities.forEach(eid => addComponent(world, Static, eid));
+    state.thresholdState.p1Ready = false;
+    state.thresholdState.p2Ready = false;
   }
 }
+// Ready state is set by the UI: a "Confirm Threshold" button appears when the avatar is on the hex.
+// The button fires a ThresholdReadyMessage (existing network message), which the Host applies to GameState.
 ```
 
 A `LevelTransitionSystem` runs at the end of the pipeline, queries `BoardFlipEvent` and `LevelCompleteEvent` entities, executes their effects, then destroys all event entities:
@@ -702,13 +713,12 @@ export function LevelTransitionSystem(world: IWorld): void {
 }
 ```
 
-`RuleParsingSystem.ts` — runs continuously (no dirty flag needed; the matrix is small). Scans designated `ruleSyntaxPositions` from the level JSON each tick. On triplet match (`Subject IS Property`): directly mutates components via the same continuous-evaluation pattern as `AbilitySystem`. No separate `RuleEnforcerSystem` needed.
-
 **Acceptance Criteria**:
-- Avatar on teleporter hex with `targetZ=1` has `Position.z` changed to 1 in one tick.
-- `BoardFlipEvent` entity exists for exactly one tick; destroyed by `LevelTransitionSystem`.
+- Avatars on threshold hexes without both Ready flags set do **not** trigger the board flip.
+- Both players confirming Ready (via `ThresholdReadyMessage`) with avatars on threshold hexes creates exactly one `BoardFlipEvent` entity.
+- `BoardFlipEvent` entity exists for exactly one tick; destroyed by `LevelTransitionSystem` at end of tick.
 - Threshold cannot fire a second time after the first flip (threshold hexes have `Static`).
-- `WALL IS PUSH` syntax adds `Movable` to all matching entities; removing a rule-word removes it next tick.
+- Avatar entering a Lethal hex without the matching Resistance creates an `AvatarDestroyedEvent` entity.
 - No `EventBus.ts` file exists; no `.on()` / `.emit()` calls anywhere in the codebase.
 
 ---
@@ -721,7 +731,7 @@ export function LevelTransitionSystem(world: IWorld): void {
 
 **Files to Create**:
 - `src/systems/LevelLoaderSystem.ts`
-- `src/entities/PlayerFactory.ts`, `HazardFactory.ts`, `ConduitFactory.ts`, `MatrixNodeFactory.ts`, `TeleporterFactory.ts`, `ExitFactory.ts`
+- `src/entities/PlayerFactory.ts`, `HazardFactory.ts`, `ConduitFactory.ts`, `MatrixNodeFactory.ts`, `ExitFactory.ts`
 - `src/levels/level_01.json` through `level_05.json`
 - `src/levels/levelIndex.ts`
 
@@ -786,7 +796,7 @@ world = loadLevel(world, 'level_02');
 Level progression for levels 1–5:
 - **Level 1**: Movement only. No hazards. Matrix has one pre-routed path. Teaches basic controls.
 - **Level 2**: Single locked door. One conduit already in inventory. Teaches matrix insertion.
-- **Level 3**: Teleporter introduced. Avatar must flip dimension to reach exit.
+- **Level 3**: Scrap Pool introduced. The required conduit is not on the hex grid — it must be drawn blind from the Scrap Pool. Teaches resource uncertainty.
 - **Level 4**: Column-shift required. Inserting new conduit breaks an existing path. Teaches sequencing.
 - **Level 5**: T-junction + shared routing. Both players must coordinate matrix state.
 
@@ -809,7 +819,8 @@ export function ExitSystem(world: IWorld, state: GameStateData): void {
         if (playerId === 0 && !state.p1Exited) {
           state.p1Exited = true;
           state.phase = 'P1_SPECTATING';
-          removeComponent(world, Movable, aeid);  // P1 can no longer act
+          removeComponent(world, Movable, aeid);   // P1 can no longer act
+          Renderable.visible[aeid] = 0;            // wisp disappears from board
           // Create a P1ExitedEvent entity — LevelTransitionSystem activates P2 exit
           const evtEid = addEntity(world);
           addComponent(world, P1ExitedEvent, evtEid);
@@ -956,7 +967,7 @@ Level design for levels 6–10:
 - **Level 6**: Column shift breaks an existing path. Players must plan insert order.
 - **Level 7**: Two conduit columns active simultaneously. First T-junction coordination puzzle.
 - **Level 8**: Red herring locked door — the required ability is impossible to route given available conduits.
-- **Level 9**: Teleporter chain — flip dimension, collect conduit, flip back, insert. Tests dimension-flip + Scrap Pool combo.
+- **Level 9**: Forced Rotation puzzle. A conduit is pre-placed in the Matrix at the wrong orientation; the only winning route requires spending 1 AP on Rotate rather than inserting a new piece. Tests AP prioritization with the Rotate action.
 - **Level 10**: Tight AP budget. All inserts cost 2 AP; routing requires 3 inserts. Sequential exit requires careful AP timing between P1 exit and P2 exit.
 
 **Acceptance Criteria**:
@@ -1007,7 +1018,7 @@ Sprint 1  (Scaffold)
                                   └──► Sprint 5  (Collection)
                                             └──► Sprint 6  (Matrix Insert)
                                                       └──► Sprint 7  (Routing + Abilities)
-                                                                └──► Sprint 8  (Teleport/Threshold/Rules)
+                                                                └──► Sprint 8  (Collision/Threshold/LevelTransition)
                                                                           └──► Sprint 9  (Level Loader + Levels 1-5)
                                                                                     └──► Sprint 10 (Networking)
                                                                                               └──► Sprint 11 (HUD + Polish)

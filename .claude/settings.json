@@ -8,7 +8,9 @@
       "Bash(git push:*)",
       "Read(//Users/macadmin/Games/**)",
       "Bash(python3 -c \":*)",
-      "Bash(grep -E \"\\\\.\\(md|txt\\)$\")"
+      "Bash(grep -E \"\\\\.\\(md|txt\\)$\")",
+      "Bash(npm install:*)",
+      "Bash(npm run:*)"
     ]
   }
 }

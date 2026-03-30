@@ -23,7 +23,7 @@ Define the required ability sequence on the DNA Matrix. Map out the exact sequen
 ### Step 2: Distribute the Pieces & The Decoys
 Distribute the necessary Conduit Plates across the two Hex Grids. Then, add the noise:
 * **Decoy Obstacles:** Place a hazard (e.g., a locked Green Door) on Player 1's board, but ensure the solution (the Green Key ability node) is either impossible to reach on the Matrix or the required conduits don't exist on Player 2's board. This forces Player 2 to tell Player 1 to abandon that route.
-* **Inefficient Routes:** Create a long, safe path that costs too much AP, forcing players to figure out how to route the "Teleport" ability for a shortcut.
+* **Inefficient Routes:** Create a long, safe path that costs too much AP, forcing players to figure out how to route the "Phase Shift" ability for a shortcut.
 
 ### Step 3: Build the Hex Grids
 Construct the physical layout of Dimension A and B, placing the avatars, hazards, and items.
