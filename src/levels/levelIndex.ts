@@ -9,4 +9,9 @@ export const LEVEL_ORDER: string[] = [
   'level_08',
   'level_09',
   'level_10',
+  'level_11',
+  'level_12',
+  'level_13',
+  'level_14',
+  'level_15',
 ];

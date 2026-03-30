@@ -1,0 +1,25 @@
+{
+  "id": "level_11",
+  "name": "Threshold Tutorial",
+  "thresholdEnabled": true,
+  "initialInventory": {
+    "player0": [],
+    "player1": [{ "entityId": "inv_p2_fire_immunity", "shape": 0, "rotation": 0 }]
+  },
+  "scrapPool": [],
+  "entities": [
+    { "type": "avatar",    "id": "avatar_p1",    "playerId": 0, "q": 0,  "r": 2,  "z": 0 },
+    { "type": "avatar",    "id": "avatar_p2",    "playerId": 1, "q": 0,  "r": 2,  "z": 1 },
+    { "type": "exit",      "id": "exit_p1",      "playerId": 0, "q": 0,  "r": -2, "z": 0 },
+    { "type": "exit",      "id": "exit_p2",      "playerId": 1, "q": 0,  "r": -2, "z": 1, "initiallyLocked": true },
+    { "type": "threshold", "id": "threshold_p1", "q":  1, "r": 0,  "z": 0 },
+    { "type": "threshold", "id": "threshold_p2", "q": -1, "r": 0,  "z": 1 },
+    { "type": "hazard",    "id": "fire_a",       "hazardType": 3, "q": 0, "r": -1, "z": 0 }
+  ],
+  "matrix": {
+    "nodes": [
+      { "id": "node_c3r0", "column": 3, "row": 0, "abilityType": 6 }
+    ],
+    "conduits": []
+  }
+}
