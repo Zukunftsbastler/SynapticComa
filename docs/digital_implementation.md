@@ -1,240 +1,322 @@
-# Digital Implementation & Tech Stack
+# Digital Implementation: ECS Execution Model
 
-## 1. Development Philosophy for AI Assistance
-This game is designed to be built using an AI coding assistant (Claude Code). Therefore, the tech stack avoids visual editors (like Godot or Unity) in favor of a 100% code-based, web-native environment. This ensures the AI can read, understand, and modify the entire codebase without breaking serialized scene files.
+## 1. Overview
 
-## 2. The Tech Stack
-* **Language:** **TypeScript**. Strict typing is mandatory for a stable ECS, ensuring components have predictable data structures.
-* **ECS Framework:** **bitECS**. A blazing-fast, data-oriented ECS library for JavaScript/TypeScript. It forces strict separation of data (Components) and logic (Systems), perfectly mirroring our physical board game rules.
-* **Rendering Engine:** **PixiJS**. A lightweight 2D WebGL rendering engine. It handles hexagonal math, sprite manipulation, and the UI Matrix effortlessly without forcing an overarching engine architecture.
-* **Networking:** **PeerJS (WebRTC)**. For the asymmetric multiplayer. It allows direct peer-to-peer connections between two browsers, sending lightweight JSON state updates (e.g., "Player 1 pushed Conduit X") without needing a dedicated backend server.
-* **Build Tool:** **Vite**. For rapid local development and hot-module replacement.
+The game is implemented as a deterministic, network-synchronized **Entity Component System (ECS)**.
 
-## 3. Screen Layout Per Player
+All gameplay emerges from:
 
-Each player runs their own browser tab (networked play). The layouts are mirrored but each player only sees their own dimension.
+* shared state
+* system execution order
+* player input translated into actions
 
-### Player 1 Screen (The Id — Dimension A)
-```
-┌─────────────────────────────────────────────────┐
-│  [AP Pool: ●●●○○]          [Round: 3]           │
-├─────────────────┬───────────────────────────────┤
-│                 │                               │
-│  ID HEX GRID    │    DNA MATRIX (5×5)           │
-│  (purple/red)   │    (shared, always visible)   │
-│  Dim A only     │                               │
-│                 ├───────────────────────────────┤
-│                 │  INVENTORY (private, hidden)  │
-│                 │  [???] [???] [curved]         │
-└─────────────────┴───────────────────────────────┘
-│  CHAT (emoji-only text box)                     │
-└─────────────────────────────────────────────────┘
-```
-
-### Player 2 Screen (The Superego — Dimension B)
-```
-┌─────────────────────────────────────────────────┐
-│  [AP Pool: ●●●○○]          [Round: 3]           │
-├─────────────────────┬───────────────────────────┤
-│                     │                           │
-│  DNA MATRIX (5×5)   │  SUPEREGO HEX GRID        │
-│  (shared)           │  (blue/white)             │
-│                     │  Dim B only               │
-├─────────────────────┤                           │
-│  INVENTORY (hidden) │                           │
-│  [???] [straight]   │                           │
-└─────────────────────┴───────────────────────────┘
-│  CHAT (emoji-only text box)                     │
-└─────────────────────────────────────────────────┘
-```
-
-**Key layout rules:**
-- Each player sees **only their own dimension's Hex Grid** (full detail, full colour).
-- The DNA Matrix is visible in full on **both** screens — it is the shared workspace.
-- Inventory is private: each player sees only their own collected conduits (face-up in their own inventory, hidden from their partner).
-- The AP pool counter is displayed prominently and identically on **both** screens.
-- The Chat box is emoji-only — no free text. This enforces communication rule compliance without a moderation layer.
-
-### Local / Same-Screen Debug Mode
-For single-machine testing, both grids are shown side-by-side with the matrix centered between them. Player 1 uses keyboard left-side (WASD), Player 2 uses right-side (IJKL). The inventory panels are stacked vertically in a right sidebar.
+There is **no turn or round system**. The game runs continuously, with progression driven by player actions and state changes.
 
 ---
 
-## 4. Project File Structure
+## 2. Core Execution Loop
 
-The repository is structured by ECS domain rather than by feature.
+Each frame (tick), the following pipeline is executed in strict order:
 
-```text
-/src
-├── /components
-│   ├── Position.ts          # { q: i16, r: i16, z: ui8 }
-│   ├── Renderable.ts        # { spriteId: ui16, visible: ui8, layer: ui8, dirty: ui8, isTweening: ui8 }
-│   ├── Dimension.ts         # { layer: ui8 }
-│   ├── Movable.ts
-│   ├── Pushable.ts
-│   ├── Conduit.ts           # { shape: ui8, rotation: ui8, faceMask: ui8 }
-│   ├── MatrixNode.ts        # { column: ui8, row: ui8, abilityType: ui8, active: ui8 }
-│   ├── Avatar.ts            # { playerId: ui8 }
-│   ├── Hazard.ts            # { hazardType: ui8 }
-│   ├── Lethal.ts            # { hazardType: ui8 }
-│   ├── Health.ts            # { max: ui8, current: ui8 }
-│   ├── Resistances.ts       # { fire: ui8, laser: ui8 }
-│   ├── Threshold.ts         # { triggered: ui8 }
-│   ├── Collectible.ts       # tag
-│   ├── Static.ts            # tag
-│   ├── PhaseBarrier.ts      # tag
-│   ├── Exit.ts              # { playerId: ui8 }
-│   ├── APPool.ts            # { current: ui8, max: ui8 } — singleton entity
-│   ├── Events.ts            # tag components: BoardFlipEvent, LevelCompleteEvent, AvatarDestroyedEvent, P1ExitedEvent
-│   └── index.ts
-├── /systems
-│   ├── InputSystem.ts
-│   ├── APSystem.ts
-│   ├── RoundSystem.ts
-│   ├── MovementSystem.ts
-│   ├── CollectionSystem.ts
-│   ├── PushSystem.ts
-│   ├── ThresholdSystem.ts
-│   ├── MatrixInsertSystem.ts
-│   ├── MatrixRotateSystem.ts
-│   ├── ScrapPoolSystem.ts
-│   ├── MatrixRoutingSystem.ts
-│   ├── AbilitySystem.ts
-│   ├── CollisionSystem.ts
-│   ├── ExitSystem.ts
-│   ├── LevelTransitionSystem.ts  # consumes and destroys BoardFlipEvent / LevelCompleteEvent entities
-│   └── RenderSystem.ts
-├── /entities
-│   ├── PlayerFactory.ts
-│   ├── HazardFactory.ts
-│   ├── ConduitFactory.ts
-│   ├── MatrixNodeFactory.ts
-│   └── ExitFactory.ts
-├── /levels
-│   ├── level_01.json … level_15.json
-│   ├── cutscene_intro.json  # Panel sequence before Level 1
-│   └── levelIndex.ts
-├── /network
-│   ├── PeerJSManager.ts
-│   ├── NetworkSystem.ts
-│   ├── messages.ts
-│   ├── StateHasher.ts
-│   └── ChatManager.ts       # Emoji-only chat routing
-├── /rendering
-│   ├── HexMath.ts
-│   ├── RenderCommandBuffer.ts
-│   ├── PixiDriver.ts
-│   ├── TweenManager.ts
-│   └── CutscenePlayer.ts    # Static panel sequences
-├── /ui
-│   ├── HUD.ts
-│   ├── InventoryPanel.ts
-│   ├── AbilityPanel.ts
-│   ├── MatrixUI.ts
-│   ├── LobbyUI.ts
-│   ├── ChatUI.ts
-│   ├── LevelCompleteScreen.ts
-│   └── NeuralCollapseScreen.ts   # Failure screen (2nd retry)
-├── /state
-│   ├── GameState.ts
-│   ├── InventoryState.ts
-│   ├── ScrapPoolState.ts
-│   └── ProgressionState.ts
-├── /registry
-│   ├── EntityRegistry.ts
-│   └── SpriteRegistry.ts
-├── /utils
-│   ├── ConduitFaceMask.ts
-│   └── MatrixGraph.ts
-├── /events
-│   └── (none — event signalling uses Event Entity tag components in /components/Events.ts)
-├── /queries.ts
-├── /constants.ts
-├── /types.ts
-├── /world.ts
-├── /gameLoop.ts
-└── main.ts
-/public
-├── /sprites
-│   ├── hex_id_floor.webp          # Dim A: dark bruised velvet / aged leather mat
-│   ├── hex_superego_floor.webp    # Dim B: frosted glass / scratched surgical steel
-│   ├── avatar_p1.webp             # Dim A: jagged obsidian / coagulated resin / yellowed bone
-│   ├── avatar_p2.webp             # Dim B: tarnished surgical steel / brushed aluminum
-│   ├── hazard_lethal_a.webp       # Dim A lethal: shards of blackened glass (Repressed Fears)
-│   ├── hazard_lethal_b.webp       # Dim B lethal: electrical arcs (Firewall Laser)
-│   ├── hazard_locked_red.webp     # Dim A locked door: fleshy sphincter / braided thorns
-│   ├── hazard_locked_blue.webp    # Dim B locked door: rusted vault door / jammed puzzle-lock
-│   ├── hazard_phase_barrier.webp  # Phase barrier hex (passable only under Phase Shift)
-│   ├── hazard_fire.webp           # Fire hazard tile
-│   ├── exit_nexus_a.webp          # Dim A exit (Nexus Hex)
-│   └── exit_nexus_b.webp          # Dim B exit (Nexus Hex)
-├── /ui
-│   ├── icon_phase_shift.svg
-│   ├── icon_jump.svg
-│   ├── icon_push.svg
-│   ├── icon_fire_immunity.svg
-│   ├── conduit_straight.svg
-│   ├── conduit_curved.svg
-│   ├── conduit_t.svg
-│   ├── conduit_cross.svg
-│   ├── conduit_splitter.svg
-│   └── conduit_unknown.svg        # The ??? face-down icon for uncollected floor conduits
-└── /cutscenes
-    ├── intro_01_flatline.webp
-    ├── intro_02_split.webp
-    └── intro_03_wisps.webp
-## 5. ECS Implementation Details
-### 5.1 Data-Oriented Components
-
-In bitECS, components are FlatArrays (TypedArrays). This means a component holds no functions.
-
-```TypeScript
-// Example: A component is just memory allocation
-export const Position = defineComponent({
-  q: Types.i16, // Axial Q coordinate
-  r: Types.i16, // Axial R coordinate
-  z: Types.ui8  // Dimension layer (0 or 1)
-});
 ```
-### 5.2 Handling the Dimensional Screen (Networking)
+InputSystem → APSystem → MovementSystem → CollectionSystem →
+PushSystem → ThresholdSystem → APUnlockSystem →
+MatrixInsertSystem → MatrixRotateSystem → ScrapPoolSystem →
+MatrixRoutingSystem → AbilitySystem → CollisionSystem →
+ExitSystem → LevelTransitionSystem → RenderSystem → NetworkSystem
+```
 
-* The game runs the identical deterministic ECS simulation on both clients.
-* State Sync: Only inputs (Action Point expenditures) are sent over the network.
-* Rendering Mask: The RenderSystem checks the local client's assigned Player ID. If the client is Player 1, it only draws entities where Dimension.layer === 0 and the shared MatrixNodes.
+---
 
-### 5.3 Emoji-Only Chat
+## 3. Action Point System (AP)
 
-The `ChatManager` routes emoji messages via a dedicated PeerJS data channel (separate from game state). On the sender's side, the `ChatUI` presents an emoji picker (no text input). On the receiver's side, the emoji appears in the chat strip. Chat messages are never processed by any ECS system — they are purely a communication aid with no gameplay effect. This enforces communication rules: players can convey urgency or confirmation (✅ 🚫 🔥 ❓) without describing inventory contents.
+### 3.1 Core Rules
 
-### 5.4 Level Loading (JSON)
+* AP is a **shared, persistent resource**
+* Stored in a singleton entity: `APPool`
+* AP does **not reset**
+* AP is only modified by:
 
-Since the game uses hand-crafted puzzles, levels are strict JSON files. A LevelLoaderSystem reads the JSON, creates the UUIDs, and attaches the components.
+  * player actions (spend)
+  * unlock events (gain)
 
-```JSON
-{
-  "id": "level_01",
-  "name": "Synaptic Awakening",
-  "entities": [
-    { "type": "avatar_p1", "q": 0, "r": 0, "z": 0 },
-    { "type": "conduit_straight", "q": 2, "r": -1, "z": 1 }
-  ]
+---
+
+### 3.2 APPool Component
+
+```ts
+APPool {
+  current: number
+  max: number
 }
 ```
-## 6. Claude Code Sprint Guidelines
 
-To maintain a stable architecture, development follows sequential, isolated sprints. See `docs/implementation_plan.md` for the full sprint breakdown. Prompts must be written in English.
+---
 
-Canonical sprint sequence:
-1. Project scaffold + game loop
-2. ECS components (all 23 components including Health, Resistances, Lethal, APPool, RoundState, Exit, Events, isTweening on Renderable)
-3. Hex grid rendering (PixiJS, axial math, dimension masking)
-4. Movement + AP system (real-time shared pool, lockout, Pass action)
-5. Collection system + inventory (hidden conduit reveal on collection)
-6. DNA Matrix rendering + Insert mechanic (2 AP) + Rotate mechanic (1 AP) + Scrap Pool
-7. Matrix routing (BFS) + Ability system (Jump, Push, Phase Shift, Unlock, Fire Immunity) + CollisionSystem + PushSystem
-8. Collision system (Health/Lethal/Resistances) + ThresholdSystem (Ready-toggle) + LevelTransitionSystem (Event Entities)
-9. Level loader + JSON pipeline + Levels 1–5 + Cutscene player (intro sequence)
-10. Networking (PeerJS) + emoji-only chat + lobby UI
-11. HUD + inventory panel + ability panel + Neural Collapse screen
-12. Campaign flow (sequential exit, ExitSystem) + Levels 6–10
-13. Levels 11–15 (Threshold introduction and advanced Threshold puzzles)
+### 3.3 APSystem
+
+**Responsibilities:**
+
+* Validate incoming actions against available AP
+* Deduct AP cost if valid
+* Reject action if insufficient AP
+
+**Important:**
+
+* No round logic
+* No refill behavior
+* No phase switching
+
+---
+
+## 4. AP Unlock System
+
+### 4.1 Purpose
+
+Handles all logic related to **gaining AP through gameplay progression**.
+
+---
+
+### 4.2 APUnlock Entity
+
+Unlock points are represented as entities:
+
+```ts
+APUnlock {
+  id: number
+  value: number
+  triggered: boolean
+}
+```
+
+Combined with:
+
+* `Position`
+* `Dimension`
+
+---
+
+### 4.3 APUnlockSystem
+
+**Responsibilities:**
+
+* Detect when both players satisfy unlock conditions:
+
+  * same time
+  * correct positions
+* Verify unlock is not already triggered
+* Increase `APPool.current`
+* Mark unlock as consumed (`triggered = true`)
+
+---
+
+### 4.4 Trigger Conditions
+
+Handled via:
+
+* position checks
+* optional ready flags
+* threshold reuse
+
+---
+
+## 5. Input Handling
+
+### 5.1 InputSystem
+
+* Converts player input into `GameMessage`
+* Queues actions into `pendingInputs`
+
+---
+
+### 5.2 Validation Flow
+
+1. Input received
+2. Passed to `APSystem`
+3. If valid → executed
+4. If invalid → rejected silently or with feedback
+
+---
+
+## 6. Matrix Systems
+
+### 6.1 MatrixInsertSystem
+
+* Handles column slide insertion
+* Deducts 2 AP
+* Ejects conduit to Scrap Pool
+
+---
+
+### 6.2 MatrixRotateSystem
+
+* Rotates conduit
+* Deducts 1 AP
+
+---
+
+### 6.3 ScrapPoolSystem
+
+* Handles blind draw
+* Deducts 1 AP
+
+---
+
+### 6.4 MatrixRoutingSystem
+
+* BFS traversal from source nodes
+* Updates powered ability nodes
+
+---
+
+## 7. Ability System
+
+Continuously evaluates routing state:
+
+* Adds/removes components:
+
+  * `Resistances`
+  * movement modifiers
+* Applies only while path exists
+
+---
+
+## 8. Movement & Interaction
+
+### MovementSystem
+
+* Validates movement
+* Applies ability modifiers
+
+### CollectionSystem
+
+* Adds conduits to inventory
+* Reveals shape on pickup
+
+### PushSystem
+
+* Moves `Pushable` entities
+
+---
+
+## 9. Failure & Dead-End Detection
+
+### 9.1 CollisionSystem
+
+* Detects lethal hazards
+* Triggers `AvatarDestroyedEvent`
+
+---
+
+### 9.2 Dead-End Detection
+
+Triggered when:
+
+* `APPool.current == 0`
+* No available unlocks remain
+* No valid path to exit exists
+
+Result:
+
+* UI shows "Dead End"
+* Players may restart
+
+---
+
+## 10. Exit & Progression
+
+### ExitSystem
+
+* Detects Player 1 exit
+* Locks matrix state
+* Activates Player 2 exit
+
+---
+
+### LevelTransitionSystem
+
+* Processes:
+
+  * `LevelCompleteEvent`
+  * `AvatarDestroyedEvent`
+* Cleans up event entities
+
+---
+
+## 11. Networking Model
+
+### 11.1 Authority
+
+* Host-authoritative model
+* Host validates all AP usage and unlock triggers
+
+---
+
+### 11.2 Synchronization
+
+* Shared state:
+
+  * APPool
+  * Matrix state
+  * Entity positions
+
+---
+
+### 11.3 Messages
+
+```ts
+MOVE
+INSERT_CONDUIT
+ROTATE_CONDUIT
+DRAW_SCRAP
+STATE_UPDATE
+```
+
+---
+
+## 12. UI Integration
+
+### AP Display
+
+* Always shows current AP
+* No refill animation
+* AP increases only when unlock is triggered
+
+### Feedback
+
+* Unlock activation:
+
+  * visual pulse
+  * AP increase animation
+
+---
+
+## 13. Removed Systems
+
+The following systems no longer exist:
+
+* `RoundSystem`
+* AP reset logic
+* Pass action handling
+
+---
+
+## 14. Summary
+
+The system operates as:
+
+* continuous
+* state-driven
+* deterministic
+
+There are:
+
+* no turns
+* no rounds
+* no passive resource gain
+
+All progression is achieved through:
+
+* player action
+* cooperation
+* system interaction
