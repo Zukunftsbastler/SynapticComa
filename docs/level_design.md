@@ -1,57 +1,231 @@
-# Level Design Pipeline & Philosophy
+# Level Design: AP-Gated Cooperative Puzzles
 
-## 1. Core Design Philosophy
-In *Dimensional Nexus*, a level is a lock, and the players' verbal communication is the key. Because the game relies on pre-constructed scenarios without text-based rules, the level design itself must act as the tutorial, the challenge, and the narrative. 
+## 1. Core Principle
 
-* **Design for the Blind Spot:** Player 1 often has the *solution* (a specific Conduit Plate) to Player 2's *problem*. They must discover this through descriptive communication.
-* **The Illusion of Choice (Red Herrings):** To prevent linear "breadcrumb" gameplay, levels must feature deliberate dead ends, decoy locks, and inefficient paths. The puzzle is not just *how* to open a door, but deciding *if* that door is even worth opening.
-* **Language-Agnostic Teaching:** New mechanics are introduced in isolation. If you introduce the "Phase Shift" ability, the level should feature a phase-wall directly in front of the spawn point, with the exact Conduit Plates needed to bypass it laying nearby. 
+Levels are designed as **resource-gated puzzles**, not time-based challenges.
 
-## 2. Anatomy of a Scenario
-Every level in the game consists of three tightly coupled data structures:
+* Players do not wait for new resources
+* Players must **unlock progression through correct actions**
+* Action Points (AP) represent **available progress**, not time
 
-1.  **Dimension A (Hex Grid):** Player 1's starting position, hazards, exit node, and collectible Conduit Plates.
-2.  **Dimension B (Hex Grid):** Player 2's starting position, hazards, exit node, and collectible Conduit Plates.
-3.  **The DNA Matrix (Square Grid):** The initial starting state of the Matrix. 
+A level is solved when players understand:
 
-## 3. The Reverse-Engineering Pipeline
-Because the Hex Grid relies on the DNA Matrix, design levels backward.
+* where to go
+* what to unlock
+* when to commit
 
-### Step 1: Define the Bottleneck (The Matrix)
-Define the required ability sequence on the DNA Matrix. Map out the exact sequence of Conduit Plate insertions required to shift the power from start to finish.
+---
 
-### Step 2: Distribute the Pieces & The Decoys
-Distribute the necessary Conduit Plates across the two Hex Grids. Then, add the noise:
-* **Decoy Obstacles:** Place a hazard (e.g., a locked Green Door) on Player 1's board, but ensure the solution (the Green Key ability node) is either impossible to reach on the Matrix or the required conduits don't exist on Player 2's board. This forces Player 2 to tell Player 1 to abandon that route.
-* **Inefficient Routes:** Create a long, safe path that costs too much AP, forcing players to figure out how to route the "Phase Shift" ability for a shortcut.
+## 2. AP as Progression
 
-### Step 3: Build the Hex Grids
-Construct the physical layout of Dimension A and B, placing the avatars, hazards, and items.
+### 2.1 Starting State
 
-## 4. Advanced Mechanics: The Threshold (The One-Way Flip)
-In the "Spatial Complexity" phase of the campaign, levels are expanded using the **Threshold Mechanic**. This is a synchronized, one-way journey to a new set of dimensional layouts.
+* Players begin each level with a **limited AP pool** (typically 2–4)
+* This is intentionally insufficient to complete the level
 
-### 4.1 The Trigger
-Both players must navigate their avatars to specific "Threshold Hexes" and end their turn simultaneously. Since there is no going back, both players must verbally agree to initiate the jump.
+### 2.2 AP Exhaustion as Signal
 
-### 4.2 The Execution
-* **Physical:** Players flip their hidden Hex Grids to the reverse side (or swap out the board). 
-* **Matrix Persistence:** The DNA Matrix is **NOT** reset. The abilities currently routed remain active.
-* **No Return:** The Threshold hexes on the new boards are inactive. Players cannot return to the previous layout.
+When AP reaches 0:
 
-### 4.3 Asymmetric Foresight
-To survive the Threshold, players must prepare the DNA Matrix *before* jumping.
-* The pre-Threshold boards contain fragmented, asymmetric clues about what awaits on the other side. 
-* *Example:* Player 1's board features a permanent, visual warning icon for "Fire Hazards" near the Threshold hex. Player 2's board does not, but Player 2 has access to the "Fire Immunity" Conduit Plates. Player 1 must warn Player 2 to route the Fire Immunity ability on the shared Matrix *before* they agree to flip the boards, otherwise they will instantly fail upon arriving in the new dimension.
+* This is **not failure**
+* It indicates:
 
-## 5. Difficulty Progression (The Campaign)
+  > “You have not yet discovered the correct progression path”
 
-### MVP Scope (Levels 1–15)
-* **Levels 1–5 (The Basics):** Teach movement, the sequential exit win condition, basic Matrix routing, and the strict communication rules. Each level introduces exactly one new mechanic in isolation with obvious conduit placement.
-* **Levels 6–10 (The Shift):** Introduce the 2 AP Insert cost, forcing AP budget discipline. Introduce red herrings, decoy locks, and the Scrap Pool as a resource. First tight AP budgets.
-* **Level 11 (Threshold Introduction):** The first level with the Threshold mechanic. The pre-flip boards contain asymmetric warning icons. Tutorialization: Player 1's board has a prominent fire hazard icon near their Threshold hex; Player 2 holds the Fire Immunity conduit plates. Players must communicate and route the ability before agreeing to flip.
-* **Levels 12–15 (The Threshold — Advanced):** Multi-step Threshold puzzles. The Matrix state carries over; players must route abilities that are useful *after* the flip, not just before it. Introduce the Rotate action as a precision tool.
+Players must:
 
-### Post-MVP (Deferred — Levels 16–40)
-* **Levels 16–30 (Spatial Complexity):** Larger hex grids. Navigation to conduits requires multi-round AP planning. Master Set conduit shapes (Cross, Splitter) introduced.
-* **Levels 31–40+ (The Deep Subconscious):** Multiple Threshold flips per level. Asymmetric foresight clues become subtle and indirect. End-game puzzles designed for experienced cooperative pairs.
+* explore alternative routes
+* coordinate positioning
+* discover Shared Unlock opportunities
+
+---
+
+## 3. Shared Unlock Design
+
+### 3.1 Purpose
+
+Shared Unlocks are the **primary method of progression**.
+
+They:
+
+* grant additional AP
+* require cooperation
+* create synchronization challenges
+
+---
+
+### 3.2 Rules
+
+* Must require **both players**
+* Must be **clearly visible** in each dimension
+* Must be **one-time activation**
+* Must grant **shared benefit**
+
+---
+
+### 3.3 Types of Unlock Conditions
+
+Levels may use:
+
+* **Simultaneous Positioning**
+
+  * Both players stand on matching nodes
+
+* **End-State Alignment**
+
+  * Both players reach specific areas before triggering
+
+* **Threshold-based Unlock**
+
+  * Reusing existing threshold logic
+
+---
+
+### 3.4 Unlock Effects
+
+Primary effect:
+
+* +AP to shared pool
+
+Optional variations:
+
+* Temporary matrix cost reduction
+* Ability unlock
+* Path activation
+
+---
+
+## 4. AP Gating Patterns
+
+### 4.1 Hard Gate
+
+Players cannot proceed without unlocking more AP.
+
+Example:
+
+* Initial AP allows reaching only partial objective
+* Unlock node required to continue
+
+---
+
+### 4.2 Split Responsibility Gate
+
+Each player must:
+
+* solve their own spatial challenge
+* reach their node independently
+
+---
+
+### 4.3 Sequential Gate
+
+* First unlock enables access to second unlock
+* Creates multi-step cooperation
+
+---
+
+### 4.4 False Path / Soft Trap
+
+* Players can spend AP inefficiently
+* Leads to AP exhaustion
+* Forces rethink
+
+---
+
+## 5. Relationship to DNA Matrix
+
+The Matrix remains the **core puzzle system**.
+
+Level design must ensure:
+
+* AP is often needed for:
+
+  * conduit collection
+  * matrix insertion
+  * repositioning
+
+* Shared Unlocks do NOT replace matrix solving
+
+* Instead, they:
+
+  > enable the opportunity to solve the matrix
+
+---
+
+## 6. Difficulty Scaling
+
+### Early Levels
+
+* 1 unlock
+* obvious positioning
+* minimal matrix complexity
+
+### Mid Levels
+
+* multiple unlocks
+* misleading paths
+* increased matrix dependency
+
+### Late Levels
+
+* chained unlocks
+* tight AP margins
+* heavy coordination + matrix planning
+
+---
+
+## 7. Failure & Recovery
+
+### 7.1 Hard Failure
+
+* lethal hazards → death → restart
+
+### 7.2 Soft Failure (Primary)
+
+* AP reaches 0
+* no unlock triggered
+
+System response:
+
+* show “Dead End” indicator
+* allow restart without penalty
+
+---
+
+## 8. Player Experience Goals
+
+Levels should create:
+
+* **Discovery:** “Oh, we need to go there first”
+* **Coordination:** “We both need to be ready”
+* **Commitment:** “If we spend AP now, we might be stuck”
+
+---
+
+## 9. Design Anti-Patterns (Avoid)
+
+❌ AP farming
+❌ Repeatable unlock loops
+❌ Optional unlocks that trivialize puzzles
+❌ Hidden unlocks with no visual cues
+❌ Solutions that rely on trial-and-error brute force
+
+---
+
+## 10. Summary
+
+Level design is built around one core loop:
+
+> Explore → Spend AP → Get Stuck → Discover Unlock → Gain AP → Progress
+
+There are:
+
+* no turns
+* no waiting
+* no passive recovery
+
+Only:
+
+* action
+* coordination
+* understanding
