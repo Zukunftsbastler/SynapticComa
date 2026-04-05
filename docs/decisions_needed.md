@@ -40,7 +40,7 @@ This is the most important question on this list. All other decisions assume opt
 
 **Relevant files:** `docs/Archive/Temp_DDG.md`, `docs/Archive/Temp_Matrix_Art.md`, `docs/narrative.md`, `docs/mechanics.md`
 
-**Owner:** Andreas must clarify his intent. Project owner makes final call.
+**Owner:** Andreas must clarify his intent. Till makes final call.
 
 ---
 
@@ -57,7 +57,7 @@ Is the MVP scope:
 
 **Relevant files:** `docs/mechanics.md §3`, `docs/architecture.md §2–4`, `README.md`
 
-**Owner:** Project owner. Chris should flag if option B or C changes the balance equations significantly.
+**Owner:** Till. Chris should flag if option B or C changes the balance equations significantly.
 
 ---
 
@@ -76,7 +76,7 @@ The level JSON field `"apPerRound"` must be renamed and redefined regardless of 
 
 **Relevant files:** `docs/mechanics.md §2`, `docs/implementation_plan.md` (JSON schema), `README.md §Level Format`
 
-**Owner:** Project owner and Andreas propose a value. Chris validates whether it creates solvable puzzles across all 15 levels.
+**Owner:** Till and Andreas propose a value. Chris validates whether it creates solvable puzzles across all 15 levels.
 
 **🔢 Balance flag:** The starting AP value is the single most important number in the game economy. If it is too high, puzzles become trivial. If too low, levels may become unsolvable before any Unlock is reachable. Chris should define what "solvable margin" means: the minimum AP overhead that guarantees a player can reach at least one Shared Unlock node before running out.
 
@@ -97,7 +97,7 @@ Option A is the most natural fit for the existing architecture. Option B would r
 
 **Relevant files:** `docs/architecture.md §3`, `docs/mechanics.md §4`, `SPRINTS/SPRINT_003-AP-System-Refactor.md Task 2`, `README.md §Level Format`
 
-**Owner:** Project owner confirms the placement model. Andreas clarifies his original intent. Chris should evaluate option A vs. C from a level design solvability perspective.
+**Owner:** Till confirms the placement model. Andreas clarifies his original intent. Chris should evaluate option A vs. C from a level design solvability perspective.
 
 **🔢 Balance flag:** The physical distance between a player's starting position and the nearest Shared Unlock node determines the minimum AP cost to reach it. This is the floor constraint on starting AP (Decision D3). These two decisions must be solved together.
 
@@ -121,7 +121,7 @@ These depend on Section 1 being resolved.
 
 **Relevant files:** `docs/level_design.md §2–3`, `docs/mechanics.md §7`
 
-**Owner:** Project owner and Andreas define the design intent. Chris evaluates the edge cases.
+**Owner:** Till and Andreas define the design intent. Chris evaluates the edge cases.
 
 **🔢 Balance flag:** Zero-unlock levels are essentially the old round-based system in disguise (fixed AP, no recovery). Multiple optional unlocks create branching difficulty — a mathematically richer space but harder to design. If there are exactly-one-required unlocks per level, the puzzle degenerates into a two-phase problem (reach unlock → spend AP on solution), which may be too predictable by Level 8+.
 
@@ -158,7 +158,7 @@ This distinction changes how levels are designed, playtested, and validated.
 
 **Relevant files:** `docs/mechanics.md §7`, `docs/level_design.md §1`, `SPRINTS/SPRINT_003-AP-System-Refactor.md Task 3`
 
-**Owner:** Project owner decides the philosophy. Chris defines the formal conditions under which a Dead End is "provably unavoidable" for a given level configuration.
+**Owner:** Till decides the philosophy. Chris defines the formal conditions under which a Dead End is "provably unavoidable" for a given level configuration.
 
 **🔢 Balance flag:** If option A is chosen, every level needs a mathematical proof (or at least a playtest guarantee) that it is solvable from the starting state without Dead Ending. This is non-trivial: it requires checking all possible AP expenditure sequences, not just the optimal path. Chris should define what the minimum verification process looks like.
 
@@ -176,7 +176,7 @@ This distinction changes how levels are designed, playtested, and validated.
 
 **Relevant files:** `docs/mechanics.md §5.2`, `docs/architecture.md §5.2`, `docs/digital_implementation.md §3`
 
-**Owner:** Project owner decides. This has significant UX implications — accidental triggers are costly (the flip is irreversible).
+**Owner:** Till decides. This has significant UX implications — accidental triggers are costly (the flip is irreversible).
 
 ---
 
@@ -195,7 +195,7 @@ This affects how the communication rules document reads and whether any in-game 
 
 **Relevant files:** `docs/communication_rules.md`, `docs/digital_implementation.md §5.3`
 
-**Owner:** Project owner.
+**Owner:** Till.
 
 ---
 
@@ -219,7 +219,7 @@ Does any level need to be redesigned from scratch, or do small adjustments to st
 
 **Relevant files:** `docs/level_design.md §5`, `README.md §Campaign`
 
-**Owner:** Project owner and Andreas review level by level. Chris validates that each level remains solvable.
+**Owner:** Till and Andreas review level by level. Chris validates that each level remains solvable.
 
 **🔢 Balance flag:** Level 10 specifically needs a new formal definition of "tight budget" in a persistent AP context. Chris should define what minimum AP overhead qualifies as "tight" — i.e., what is the acceptable margin between required AP and available AP that produces a satisfying puzzle rather than a frustrating one?
 
@@ -247,7 +247,7 @@ Is this the right structure? What is the field naming convention? Does the `apUn
 
 **Relevant files:** `docs/implementation_plan.md §JSON Level Schema`, `README.md §Level Format`, `SPRINTS/SPRINT_003-AP-System-Refactor.md Task 4`
 
-**Owner:** Project owner proposes structure. Chris validates that the schema supports all level design patterns needed for D5 and D6.
+**Owner:** Till proposes structure. Chris validates that the schema supports all level design patterns needed for D5 and D6.
 
 ---
 
@@ -270,7 +270,7 @@ Is the physical version:
 
 **Relevant files:** `docs/architecture.md` (all physical implementation notes), `docs/mechanics.md`
 
-**Owner:** Project owner.
+**Owner:** Till.
 
 ---
 
@@ -284,7 +284,7 @@ This is not blocking for implementation (the system just needs a flag in the lev
 
 **Relevant files:** `docs/narrative.md §5.2`, `public/cutscenes/`
 
-**Owner:** Project owner defines the panel schedule. Andreas can contribute panel concepts if interested.
+**Owner:** Till defines the panel schedule. Andreas can contribute panel concepts if interested.
 
 ---
 
@@ -305,7 +305,7 @@ The items below require mathematical review independent of the design decisions 
 
 ## Section 6 — Call to Action
 
-### Project Owner
+### Till
 
 1. **Unblock D1 and D2 first.** These two decisions determine whether the rest of this document is relevant at all.
 2. **Propose a starting AP value (D3)** — even a rough number to give Chris something to model against.
