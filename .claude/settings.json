@@ -10,7 +10,23 @@
       "Bash(python3 -c \":*)",
       "Bash(grep -E \"\\\\.\\(md|txt\\)$\")",
       "Bash(npm install:*)",
-      "Bash(npm run:*)"
+      "Bash(npm run:*)",
+      "Bash(git pull:*)",
+      "Bash(gh pr:*)",
+      "WebFetch(domain:api.github.com)",
+      "Bash(curl -s https://github.com/Zukunftsbastler/SynapticComa/pull/2.diff)",
+      "Bash(curl -s https://github.com/Zukunftsbastler/SynapticComa/pull/3.diff)",
+      "Bash(curl -s https://github.com/Zukunftsbastler/SynapticComa/pull/4.diff)",
+      "Bash(curl -s https://github.com/Zukunftsbastler/SynapticComa/pull/5.diff)",
+      "Bash(curl -s https://github.com/Zukunftsbastler/SynapticComa/pull/6.diff)",
+      "Bash(curl -s https://github.com/Zukunftsbastler/SynapticComa/pull/7.diff)",
+      "Bash(curl -sL -A \"Mozilla/5.0\" -H \"Accept: text/plain\" https://github.com/Zukunftsbastler/SynapticComa/pull/2.diff)",
+      "Bash(gh auth:*)",
+      "Bash(curl -sL -A \"Mozilla/5.0\" -H \"Accept: text/plain\" https://github.com/Zukunftsbastler/SynapticComa/pull/3.diff)",
+      "Bash(curl -sL -A \"Mozilla/5.0\" -H \"Accept: text/plain\" https://github.com/Zukunftsbastler/SynapticComa/pull/4.diff)",
+      "Bash(curl -sL -A \"Mozilla/5.0\" -H \"Accept: text/plain\" https://github.com/Zukunftsbastler/SynapticComa/pull/5.diff)",
+      "Bash(curl -sL -A \"Mozilla/5.0\" -H \"Accept: text/plain\" https://github.com/Zukunftsbastler/SynapticComa/pull/6.diff)",
+      "Bash(curl -sL -A \"Mozilla/5.0\" -H \"Accept: text/plain\" https://github.com/Zukunftsbastler/SynapticComa/pull/7.diff)"
     ]
   }
 }

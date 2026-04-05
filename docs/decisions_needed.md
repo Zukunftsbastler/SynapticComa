@@ -2,7 +2,7 @@
 
 **Purpose:** This document lists every foundational game design question that is currently unresolved, inconsistent, or not yet agreed upon by all contributors. Nothing moves to implementation until all three contributors have signed off on every item here.
 
-**Definition of Done:** All three contributors — the project owner, Andreas, and Chris — have explicitly agreed on each item. "Agreed" means a written reply in the pull request, a GitHub comment, or a documented outcome from a shared call. Silence is not agreement.
+**Definition of Done:** All three contributors — the Till, Andreas, and Chris — have explicitly agreed on each item. "Agreed" means a written reply in the pull request, a GitHub comment, or a documented outcome from a shared call. Silence is not agreement.
 
 **After this document is resolved:** A new sprint will be written to implement all changes across the design docs, followed by a code-level refactoring sprint.
 
