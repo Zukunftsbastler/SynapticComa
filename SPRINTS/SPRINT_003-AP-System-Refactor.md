@@ -46,7 +46,7 @@ Add this paragraph after the table:
 ---
 
 ## Task 2 — `docs/architecture.md`
-
+* [x] Tjektliste
 **Section 2 (Entities) — no changes.**
 
 **Section 3 (Components) — ActionManager singleton block:**
