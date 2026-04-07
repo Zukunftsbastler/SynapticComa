@@ -5,8 +5,8 @@ The game is a deterministic logic puzzle distributed across two interconnected b
 1. **The Hex Grid (The Environment):** Where avatars move, explore, and collect resources.
 2. **The DNA Matrix (The Control Panel):** A square grid where players manipulate routing tiles to unlock abilities required to navigate the Hex Grid.
 
-**Turn Structure: Real-Time Shared Pool with Lockout.**
-Players share a single AP pool each round. Both players may spend from it simultaneously, in any order, via verbal coordination ("I'm taking 2 AP to grab that conduit, okay?"). The round ends automatically when the pool is empty or when a player passes (see AP table). The system enforces a global lockout: if the pool reaches 0, no further actions can be queued until the next round begins and AP resets.
+**Turn Structure: Persistent Shared Pool with Cooperative Unlock.**
+Players share a single AP pool with no round structure and no automatic reset. Both players may spend from it simultaneously, in any order, via verbal coordination ("I'm taking 2 AP to grab that conduit, okay?"). AP is only gained by triggering a Shared Unlock node — a special location that requires both players to be present simultaneously. The game has no Pass action and no round end. When AP reaches 0 and no Shared Unlock remains available, the system enters a Dead End state.
 
 The ultimate goal is to navigate both avatars to their designated Nexus Hexes (exits) in the correct sequence.
 
@@ -24,9 +24,9 @@ The ultimate goal is to navigate both avatars to their designated Nexus Hexes (e
 | Orient a Conduit before insertion | DNA Matrix | 0 — part of the Insert action | — |
 | Draw from the Scrap Pool (blind) | DNA Matrix | 1 | `ScrapPoolSystem` |
 | Rotate Source/Ability nodes | DNA Matrix | N/A — impossible, static | — |
-| Pass (declare round end) | Either | 0 | `RoundSystem` |
+| Trigger Shared Unlock (both players on node) | Either | +AP gained | APUnlockSystem |
 
-**Key rule:** Routing power on the DNA Matrix is the cost of gaining an ability. *Using* a routed ability on the Hex Grid costs only the normal 1 AP movement. Abilities are never double-charged.
+**Key rule:** AP is a finite resource that shrinks with use and only grows through cooperation. Shared Unlock nodes are the sole mechanism for gaining AP. When AP reaches 0, the game does not reset — it pauses in a Dead End state and allows a manual restart. There is no round, no turn, and no Pass action.
 
 ---
 
@@ -133,3 +133,5 @@ The game has a **lethal failure state**:
 * On the **second failure**: the "Neural Collapse" screen appears and the players are returned to the Level Select screen. All mid-level progress is discarded.
 
 **Soft-lock prevention:** The game detects when the remaining AP pool is 0, all inventories are empty (including the Scrap Pool), and neither avatar can reach their exit. In this state, a "Dead End" indicator appears and the players may manually trigger a level restart without spending their second retry.
+
+**Dead End State:** A Dead End is triggered when APPool.current === 0, no Shared Unlock nodes remain untriggered, and neither avatar can reach their exit. This is distinct from soft-lock. In a soft-lock, a solution exists but is unreachable. In a Dead End, no solution is reachable with current resources. The system detects this automatically and displays a "Dead End" indicator, allowing players to manually restart without consuming their single retry.
