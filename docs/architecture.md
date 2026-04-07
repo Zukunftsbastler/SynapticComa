@@ -31,13 +31,14 @@ Components are pure data. They dictate what an entity is and what state it is cu
 | `Health` | `max: ui8, current: ui8` | Avatar vitality. `max: 1, current: 1` — one-hit destruction |
 | `Resistances` | `fire: ui8, laser: ui8` | Boolean flags (0/1) blocking matching `Lethal` damage types |
 | `Threshold` | `triggered: ui8` | Marks a Threshold hex; fires `BOARD_FLIP` when both avatars stand on their respective threshold hexes AND both confirm ready |
+| APUnlock | id: ui8, value: ui8, triggered: ui8 | Marks a Shared Unlock node; grants AP to both players when triggered; one-time activation |
 | `Collectible` | *(tag)* | Marks a conduit as collectible; renders as `???` icon until collected |
 | `Static` | *(tag)* | Entity blocks movement; used for walls, locked doors |
 | `PhaseBarrier` | *(tag)* | Passable only when `Phase Shift` ability is active for that dimension |
 | `Exit` | `playerId: ui8` | Marks a Nexus Hex; P1 exit activates P2 exit on contact |
 | `Events` | *(tags)* | Ephemeral signals: `BoardFlipEvent`, `LevelCompleteEvent`, `AvatarDestroyedEvent`, `P1ExitedEvent`. Created and destroyed within a single tick. |
 
-**ActionManager (Singleton Entity):** A single entity holding the global AP state is created on level load and destroyed on level end. Its components are: `APPool { current: ui8, max: ui8 }` and `RoundState { phase: ui8 }` (0=Active, 1=RoundOver). This entity is not rendered; it is queried by `APSystem` and `RoundSystem` each tick.
+**ActionManager (Singleton Entity):** A single entity holding the global AP state is created on level load and destroyed on level end. Its components are: APPool { current: ui8, max: ui8 }. There is no RoundState component — the pool is persistent and has no round lifecycle. This entity is not rendered; it is queried by APSystem and APUnlockSystem each tick.
 * **Physical Implementation:** * **Inherent Components:** Printed icons on the tokens (e.g., a "Lock" icon represents the `Static` component).
     * **Dynamic Components:** Colored bases, stacking chips, or slotted tokens attached to the main entity (e.g., a blue ring slipped over a meeple grants the `Phase_Shift` component).
 * **The "Tooltip" Board Margin:** The physical board features a printed legend/margin. If a complex mechanic needs explanation, players place the relevant component token into a designated slot on the board's edge, which visually links the icon to its mechanical function using universally understood flowcharts (e.g., `[Player Icon] -> [Arrow] -> [Portal Icon]`).
@@ -47,10 +48,7 @@ Systems contain all the logic. They iterate through entities that possess specif
 * **Digital Implementation:** The game loop functions executed in strict order every tick:
 
 ```
-InputSystem → APSystem → RoundSystem → MovementSystem → CollectionSystem →
-PushSystem → ThresholdSystem → MatrixInsertSystem →
-MatrixRotateSystem → ScrapPoolSystem → MatrixRoutingSystem → AbilitySystem →
-CollisionSystem → ExitSystem → LevelTransitionSystem → RenderSystem → NetworkSystem
+InputSystem → APSystem → MovementSystem → CollectionSystem → PushSystem → ThresholdSystem → APUnlockSystem → MatrixInsertSystem → MatrixRotateSystem → ScrapPoolSystem → MatrixRoutingSystem → AbilitySystem → CollisionSystem → ExitSystem → LevelTransitionSystem → RenderSystem → NetworkSystem
 ```
 
 **System Responsibilities:**
@@ -59,11 +57,11 @@ CollisionSystem → ExitSystem → LevelTransitionSystem → RenderSystem → Ne
 |--------|---------------|
 | `InputSystem` | Reads keyboard/mouse; produces `GameMessage` objects in `pendingInputs` |
 | `APSystem` | Deducts AP costs; rejects inputs that exceed `apPool` |
-| `RoundSystem` | Detects AP=0 or Pass action; resets AP pool for next round |
 | `MovementSystem` | Moves avatars on Hex Grid; validates passability including ability checks |
 | `CollectionSystem` | Collects `Collectible` conduits; reveals shape; adds to player inventory |
 | `PushSystem` | Handles Push ability: moves `Pushable` entities 1 hex without moving the avatar |
 | `ThresholdSystem` | Detects both avatars on threshold hexes AND both ready flags; creates `BoardFlipEvent` |
+| APUnlockSystem | Detects when both avatars occupy their respective Shared Unlock nodes in the same tick; increments APPool.current by APUnlock.value; sets APUnlock.triggered = 1; creates no event entity — the AP change is the signal |
 | `MatrixInsertSystem` | Column-slide insert: ejects plate to Scrap Pool, shifts column, inserts new plate (2 AP) |
 | `MatrixRotateSystem` | Rotates a single already-placed conduit 90° clockwise (1 AP); recomputes `faceMask` |
 | `ScrapPoolSystem` | Handles blind draw from Scrap Pool into player inventory (1 AP) |
