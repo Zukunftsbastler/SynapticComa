@@ -13,7 +13,7 @@ This sprint implements a design shift proposed across six pull requests by a con
 ---
 
 ## Task 1 — `docs/mechanics.md` 
-* [x] Tjektliste
+* [x] Don
 
 
 **Section 1 (Core Gameplay Loop) — update the Turn Structure paragraph:**
@@ -46,7 +46,8 @@ Add this paragraph after the table:
 ---
 
 ## Task 2 — `docs/architecture.md`
-* [x] Tjektliste
+* [x] don
+
 **Section 2 (Entities) — no changes.**
 
 **Section 3 (Components) — ActionManager singleton block:**
