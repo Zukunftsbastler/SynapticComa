@@ -13,7 +13,7 @@ This sprint implements a design shift proposed across six pull requests by a con
 ---
 
 ## Task 1 — `docs/mechanics.md` 
-- [ ]
+- [x]
 
 
 **Section 1 (Core Gameplay Loop) — update the Turn Structure paragraph:**
