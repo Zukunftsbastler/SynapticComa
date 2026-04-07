@@ -87,6 +87,7 @@ When a conduit is ejected from a matrix column, it is placed **face-down** in a 
 | Splitter (Y) | Three openings, asymmetric | `0b1110` (S+W+N) | Acts as a non-standard T-junction |
 
 ---
+**Technical Note:** For details on the ActionManager singleton and the implementation of the persistent AP pool logic, see the cross-reference in architecture.md.
 
 ## 5. Ability Rules
 
