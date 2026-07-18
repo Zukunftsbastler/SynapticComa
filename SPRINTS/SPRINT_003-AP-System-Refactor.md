@@ -1,5 +1,7 @@
 # SPRINT 003: AP System Refactor — Persistent Pool & Shared Unlock
 
+> **✅ COMPLETED 2026-07-18.** Tasks 1–2 were applied earlier; Tasks 3–7 were completed as part of the SPRINT_004 session, together with fixes for incoherences this sprint had missed (leftover "round" wording in `mechanics.md §5`, duplicate soft-lock/Dead-End paragraphs in `mechanics.md §7`, turn-based Threshold wording and the old "Dimensional Nexus" title in `level_design.md`, missing `APUnlockSystem` in `project_overview.md`'s pipeline, `roundNumber`/`ROUND_CHANGED`/EventBus leftovers in `implementation_plan.md`). See `SPRINT_004-Design-Integration.md` for the full record.
+
 ## Context
 
 This sprint implements a design shift proposed across six pull requests by a contributor. The change is architectural: the round-based AP system is replaced with a persistent AP pool that only grows through cooperative "Shared Unlock" events.
@@ -93,6 +95,7 @@ Add this row after `ThresholdSystem`:
 ---
 
 ## Task 3 — `docs/digital_implementation.md`
+* [x] Done (2026-07-18)
 
 **Section 3 (Screen Layout) — update the HUD label in both ASCII diagrams:**
 
@@ -156,6 +159,7 @@ When `isDeadEnd()` returns `true`, `LevelTransitionSystem` sets a `DeadEndState`
 ---
 
 ## Task 4 — `docs/implementation_plan.md`
+* [x] Done (2026-07-18)
 
 **IMPORTANT: Do not remove any existing content from this file.** The full sprint breakdown, all TypeScript code snippets, all JSON schemas, all acceptance criteria, and all design decisions must remain intact.
 
@@ -272,6 +276,7 @@ export function APUnlockSystem(world: IWorld, state: GameStateData): void {
 ---
 
 ## Task 5 — `docs/communication_rules.md`
+* [x] Done (2026-07-18)
 
 **Section 1 — replace the opening paragraph:**
 
@@ -312,6 +317,7 @@ Shared Unlock nodes are visible to both players in their respective dimensions. 
 ---
 
 ## Task 6 — `docs/open_questions.md`
+* [x] Done (2026-07-18)
 
 **Q1 — replace the decision text only (one line):**
 
@@ -338,6 +344,7 @@ Add a new row:
 ---
 
 ## Task 7 — `docs/art_and_ui.md`
+* [x] Done (2026-07-18)
 
 **IMPORTANT: Do not remove any of the existing visual identity content.** The Medical Macabre Diorama sections (Sections 1–6), the Dimension A/B descriptions, the Specimen Tray, the diegetic UI elements, and the Threshold animation all remain intact.
 

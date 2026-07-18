@@ -23,7 +23,7 @@ Components are pure data. They dictate what an entity is and what state it is cu
 | `Dimension` | `layer: ui8` | Which dimension (0=Id, 1=Superego) owns this entity |
 | `Movable` | `canMove: ui8` | Avatar or block can be moved by input |
 | `Pushable` | `canBePushed: ui8` | Entity can be shoved by the Push ability |
-| `Conduit` | `shape: ui8, rotation: ui8, faceMask: ui8` | Pipe shape, orientation, and computed connectivity bitmask |
+| `Conduit` | `shape: ui8, rotation: ui8, faceMask: ui8, base: ui8` | Pipe shape, orientation, computed connectivity bitmask, and neurotransmitter base (0=EX, 1=IN, 2=MOD, 3=STAB — see `mechanics.md §4.5`) |
 | `MatrixNode` | `column: ui8, row: ui8, abilityType: ui8, active: ui8` | DNA Matrix cell data |
 | `Avatar` | `playerId: ui8` | Marks a wisp entity; stores which player controls it |
 | `Hazard` | `hazardType: ui8` | Type of obstacle (chasm, locked door, fire, laser, phase barrier) |
@@ -31,7 +31,8 @@ Components are pure data. They dictate what an entity is and what state it is cu
 | `Health` | `max: ui8, current: ui8` | Avatar vitality. `max: 1, current: 1` — one-hit destruction |
 | `Resistances` | `fire: ui8, laser: ui8` | Boolean flags (0/1) blocking matching `Lethal` damage types |
 | `Threshold` | `triggered: ui8` | Marks a Threshold hex; fires `BOARD_FLIP` when both avatars stand on their respective threshold hexes AND both confirm ready |
-| APUnlock | id: ui8, value: ui8, triggered: ui8 | Marks a Shared Unlock node; grants AP to both players when triggered; one-time activation |
+| `APUnlock` | `id: ui8, value: ui8, triggered: ui8` | Marks a Shared Unlock node; grants AP to both players when triggered; one-time activation |
+| `TutorialTrigger` | `conceptId: ui8, radius: ui8` | Optional; marks an entity as a first-encounter tutorial trigger (see `tutorial_design.md §4.1`) |
 | `Collectible` | *(tag)* | Marks a conduit as collectible; renders as `???` icon until collected |
 | `Static` | *(tag)* | Entity blocks movement; used for walls, locked doors |
 | `PhaseBarrier` | *(tag)* | Passable only when `Phase Shift` ability is active for that dimension |
@@ -48,7 +49,7 @@ Systems contain all the logic. They iterate through entities that possess specif
 * **Digital Implementation:** The game loop functions executed in strict order every tick:
 
 ```
-InputSystem → APSystem → MovementSystem → CollectionSystem → PushSystem → ThresholdSystem → APUnlockSystem → MatrixInsertSystem → MatrixRotateSystem → ScrapPoolSystem → MatrixRoutingSystem → AbilitySystem → CollisionSystem → ExitSystem → LevelTransitionSystem → RenderSystem → NetworkSystem
+InputSystem → APSystem → MovementSystem → CollectionSystem → PushSystem → ThresholdSystem → APUnlockSystem → MatrixInsertSystem → MatrixRotateSystem → ScrapPoolSystem → ResonanceSystem → MatrixRoutingSystem → AbilitySystem → CollisionSystem → ExitSystem → LevelTransitionSystem → RenderSystem → TutorialTriggerSystem → NetworkSystem
 ```
 
 **System Responsibilities:**
@@ -65,12 +66,14 @@ InputSystem → APSystem → MovementSystem → CollectionSystem → PushSystem 
 | `MatrixInsertSystem` | Column-slide insert: ejects plate to Scrap Pool, shifts column, inserts new plate (2 AP) |
 | `MatrixRotateSystem` | Rotates a single already-placed conduit 90° clockwise (1 AP); recomputes `faceMask` |
 | `ScrapPoolSystem` | Handles blind draw from Scrap Pool into player inventory (1 AP) |
+| `ResonanceSystem` | Evaluates ordered base pairs in conduit columns after any matrix mutation; fires Discharge/Dampening/Clarity/Anchor effects once per pair formation (`mechanics.md §4.5`) |
 | `MatrixRoutingSystem` | BFS from source nodes; marks which ability nodes are powered |
 | `AbilitySystem` | Continuous evaluation; adds/removes `Resistances`, `Movable` etc. on avatars |
 | `CollisionSystem` | Checks avatar vs `Lethal` entities; applies `Health` damage; creates `AvatarDestroyedEvent` |
 | `ExitSystem` | Detects sequential exit: P1 on exit → spectator mode + `P1ExitedEvent`; P2 on exit → `LevelCompleteEvent` |
 | `LevelTransitionSystem` | Queries all event entities; executes effects; destroys event entities at end of tick |
 | `RenderSystem` | Writes `RenderCommandBuffer`; applies dimension visibility mask |
+| `TutorialTriggerSystem` | Read-only, local per client; detects first encounters with registered concepts and feeds the `TutorialDirector` (`tutorial_design.md §4`) |
 | `NetworkSystem` | Drains `outboundMessages` via PeerJS; applies incoming `STATE_UPDATE` / `MATRIX_STATE_UPDATE` messages |
 
 * **Physical Implementation:** The turn phases. The physical rulebook acts as the initialization script, teaching players the "algorithm" they must execute.
@@ -91,3 +94,10 @@ The Threshold is the sole mechanism for changing the active Hex Grid layout mid-
 > **Note:** Dimensional switching (Z-axis movement between the Id and Superego) was removed from the design. There is no `TeleporterComponent` and no `TeleportSystem`. Each player's wisp exists only in their assigned dimension for the entirety of a level.
 
 > **Note:** Baba Is You-style rule modification (`RuleParsingSystem`) was removed. The DNA Matrix is the sole and complete mechanism for altering game rules. This keeps the rule system tractable for both players and the ECS implementation.
+
+## 6. Non-ECS Modules
+
+Two subsystems deliberately live **outside** the ECS pipeline because they operate on data, not on the live world:
+
+* **`src/generation/`** — level solver, generator, and difficulty model (`generative_levels.md`). Pure functions over `LevelDef` and an abstract solver state. The runtime Dead End check calls into the solver's reachability core; everything else runs at build time or on level creation.
+* **`src/tutorial/`** — `TutorialDirector` (sequencing, script playback) and `TutorialOverlay` (dim/frame/arrow rendering). Only `TutorialTriggerSystem` touches the ECS, and only reads. Tutorial state is local per client and never networked.

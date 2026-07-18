@@ -1,7 +1,7 @@
 # Level Design Pipeline & Philosophy
 
 ## 1. Core Design Philosophy
-In *Dimensional Nexus*, a level is a lock, and the players' verbal communication is the key. Because the game relies on pre-constructed scenarios without text-based rules, the level design itself must act as the tutorial, the challenge, and the narrative. 
+In *Synaptic Coma*, a level is a lock, and the players' verbal communication is the key. Because the game relies on pre-constructed scenarios without text-based rules, the level design itself must act as the tutorial, the challenge, and the narrative. 
 
 * **Design for the Blind Spot:** Player 1 often has the *solution* (a specific Conduit Plate) to Player 2's *problem*. They must discover this through descriptive communication.
 * **The Illusion of Choice (Red Herrings):** To prevent linear "breadcrumb" gameplay, levels must feature deliberate dead ends, decoy locks, and inefficient paths. The puzzle is not just *how* to open a door, but deciding *if* that door is even worth opening.
@@ -32,7 +32,7 @@ Construct the physical layout of Dimension A and B, placing the avatars, hazards
 In the "Spatial Complexity" phase of the campaign, levels are expanded using the **Threshold Mechanic**. This is a synchronized, one-way journey to a new set of dimensional layouts.
 
 ### 4.1 The Trigger
-Both players must navigate their avatars to specific "Threshold Hexes" and end their turn simultaneously. Since there is no going back, both players must verbally agree to initiate the jump.
+Both players must navigate their avatars to specific "Threshold Hexes" and both confirm ready while standing on them. Since there is no going back, both players must verbally agree to initiate the jump.
 
 ### 4.2 The Execution
 * **Physical:** Players flip their hidden Hex Grids to the reverse side (or swap out the board). 
@@ -46,6 +46,26 @@ To survive the Threshold, players must prepare the DNA Matrix *before* jumping.
 
 ## 5. Difficulty Progression (The Campaign)
 
+### The 15-Level MVP Campaign (hand-crafted narrative spine)
+
+| # | Name | Key mechanic introduced |
+|---|------|------------------------|
+| 1 | Tutorial: Movement | Basic hex movement, sequential exit (extended by the guided tutorial script, see `tutorial_design.md`) |
+| 2 | Locked Door | Matrix insertion, UNLOCK_RED |
+| 3 | Scrap Pool | Blind draw as risk/reward decision from a persistent AP pool |
+| 4 | Column Shift | Insert order matters — shifting breaks paths |
+| 5 | Shared Routing | Both conduit columns, T-junction coordination |
+| 6 | Insert Sequence | Two locks, insert ordering; **Neuro-Resonance introduced** (`mechanics.md §4.5`) |
+| 7 | T-Junction Coordination | col4 routing + Tier 2 abilities |
+| 8 | Red Herring | Impossible route — teaches constraint reading |
+| 9 | Forced Rotation | Rotate (1 AP) beats insert (2 AP) |
+| 10 | Tight Budget | Low AP slack: `initialAP − optimalCost ≤ 2` (formal definition, see §6.3) |
+| 11 | Threshold Tutorial | FIRE_IMMUNITY required before Threshold; environmental tutorialization |
+| 12 | Pre-Flip Jump | JUMP must be routed before triggering board flip |
+| 13 | Critical Rotation | Rotate is the critical move post-flip |
+| 14 | Threshold at Low AP | Offset starts; tight AP across board flip |
+| 15 | Master Set Teaser | Cross (+) conduit in Scrap Pool is the only solution |
+
 ### MVP Scope (Levels 1–15)
 * **Levels 1–5 (The Basics):** Teach movement, the sequential exit win condition, basic Matrix routing, and the strict communication rules. Each level introduces exactly one new mechanic in isolation with obvious conduit placement.
 * **Levels 6–10 (The Shift):** Introduce the 2 AP Insert cost, forcing AP budget discipline. Introduce red herrings, decoy locks, and the Scrap Pool as a resource. First tight AP budgets.
@@ -53,5 +73,25 @@ To survive the Threshold, players must prepare the DNA Matrix *before* jumping.
 * **Levels 12–15 (The Threshold — Advanced):** Multi-step Threshold puzzles. The Matrix state carries over; players must route abilities that are useful *after* the flip, not just before it. Introduce the Rotate action as a precision tool.
 
 ### Post-MVP (Deferred — Levels 16–40)
-* **Levels 16–30 (Spatial Complexity):** Larger hex grids. Navigation to conduits requires multi-round AP planning. Master Set conduit shapes (Cross, Splitter) introduced.
+* **Levels 16–30 (Spatial Complexity):** Larger hex grids. Navigation to conduits requires long-horizon AP planning across multiple Shared Unlocks. Master Set conduit shapes (Cross, Splitter) introduced.
 * **Levels 31–40+ (The Deep Subconscious):** Multiple Threshold flips per level. Asymmetric foresight clues become subtle and indirect. End-game puzzles designed for experienced cooperative pairs.
+
+## 6. Generative Levels (The Deep Coma)
+
+Beyond the hand-crafted campaign, levels are **procedurally generated with a mathematical solvability guarantee**. The full technical specification lives in `generative_levels.md`; this section defines the design contract.
+
+### 6.1 The Contract
+1. **Every shipped or generated level is provably solvable.** A level only reaches players if the solver (`generative_levels.md §2`) has found a complete solution path from the initial state.
+2. **`initialAP` is derived, not guessed:** `initialAP = optimalCost + margin`, where `optimalCost` is the solver's minimal AP expenditure and `margin` shrinks as difficulty rises. This resolves decision D3 (option C) — every level is designed backward from its solution.
+3. **Difficulty is a computed score, not a feeling.** The difficulty model (`generative_levels.md §4`) scores solution length, coordination steps, AP slack, and hidden-information load. Generated levels target a monotonically increasing difficulty curve.
+4. **Determinism:** A level is fully determined by its seed. Both clients generate the identical level from the seed exchanged in the network handshake — no level data crosses the wire.
+
+### 6.2 Where Generated Levels Appear
+* **The Deep Coma (endless mode):** After Level 15, players descend an unbounded sequence of generated levels with strictly increasing target difficulty.
+* **Daily Synapse:** One shared daily seed — all player pairs worldwide face the same generated level.
+* **Validation of hand-crafted levels:** The same solver verifies Levels 1–15 (solvability proof, optimal cost, Dead-End distance) at build time. The generator and the campaign share one source of truth for what "solvable" means.
+
+### 6.3 Formal Definition: Tight Budget
+A level is a *tight budget* level when `apSlack = initialAP + Σ(unlockValues) + Σ(achievableDischarges) − optimalCost ≤ 2`. The campaign uses this as a tuning dial: tutorial levels run at slack ≥ 6, mid-campaign at 3–5, "tight" levels at ≤ 2.
+
+> **🔢 Balance flag (Chris):** The margin curve (slack as a function of target difficulty) and the difficulty weight vector in `generative_levels.md §4` are the two knobs that need mathematical review before the generator ships.

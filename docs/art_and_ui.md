@@ -33,10 +33,22 @@ The shared DNA Matrix sits between the two players (or in the corner of their UI
 * **The Routing Pipes:** The pipes etched into the conduits are deep grooves. When a path is successfully connected and powered, the grooves fill with a glowing, viscous fluid (representing spinal fluid or nerve energy) that physically flows from the source node to the ability node.
 * **The Mechanics:** When a player slides a conduit into the column, it should visually "clack" into place, shoving the other heavy tiles down the track with a satisfying, physical friction. 
 
+> **Shared Unlock Node Visual:** When both players reach their respective Shared Unlock nodes simultaneously, the node glows with a distinct pulse that differs from a standard ability activation — both nodes light in sync, a luminous thread traces between them through the Matrix, and the AP vials respond with the surge animation described above.
+
 ## 5. UI and HUD: Diegetic Integration
 To maintain the dark, immersive atmosphere, standard video game UI elements are replaced with physical, diegetic (in-world) counterparts.
 
-* **The AP Pool:** Instead of floating UI dots, the AP pool is represented by a row of thick, glass medical vials filled with glowing adrenaline. As AP is spent, the fluid drains out with a heavy bubbling animation. When the round resets, they violently refill.
+* **The AP Pool:** Instead of floating UI dots, the AP pool is represented by a row of thick, glass medical vials filled with glowing adrenaline.
+
+  **AP State Changes:**
+  - *Spending AP:* The fluid drains with a heavy bubbling animation. The drain is proportional to the AP spent.
+  - *Gaining AP (Shared Unlock):* The vials do not "refill" — they surge. A strong visual pulse emanates from both players' positions simultaneously, and a glowing connection effect bridges the two dimensions through the DNA Matrix. The AP increase animates as luminous fluid flooding into the vials from below, not from a reset.
+  - *Dead End (AP = 0, no unlocks remain):* The entire UI dims slightly. The vials sit empty. A subtle "no progress" indicator appears — a single faint icon, no text. The board does not flash or alarm. The silence communicates the state.
+
+  **Anti-patterns (never implement):**
+  - ❌ Automatic AP refill on any timer
+  - ❌ Periodic regeneration
+  - ❌ Any animation suggesting a "round reset" — the vials never violently refill as in a round-based system
 * **The Scrap Pool:** Represented by a tarnished steel medical tray in deep shadow. You can see the thick conduit tiles piled face-down in the gloom.
 * **The Inventory:** A personal wooden rack sitting just at the edge of the spotlight. When an avatar collects a `???` conduit on the board, a physical tile slides into the wooden rack, flipping face-up to reveal its shape.
 * **Active Abilities:** When an ability is powered by the Matrix, a heavy brass indicator light next to the avatar's portrait mechanically snaps "ON," casting a warm, analogue glow.

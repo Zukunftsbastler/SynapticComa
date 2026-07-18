@@ -41,7 +41,10 @@ Each file documents a specific aspect of the game. They are the source of truth 
 | `narrative.md` | The story, the two dimensions (Id and Superego), silent cutscenes |
 | `art_and_ui.md` | Visual style, atmosphere, how UI elements look and behave |
 | `communication_rules.md` | What players are and are not allowed to say to each other |
+| `generative_levels.md` | Procedural level pipeline: solver (A*), generator, difficulty model |
+| `tutorial_design.md` | The Monitor tutorial layer: concept registry, highlight UI, guided intro |
 | `open_questions.md` | All major design decisions, recorded with their final answers |
+| `decisions_needed.md` | The team decision log for the AP-system redesign, with resolutions |
 
 > **Rule of thumb:** If you want to change *how the game plays*, edit `mechanics.md`. If you want to change *how the code is built*, edit `architecture.md` or `implementation_plan.md`. If you want to change *how it looks or feels*, edit `art_and_ui.md`.
 
@@ -106,7 +109,7 @@ Systems run in a strict, fixed order every frame:
 
 ```
 InputSystem → APSystem → MovementSystem → CollectionSystem →
-PushSystem → ThresholdSystem → MatrixInsertSystem →
+PushSystem → ThresholdSystem → APUnlockSystem → MatrixInsertSystem →
 MatrixRotateSystem → ScrapPoolSystem → MatrixRoutingSystem →
 AbilitySystem → CollisionSystem → ExitSystem →
 LevelTransitionSystem → RenderSystem → NetworkSystem
@@ -257,6 +260,26 @@ Generate the JSON file following the exact format of level_01.json.
 | Change how something looks | `art_and_ui.md` | `/src/rendering/`, `/src/ui/`, `/public/sprites/` |
 | Add a new narrative panel | `narrative.md §5` | new image in `/public/cutscenes/`, update level JSON |
 | Change the network model | `digital_implementation.md §5.2` | `/src/network/` |
+| Add a tutorial concept | `tutorial_design.md §2` | `/src/tutorial/concepts.ts` + i18n strings |
+
+### Common Recipes
+
+**Adding a new level:**
+1. Create `src/levels/level_NN.json` conforming to `LevelSchema.ts`
+2. Add `'level_NN'` to `LEVEL_ORDER` in `src/levels/levelIndex.ts`
+3. Add the import entry to `LEVEL_MODULES` in `src/systems/LevelLoaderSystem.ts`
+4. Run `npm run validate:levels` — the solver must produce a proof (see `generative_levels.md §5`)
+
+**Adding a new ability:**
+1. Add a value to `AbilityType` in `src/types.ts`
+2. Handle the new type in `AbilitySystem.ts`
+3. Place an ability node in the relevant level JSON with the new `abilityType` value
+
+**Adding a new hazard type:**
+1. Add a value to `HazardType` in `src/types.ts`
+2. Update `hazardSpriteId()` in `src/entities/HazardFactory.ts`
+3. Add `Lethal` or `Static` component logic in `HazardFactory.createHazard()`
+4. Add resistance handling in `CollisionSystem.ts` if applicable
 
 ---
 

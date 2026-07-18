@@ -17,7 +17,7 @@ Each player runs their own browser tab (networked play). The layouts are mirrore
 ### Player 1 Screen (The Id — Dimension A)
 ```
 ┌─────────────────────────────────────────────────┐
-│  [AP Pool: ●●●○○]          [Round: 3]           │
+│  [AP Pool: ●●●○○]                               │
 ├─────────────────┬───────────────────────────────┤
 │                 │                               │
 │  ID HEX GRID    │    DNA MATRIX (5×5)           │
@@ -34,7 +34,7 @@ Each player runs their own browser tab (networked play). The layouts are mirrore
 ### Player 2 Screen (The Superego — Dimension B)
 ```
 ┌─────────────────────────────────────────────────┐
-│  [AP Pool: ●●●○○]          [Round: 3]           │
+│  [AP Pool: ●●●○○]                               │
 ├─────────────────────┬───────────────────────────┤
 │                     │                           │
 │  DNA MATRIX (5×5)   │  SUPEREGO HEX GRID        │
@@ -72,7 +72,8 @@ The repository is structured by ECS domain rather than by feature.
 │   ├── Dimension.ts         # { layer: ui8 }
 │   ├── Movable.ts
 │   ├── Pushable.ts
-│   ├── Conduit.ts           # { shape: ui8, rotation: ui8, faceMask: ui8 }
+│   ├── Conduit.ts           # { shape: ui8, rotation: ui8, faceMask: ui8, base: ui8 }
+│   ├── TutorialTrigger.ts   # { conceptId: ui8, radius: ui8 } — optional first-encounter marker
 │   ├── MatrixNode.ts        # { column: ui8, row: ui8, abilityType: ui8, active: ui8 }
 │   ├── Avatar.ts            # { playerId: ui8 }
 │   ├── Hazard.ts            # { hazardType: ui8 }
@@ -85,19 +86,22 @@ The repository is structured by ECS domain rather than by feature.
 │   ├── PhaseBarrier.ts      # tag
 │   ├── Exit.ts              # { playerId: ui8 }
 │   ├── APPool.ts            # { current: ui8, max: ui8 } — singleton entity
+│   ├── APUnlock.ts          # { id: ui8, value: ui8, triggered: ui8 } — Shared Unlock node data
 │   ├── Events.ts            # tag components: BoardFlipEvent, LevelCompleteEvent, AvatarDestroyedEvent, P1ExitedEvent
 │   └── index.ts
 ├── /systems
 │   ├── InputSystem.ts
 │   ├── APSystem.ts
-│   ├── RoundSystem.ts
 │   ├── MovementSystem.ts
 │   ├── CollectionSystem.ts
 │   ├── PushSystem.ts
 │   ├── ThresholdSystem.ts
+│   ├── APUnlockSystem.ts
 │   ├── MatrixInsertSystem.ts
 │   ├── MatrixRotateSystem.ts
 │   ├── ScrapPoolSystem.ts
+│   ├── ResonanceSystem.ts
+│   ├── TutorialTriggerSystem.ts
 │   ├── MatrixRoutingSystem.ts
 │   ├── AbilitySystem.ts
 │   ├── CollisionSystem.ts
@@ -143,6 +147,17 @@ The repository is structured by ECS domain rather than by feature.
 ├── /registry
 │   ├── EntityRegistry.ts
 │   └── SpriteRegistry.ts
+├── /generation
+│   ├── LevelGenerator.ts    # Reverse-design generator (generative_levels.md §3)
+│   ├── LevelSolver.ts       # A*/IDA* solver + reachability core (generative_levels.md §2)
+│   ├── DifficultyModel.ts   # Difficulty scoring + target curve (generative_levels.md §4)
+│   ├── ZobristTable.ts
+│   └── Pcg32.ts
+├── /tutorial
+│   ├── concepts.ts          # ConceptId registry (tutorial_design.md §2)
+│   ├── TutorialState.ts
+│   ├── TutorialDirector.ts
+│   └── TutorialOverlay.ts
 ├── /utils
 │   ├── ConduitFaceMask.ts
 │   └── MatrixGraph.ts
@@ -196,6 +211,15 @@ export const Position = defineComponent({
   z: Types.ui8  // Dimension layer (0 or 1)
 });
 ```
+
+```typescript
+// src/components/APUnlock.ts
+export const APUnlock = defineComponent({
+  id:        Types.ui8, // unique identifier for this unlock node
+  value:     Types.ui8, // AP granted when triggered
+  triggered: Types.ui8  // 0 = available, 1 = consumed (one-time activation)
+});
+```
 ### 5.2 Handling the Dimensional Screen (Networking)
 
 * The game runs the identical deterministic ECS simulation on both clients.
@@ -208,16 +232,28 @@ The `ChatManager` routes emoji messages via a dedicated PeerJS data channel (sep
 
 ### 5.4 Level Loading (JSON)
 
-Since the game uses hand-crafted puzzles, levels are strict JSON files. A LevelLoaderSystem reads the JSON, creates the UUIDs, and attaches the components.
+Levels are strict JSON files conforming to `LevelSchema.ts` — hand-crafted for the campaign, emitted by `LevelGenerator` for generated play. `LevelLoaderSystem` reads the JSON, registers string IDs in the `EntityRegistry`, and attaches the components.
 
-```JSON
+```jsonc
 {
   "id": "level_01",
   "name": "Synaptic Awakening",
+  "initialAP": 8,                       // derived: optimalCost + margin (level_design.md §6.1)
+  "apUnlockNodes": [
+    { "id": "unlock_01", "value": 4, "hexA": { "q": 2, "r": 0 }, "hexB": { "q": -2, "r": 0 } }
+  ],
+  "thresholdEnabled": false,
+  "initialInventory": { "player0": [], "player1": [] },
+  "scrapPool": [{ "shape": 1, "rotation": 0, "base": 2 }],
   "entities": [
-    { "type": "avatar_p1", "q": 0, "r": 0, "z": 0 },
-    { "type": "conduit_straight", "q": 2, "r": -1, "z": 1 }
-  ]
+    { "type": "avatar", "id": "avatar_p1", "playerId": 0, "q": 0, "r": 2, "z": 0 },
+    { "type": "exit",   "id": "exit_p2",   "playerId": 1, "q": 0, "r": -2, "z": 1, "initiallyLocked": true }
+  ],
+  "matrix": {
+    "nodes":    [{ "id": "node_c3r0", "column": 3, "row": 0, "abilityType": 1 }],
+    "conduits": [{ "id": "matrix_col2_row0", "column": 2, "row": 0, "shape": 0, "rotation": 0, "base": 0 }]
+  },
+  "solverProof": { "optimalCost": 6, "difficulty": 1.0 }   // written by validate:levels / the generator
 }
 ```
 ## 6. Claude Code Sprint Guidelines
@@ -226,15 +262,36 @@ To maintain a stable architecture, development follows sequential, isolated spri
 
 Canonical sprint sequence:
 1. Project scaffold + game loop
-2. ECS components (all 23 components including Health, Resistances, Lethal, APPool, RoundState, Exit, Events, isTweening on Renderable)
+2. ECS components (all 23 components including Health, Resistances, Lethal, APPool, APUnlock, Exit, Events, isTweening on Renderable)
 3. Hex grid rendering (PixiJS, axial math, dimension masking)
-4. Movement + AP system (real-time shared pool, lockout, Pass action)
+4. Movement + AP system (persistent shared pool, no round lifecycle)
 5. Collection system + inventory (hidden conduit reveal on collection)
 6. DNA Matrix rendering + Insert mechanic (2 AP) + Rotate mechanic (1 AP) + Scrap Pool
-7. Matrix routing (BFS) + Ability system (Jump, Push, Phase Shift, Unlock, Fire Immunity) + CollisionSystem + PushSystem
+7. Matrix routing (BFS) + Ability system (Jump, Push, Phase Shift, Unlock, Fire Immunity) + CollisionSystem + PushSystem + APUnlockSystem
 8. Collision system (Health/Lethal/Resistances) + ThresholdSystem (Ready-toggle) + LevelTransitionSystem (Event Entities)
 9. Level loader + JSON pipeline + Levels 1–5 + Cutscene player (intro sequence)
 10. Networking (PeerJS) + emoji-only chat + lobby UI
 11. HUD + inventory panel + ability panel + Neural Collapse screen
 12. Campaign flow (sequential exit, ExitSystem) + Levels 6–10
 13. Levels 11–15 (Threshold introduction and advanced Threshold puzzles)
+14. Level solver + difficulty model + campaign validation (`validate:levels`) + solver-backed Dead End detection
+15. Level generator (endless "Deep Coma" mode, Daily Synapse) + ResonanceSystem + base glyphs
+16. Tutorial layer (The Monitor): concept registry, trigger system, overlay, "Calibration" guided script
+
+## 7. Dead End Detection
+
+The game must detect when no forward progress is possible with the current AP pool:
+
+```typescript
+// Dead End condition (evaluated after APUnlockSystem each tick):
+function isDeadEnd(world: IWorld, state: GameStateData): boolean {
+  const apEmpty = APPool.current[state.actionManagerEid] === 0;
+  const noUnlocksRemain = apUnlockQuery(world).every(
+    eid => APUnlock.triggered[eid] === 1
+  );
+  const noExitReachable = !canEitherAvatarReachExit(world, state);
+  return apEmpty && noUnlocksRemain && noExitReachable;
+}
+```
+
+When `isDeadEnd()` returns `true`, `LevelTransitionSystem` sets a `DeadEndState` flag. `RenderSystem` responds by dimming the UI and showing the Dead End indicator. This does not consume the retry — it allows a free manual restart.

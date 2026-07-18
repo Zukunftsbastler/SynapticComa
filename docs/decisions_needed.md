@@ -1,5 +1,27 @@
 # Decisions Needed — Synaptic Coma
 
+> ## ✅ Resolution Status (updated 2026-07-18, SPRINT_004)
+>
+> Andreas answered **D1: same game** — his DDG concept is design input for Synaptic Coma, not a separate project. On that basis Till resolved the open items below to unblock development; items carrying a 🔢 flag remain **open for Chris's balance review** (numbers may change, structures will not).
+>
+> | # | Resolution |
+> |---|-----------|
+> | D1 | **Same game.** Andreas's core ideas are integrated: ordered base pairing → Neuro-Resonance (`mechanics.md §4.5`); "shared mutation / every action affects everyone" → column slides + resonance re-evaluation; "abilities emerge from structure" → routing + pairing layers. |
+> | D2 | **Strictly 2 players for the MVP.** Andreas's "x players" idea is deferred; re-evaluated post-MVP. |
+> | D3 | **Option C — derived.** `initialAP = optimalCost + margin(difficulty)`, computed by the solver (`generative_levels.md §2`). 🔢 margin curve open. |
+> | D4 | **Option C — linked hex pair.** One unlock tile per dimension, linked by `id`, placed independently by the designer/generator. |
+> | D5 | **Standard: one required unlock per level; zero- and multi-unlock levels allowed** as explicit difficulty tools. Generated levels choose per difficulty tier. 🔢 |
+> | D6 | **Option B — variable per node**, defined in the level JSON (`apUnlockNodes[].value`). 🔢 |
+> | D7 | **Option C** — levels 1–5 are always Dead-End-free; from level 6 on, deliberate Dead Ends are a legitimate design tool. The solver's `deadEndDistance` metric enforces fairness. |
+> | D8 | **Option B** — a Ready button appears when the avatar stands on the threshold hex; the Monitor tutorial highlights it on first encounter. |
+> | D9 | **Option A** — voice chat is assumed and permitted; communication rules apply as an honor system. |
+> | D10 | Levels 3 and 10 redefined (see campaign table, `level_design.md §5`); full campaign gets a solver validation pass in Sprint 14. 🔢 |
+> | D11 | **Decided.** `initialAP` + `apUnlockNodes` replace `apPerRound`; conduits gain a `base` field. Schema in `digital_implementation.md §5.4`. |
+> | D12 | **Option B** — the physical version is a reference design, not a shipped product. Generative levels and the Monitor overlay are digital-only; `architecture.md` keeps physical notes as explanatory analogies. |
+> | D13 | Panels after levels 1, 3, 5, 8, 11 and 15 (arc: onset → reactivation → confrontation → emergence). Andreas leads panel concepts. |
+>
+> The original questions are preserved below for context and for Chris's review.
+
 **Purpose:** This document lists every foundational game design question that is currently unresolved, inconsistent, or not yet agreed upon by all contributors. Nothing moves to implementation until all three contributors have signed off on every item here.
 
 **Definition of Done:** All three contributors — Till, Andreas, and Chris — have explicitly agreed on each item. "Agreed" means a written reply in the pull request, a GitHub comment, or a documented outcome from a shared call. Silence is not agreement.

@@ -24,7 +24,8 @@ The ultimate goal is to navigate both avatars to their designated Nexus Hexes (e
 | Orient a Conduit before insertion | DNA Matrix | 0 — part of the Insert action | — |
 | Draw from the Scrap Pool (blind) | DNA Matrix | 1 | `ScrapPoolSystem` |
 | Rotate Source/Ability nodes | DNA Matrix | N/A — impossible, static | — |
-| Trigger Shared Unlock (both players on node) | Either | +AP gained | APUnlockSystem |
+| Trigger Shared Unlock (both players on node) | Either | +AP gained | `APUnlockSystem` |
+| Neuro-Resonance (automatic on base pairing, see §4.5) | DNA Matrix | 0 — passive; may grant AP or discounts | `ResonanceSystem` |
 
 **Key rule:** AP is a finite resource that shrinks with use and only grows through cooperation. Shared Unlock nodes are the sole mechanism for gaining AP. When AP reaches 0, the game does not reset — it pauses in a Dead End state and allows a manual restart. There is no round, no turn, and no Pass action.
 
@@ -86,12 +87,44 @@ When a conduit is ejected from a matrix column, it is placed **face-down** in a 
 | Cross (+) | Four openings, all directions | `0b1111` | Powerful wildcard; rare in levels |
 | Splitter (Y) | Three openings, asymmetric | `0b1110` (S+W+N) | Acts as a non-standard T-junction |
 
+### 4.5 Neuro-Resonance: Ordered Base Pairing (introduced Level 6+)
+
+Every Conduit Plate carries, in addition to its pipe shape, a **neurotransmitter glyph** (its "base") etched into one corner. There are four bases, each with a distinct language-agnostic icon and color:
+
+| Base | Theme | Icon |
+|------|-------|------|
+| `EX` | Glutamate (excitatory) | Outward-radiating spark |
+| `IN` | GABA (inhibitory) | Inward-collapsing ring |
+| `MOD` | Dopamine (modulating) | Ascending wave |
+| `STAB` | Serotonin (stabilizing) | Level horizon line |
+
+**The Pairing Rule (order matters):** Whenever two conduit plates sit **vertically adjacent in the same conduit column** (Column 2 or 4), the ordered pair *(upper base → lower base)* is evaluated. Exactly four ordered pairs are valid — and direction matters, mirroring DNA base pairing (`EX→IN` is not the same as `IN→EX`):
+
+| Ordered Pair (top → bottom) | Resonance | Effect |
+|------------------------------|-----------|--------|
+| `EX → IN` | **Discharge** | +1 AP surge, credited to the shared pool |
+| `IN → EX` | **Dampening** | The next Rotate action costs 0 AP |
+| `MOD → STAB` | **Clarity** | The topmost Scrap Pool plate is revealed face-up to both players until the next matrix mutation |
+| `STAB → MOD` | **Anchor** | The next Insert action costs 1 AP instead of 2 |
+
+All other combinations produce no effect.
+
+**Trigger rules:**
+* A Resonance fires **once, at the moment the pair is formed** by an Insert (column slide) or by loading the level.
+* Re-forming the *same* pair between the *same two plates* does not re-trigger it. Breaking the pair (a slide separates the plates or ejects one) re-arms the slot: a **new** pair formed there triggers normally.
+* Resonances are evaluated by `ResonanceSystem` after every matrix mutation, before routing effects are applied.
+* Rotation never changes a plate's base — the base is a property of the plate, not of its orientation.
+
+**Design intent:** Every Insert is now a **two-layer decision** — it changes the routing topology *and* rewrites the vertical base sequence of the column. Since a slide moves every plate in the column, one action can simultaneously power an ability, break a pair, and form a new one. This is the "shared mutation" principle: no matrix action is ever local.
+
+> **🔢 Balance flag (Chris):** The Discharge (+1 AP) pairing interacts directly with the AP economy (starting AP, Shared Unlock values). The generator/solver must count achievable Discharges as part of the AP budget; hand-authored levels 6–15 need a pass to confirm no unintended AP farming loop exists (Discharge re-arm requires plate ejection, which costs a 2-AP insert — net negative by design, but verify with the solver).
+
 ---
 **Technical Note:** For details on the ActionManager singleton and the implementation of the persistent AP pool logic, see the cross-reference in architecture.md.
 
 ## 5. Ability Rules
 
-Abilities are active only while an unbroken path exists on the DNA Matrix. Severing a path instantly deactivates the ability — mid-traversal consequences are intentional and irreversible within that round.
+Abilities are active only while an unbroken path exists on the DNA Matrix. Severing a path instantly deactivates the ability — mid-traversal consequences are intentional and immediate; there is no undo.
 
 ### 5.1 Jump (Icon: Rising Neuron Arc)
 **Tier 1.** When active, the avatar may spend 1 AP to move up to **2 hexes in a straight axial line**, bypassing any obstacle or chasm in the intermediate hex. The avatar must land on an empty, safe hex. Jump does not allow landing on hazard hexes.
@@ -133,6 +166,4 @@ The game has a **lethal failure state**:
 * On the first failure: the screen flashes, a language-agnostic failure icon appears (cracked wisp), and the level reloads immediately.
 * On the **second failure**: the "Neural Collapse" screen appears and the players are returned to the Level Select screen. All mid-level progress is discarded.
 
-**Soft-lock prevention:** The game detects when the remaining AP pool is 0, all inventories are empty (including the Scrap Pool), and neither avatar can reach their exit. In this state, a "Dead End" indicator appears and the players may manually trigger a level restart without spending their second retry.
-
-**Dead End State:** A Dead End is triggered when APPool.current === 0, no Shared Unlock nodes remain untriggered, and neither avatar can reach their exit. This is distinct from soft-lock. In a soft-lock, a solution exists but is unreachable. In a Dead End, no solution is reachable with current resources. The system detects this automatically and displays a "Dead End" indicator, allowing players to manually restart without consuming their single retry.
+**Dead End State:** A Dead End is triggered when `APPool.current === 0`, no Shared Unlock nodes remain untriggered, and neither avatar can reach their exit. This is distinct from a soft-lock: in a soft-lock, a solution exists but is unreachable through play; in a Dead End, no solution is reachable with current resources. The system detects the Dead End automatically and displays a language-agnostic "Dead End" indicator, allowing players to manually restart the level without consuming their single retry.

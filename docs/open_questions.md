@@ -5,8 +5,8 @@ All open design questions have been resolved. This document records each decisio
 ---
 
 ## Q1 — Turn Structure
-**Decision: Real-time shared pool with global lockout.**
-Both players spend from a single AP pool simultaneously, in any order, via verbal coordination. The round ends automatically when AP hits 0, or when a player declares a Pass (0 AP). AP resets at round start. → `mechanics.md §2`, `architecture.md`
+**Decision: Persistent shared pool with cooperative unlock — no round system.**
+Both players spend from a single AP pool simultaneously, in any order, via verbal coordination. AP does not reset. The only way to gain AP is through a Shared Unlock node (requires both players present simultaneously). When AP reaches 0 and no unlocks remain, the game enters a Dead End state allowing a free manual restart. → `mechanics.md §2`, `architecture.md`
 
 ## Q2 — AP Cost Table
 **Decision: Strict costs; abilities are free to use once routed.**
@@ -20,7 +20,7 @@ Both players spend from a single AP pool simultaneously, in any order, via verba
 | Rotate inserted conduit | 1 AP |
 | Orient conduit before insertion | 0 AP |
 | Draw from Scrap Pool (blind) | 1 AP |
-| Pass | 0 AP |
+| Trigger Shared Unlock (both players on node) | +AP (varies by node) |
 
 → `mechanics.md §2`
 

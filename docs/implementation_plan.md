@@ -1,4 +1,4 @@
-# Dimensional Nexus / Synaptic Coma — Digital Implementation Plan
+# Synaptic Coma — Digital Implementation Plan
 
 ## Foundational Design Decisions (Pre-Sprint)
 
@@ -12,14 +12,14 @@ Lockstep networking with simultaneous AP expenditure is mathematically impossibl
 
 The system pipeline runs strictly on the Host:
 ```
-InputSystem → APSystem → RoundSystem → MovementSystem → CollectionSystem →
-PushSystem → ThresholdSystem → MatrixInsertSystem → MatrixRotateSystem →
+InputSystem → APSystem → MovementSystem → CollectionSystem →
+PushSystem → ThresholdSystem → APUnlockSystem → MatrixInsertSystem → MatrixRotateSystem →
 ScrapPoolSystem → MatrixRoutingSystem → AbilitySystem → CollisionSystem →
 ExitSystem → LevelTransitionSystem → RenderSystem → NetworkSystem
 ```
 
 ### Decision 3: AP as Shared Singleton (Host-Authoritative)
-AP lives in a plain TypeScript singleton `GameState` (`{ apPool: number, apMax: number }`). **Only the Host mutates this pool.** A dedicated `APPool` singleton entity (bitECS components: `APPool { current: ui8, max: ui8 }`) mirrors this state for HUD rendering on both clients. The Guest's AP display is updated by incoming `STATE_UPDATE` messages from the Host.
+AP lives in a plain TypeScript singleton `GameState` (`{ apPool: number, apMax: number }`). **Only the Host mutates this pool.** A dedicated `APPool` singleton entity (bitECS components: `APPool { current: ui8, max: ui8 }`) mirrors this state for HUD rendering on both clients. The Guest's AP display is updated by incoming `STATE_UPDATE` messages from the Host. There is no `apMax` reset behavior — the pool is persistent and modified only by player spend actions or `APUnlockSystem` grant events. AP gained through Shared Unlocks is the only mechanism for replenishment.
 
 ### Decision 4: Conduit Pipe Connectivity Model
 Each conduit shape encodes its open faces as a bitmask over 4 cardinal directions (East, South, West, North = bits 0–3). A straight conduit horizontal = `0b0101` (E+W open). Curved NE = `0b0011` (E+N). T-junction open to E/S/W = `0b0111`. Rotation applies a bit-rotate operation. Connection is valid if and only if adjacent conduit faces are both open toward each other.
@@ -116,6 +116,13 @@ export const Exit = defineComponent({ playerId: Types.ui8 }); // which player's 
 // src/components/APPool.ts — singleton entity only
 export const APPool = defineComponent({ current: Types.ui8, max: Types.ui8 });
 
+// src/components/APUnlock.ts
+export const APUnlock = defineComponent({
+  id:        Types.ui8,
+  value:     Types.ui8,
+  triggered: Types.ui8
+});
+
 // src/components/Events.ts — tag components; created and destroyed within a single tick
 export const BoardFlipEvent    = defineComponent({});
 export const LevelCompleteEvent = defineComponent({});
@@ -129,7 +136,10 @@ export const P1ExitedEvent     = defineComponent({});
 {
   "id": "level_01",
   "name": "Synaptic Awakening",
-  "apPerRound": 4,
+  "initialAP": 8,
+  "apUnlockNodes": [
+    { "id": "unlock_01", "value": 4, "hexA": { "q": 2, "r": 0 }, "hexB": { "q": -2, "r": 0 } }
+  ],
   "thresholdEnabled": false,
   "dimensionA": {
     "gridRadius": 4,
@@ -215,10 +225,6 @@ interface ThresholdReadyMessage extends BaseMessage {
   ready: boolean;
 }
 
-interface PassMessage extends BaseMessage {
-  type: 'PASS';  // declares round end, 0 AP
-}
-
 // Host → Guest only: authoritative avatar/entity position after each mutation
 interface StateUpdateMessage {
   type:    'STATE_UPDATE';
@@ -253,7 +259,6 @@ type GameMessage =
   | RotateConduitMessage
   | DrawScrapMessage
   | ThresholdReadyMessage
-  | PassMessage
   | StateUpdateMessage
   | MatrixStateUpdateMessage
   | InventoryUpdateMessage;
@@ -420,7 +425,7 @@ export const thresholdQuery     = defineQuery([Threshold, Position]);
 
 ### Sprint 4 — Movement System and Avatar Input (Host Authority)
 
-**Goal**: Avatars move on the hex grid via keyboard. Movement costs 1 AP. `APSystem` enforces the shared pool with global lockout. Local input on the Guest client is routed to the Host for authoritative processing; the Guest never mutates ECS state directly.
+**Goal**: Avatars move on the hex grid via keyboard. Movement costs 1 AP. `APSystem` enforces the persistent shared pool — no round reset, no Pass action. Local input on the Guest client is routed to the Host for authoritative processing; the Guest never mutates ECS state directly.
 
 **Duration**: 2 days | **Depends on**: Sprint 3
 
@@ -442,7 +447,6 @@ export interface GameStateData {
   pendingInputs: GameMessage[];
   outboundMessages: GameMessage[];
   currentLevel:  string;
-  roundNumber:   number;
   thresholdState: { p1Ready: boolean; p2Ready: boolean };
   thresholdEnabled: boolean;
   phase: 'SETUP' | 'PLAYING' | 'THRESHOLD' | 'LEVEL_COMPLETE';
@@ -491,9 +495,60 @@ export function MovementSystem(world: IWorld, state: GameStateData): void {
 - Host processes inputs, decrements AP, and broadcasts `STATE_UPDATE`.
 - Guest avatar position snaps to Host-authoritative coordinates on receipt.
 - At AP=0, Host rejects all inputs; Guest sees the locked pool immediately via `STATE_UPDATE.apPool`.
-- `Pass` action (spacebar) resets AP pool; Host broadcasts updated pool.
+- The pool never resets on its own — AP only changes through spend actions and `APUnlockSystem` grants (Sprint 4b).
 - Avatars cannot enter cells with `Static` entities.
 - `APPool.current[apPoolEid]` stays in sync with `GameState.apPool` every tick on both clients.
+
+---
+
+### Sprint 4b — APUnlockSystem & Dead End Detection
+
+**Goal**: Implement the Shared Unlock mechanic. Both avatars must stand on their respective `APUnlock` nodes in the same tick to trigger the unlock. Dead End detection is implemented as a read-only evaluation after each tick.
+
+**Duration**: 1 day | **Depends on**: Sprint 4
+
+**Files to Create**:
+- `src/systems/APUnlockSystem.ts`
+- `src/components/APUnlock.ts`
+
+**Files to Modify**:
+- `src/systems/LevelTransitionSystem.ts` (add dead end detection call)
+- `src/ui/HUD.ts` (add dead end indicator)
+
+**Key Logic**:
+
+`APUnlockSystem.ts`:
+```typescript
+export function APUnlockSystem(world: IWorld, state: GameStateData): void {
+  if (state.localPlayerId !== 0) return; // Host only
+
+  const unlockNodes = apUnlockQuery(world); // defineQuery([APUnlock, Position])
+  for (let i = 0; i < unlockNodes.length; i++) {
+    const eid = unlockNodes[i];
+    if (APUnlock.triggered[eid] === 1) continue;
+
+    const q = Position.q[eid];
+    const r = Position.r[eid];
+
+    // Both players must be on this node's hex simultaneously
+    const p1OnNode = isAvatarAt(world, 0, q, r);
+    const p2OnNode = isAvatarAt(world, 1, q, r);
+
+    if (p1OnNode && p2OnNode) {
+      APPool.current[state.actionManagerEid] += APUnlock.value[eid];
+      APUnlock.triggered[eid] = 1;
+      state.outboundMessages.push({ type: 'AP_UNLOCK', unlockId: APUnlock.id[eid], newAP: APPool.current[state.actionManagerEid] });
+    }
+  }
+}
+```
+
+**Acceptance Criteria**:
+- [ ] Both avatars standing on the same Shared Unlock hex in the same tick increments `APPool.current` by the unlock's value
+- [ ] A triggered unlock node cannot be activated again (`triggered === 1` guard)
+- [ ] Guest client receives `AP_UNLOCK` message and updates HUD
+- [ ] Dead End indicator appears when AP = 0, all unlocks triggered, no exit reachable
+- [ ] Dead End allows free manual restart without consuming the retry
 
 ---
 
@@ -914,7 +969,7 @@ Handshake sequence: Host sends `HandshakeMessage { nonce, levelId, role: 1 }` �
 
 ### Sprint 11 — UI/HUD, Render Polish, and Animation
 
-**Goal**: Full HUD with AP pool, turn indicator, inventory count, and active abilities. Dimension visibility masking enforced. Movement/insertion animations via `TweenManager`.
+**Goal**: Full HUD with AP pool, inventory count, and active abilities. Dimension visibility masking enforced. Movement/insertion animations via `TweenManager`.
 
 **Duration**: 2 days | **Depends on**: Sprint 10
 
@@ -929,7 +984,7 @@ Handshake sequence: Host sends `HandshakeMessage { nonce, levelId, role: 1 }` �
 
 `TweenManager.ts` — lightweight tween pool operating on PixiJS `DisplayObject` properties only (`x`, `y`, `alpha`, `tint`). **Critical constraint**: tween state must never feed back into ECS component data. Called from `PixiDriver.flush()`, not from any ECS system. Uses `easeInOut` curve.
 
-`HUD.ts` — subscribes to `EventBus` for `AP_CHANGED`, `ROUND_CHANGED`, `ABILITY_ACTIVATED`, `ABILITY_DEACTIVATED`. Renders AP pool as filled circles. Renders active ability icons on right panel.
+`HUD.ts` — reads `APPool.current/max`, the Dead End flag, and `MatrixNode.active` states each frame (no EventBus — see Decision 7). Renders AP pool as filled vials. Renders active ability icons on right panel; shows the Dead End indicator when set.
 
 Dimension masking: PixiJS mask (`PIXI.Graphics` rectangle) applied to the hex grid container. This is a graphical mask only — ECS data for the other dimension is still simulated, just not rendered. The other dimension's grid shows as fog/silhouette.
 

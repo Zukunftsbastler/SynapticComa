@@ -1,7 +1,7 @@
 # Communication & Information Asymmetry
 
 ## 1. The Core Philosophy: The Dimensional Barrier
-To ensure genuine cooperation and eliminate the "Alpha Player" dynamic, the game relies on strict Information Asymmetry. Players inhabit different environmental realities (Dimension A and Dimension B) and have completely hidden inventories. They must coordinate their overarching goals verbally, but execute their solutions in silence.
+To ensure genuine cooperation and eliminate the "Alpha Player" dynamic, the game relies on strict Information Asymmetry. The guiding principle is: **Talk about the goal. Stay silent about the method.** Players inhabit different environmental realities (Dimension A and Dimension B) and have completely hidden inventories. They must coordinate their overarching goals verbally, but execute their solutions in silence.
 
 ## 2. Board Setup & Visibility
 
@@ -21,6 +21,9 @@ The game uses a "Talk about the Goal, Silence the Method" approach.
 * Players may freely discuss the obstacles they are facing on their Hex Grid (e.g., "I am blocked by a door with the Red Triangle icon").
 * Players may freely request specific abilities to be routed on the DNA Matrix (e.g., "I need someone to power the Jump ability so I can cross a chasm").
 * Players may negotiate the expenditure of the shared Action Point (AP) pool.
+* Players may confirm readiness at a Shared Unlock node ("I'm on the node — are you?").
+* Players may coordinate AP spending timing ("Hold on, don't spend yet — I need 2 AP for an insert").
+* Players may state the current AP level ("We're out of AP").
 
 ### 3.2 Forbidden Communication (The "How")
 * **Strict Inventory Silence:** Players may **never** discuss the shapes, orientations, or types of Conduit Plates they currently hold in their inventory, nor the ones they see on their Hex Grid.
@@ -32,3 +35,16 @@ Because communication is restricted during execution, every placement on the Mat
 * A plate can **only** be removed or shifted by inserting a new plate into that column (forcing the shift), or by spending 1 AP to rotate a plate already in place.
 * **The Scrap Pool:** When a plate is ejected from a column, it goes **face-down** into a central shared pile called the Scrap Pool. Neither player may look at the contents; the pool is known only by count. Either player may spend 1 AP to **draw one plate blind** from the pool into their private inventory.
 * This rule reinforces the silent execution principle: a player who ejects a piece they didn't intend to lose is silenced — they cannot warn their partner or describe what was lost. Their partner can draw from the pool blindly on their own action.
+
+## 5. Shared Unlock Coordination
+
+Shared Unlock nodes are visible to both players in their respective dimensions. The existence and location of an unlock node is public — players may discuss when to trigger it and whether both are in position.
+
+**Allowed:**
+- Telling your partner you have reached the Shared Unlock node in your dimension
+- Asking whether your partner is ready to trigger the unlock
+- Confirming the unlock triggered and how much AP was gained
+
+**Forbidden:**
+- Describing how you reached the unlock node (inventory used, path taken)
+- Describing what resources or conduits enabled your movement to the node
