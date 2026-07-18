@@ -3,6 +3,8 @@ export const MAX_DELTA = 200;
 
 export const MATRIX_ROWS = 5;
 export const MATRIX_COLS = 5;
+// Fallback starting AP for the dev bootstrap world (main.ts) and pre-level
+// state only. Real levels seed the persistent pool from LevelDef.initialAP.
 export const AP_DEFAULT = 4;
 
 export const CANVAS_WIDTH = 1280;

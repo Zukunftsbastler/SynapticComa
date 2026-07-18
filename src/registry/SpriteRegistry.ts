@@ -38,6 +38,9 @@ export const enum SpriteId {
   EXIT_NEXUS_A         = 19,  // Dim A Nexus Hex exit
   EXIT_NEXUS_B         = 20,  // Dim B Nexus Hex exit
   THRESHOLD_HEX        = 21,  // Threshold trigger hex
+
+  // --- Shared Unlock ---
+  AP_UNLOCK_NODE       = 22,  // Shared Unlock hex (one per dimension, paired)
 }
 
 // Maps SpriteId to the public asset path.
@@ -65,4 +68,5 @@ export const SPRITE_PATHS: Record<SpriteId, string> = {
   [SpriteId.EXIT_NEXUS_A]:         '/sprites/exit_nexus_a.webp',
   [SpriteId.EXIT_NEXUS_B]:         '/sprites/exit_nexus_b.webp',
   [SpriteId.THRESHOLD_HEX]:        '/sprites/threshold_hex.webp',
+  [SpriteId.AP_UNLOCK_NODE]:       '/sprites/ap_unlock_node.webp',
 };

@@ -11,7 +11,7 @@ import {
   Threshold, Static, PhaseBarrier,
   Exit,
   BoardFlipEvent, LevelCompleteEvent, AvatarDestroyedEvent, P1ExitedEvent,
-  APPool,
+  APPool, APUnlock,
 } from '@/components';
 
 export const renderableQuery    = defineQuery([Position, Renderable, Dimension]);
@@ -25,6 +25,7 @@ export const thresholdQuery     = defineQuery([Threshold, Position]);
 export const staticQuery        = defineQuery([Static, Position]);
 export const exitQuery          = defineQuery([Exit, Position]);
 export const apPoolQuery        = defineQuery([APPool]);
+export const apUnlockQuery      = defineQuery([APUnlock, Position]);
 
 export const pushableQuery       = defineQuery([Pushable, Position]);
 export const lethalQuery         = defineQuery([Lethal, Position]);

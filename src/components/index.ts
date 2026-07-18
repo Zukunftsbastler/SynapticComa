@@ -16,7 +16,7 @@ export { Static }          from './Static';
 export { PhaseBarrier }    from './PhaseBarrier';
 export { Exit }            from './Exit';
 export { APPool }          from './APPool';
-export { RoundState }      from './RoundState';
+export { APUnlock }        from './APUnlock';
 export {
   BoardFlipEvent,
   LevelCompleteEvent,

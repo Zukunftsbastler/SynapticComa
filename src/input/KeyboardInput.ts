@@ -9,7 +9,7 @@
 //   for NetworkSystem to forward to the Host. The Guest never mutates ECS state.
 
 import { GameState } from '@/state/GameState';
-import type { MoveAvatarMessage, PassMessage } from '@/network/messages';
+import type { MoveAvatarMessage } from '@/network/messages';
 
 // Maps KeyboardEvent.key → axial [dq, dr] delta for flat-top hex grid.
 const HEX_KEY_MAP: Record<string, [number, number]> = {
@@ -56,24 +56,7 @@ export function initKeyboardInput(getAvatarEntityId: () => string): void {
         // Guest: route to Host via NetworkSystem
         GameState.outboundMessages.push(msg);
       }
-      return;
     }
-
-    // ── Pass (spacebar) — declares round end, 0 AP cost ────────────────────
-    if (e.code === 'Space') {
-      e.preventDefault();
-      const msg: PassMessage = {
-        type:     'PASS',
-        seq:      GameState.outSeq++,
-        senderId: GameState.localPlayerId,
-        tick:     0,
-      };
-
-      if (GameState.localPlayerId === 0) {
-        GameState.pendingInputs.push(msg);
-      } else {
-        GameState.outboundMessages.push(msg);
-      }
-    }
+    // No Pass action exists: the AP pool is persistent (mechanics.md §1).
   });
 }

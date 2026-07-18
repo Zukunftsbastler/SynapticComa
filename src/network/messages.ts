@@ -1,7 +1,7 @@
 // All network message types for Synaptic Coma.
 // Guest → Host: MOVE_AVATAR, INSERT_CONDUIT, ROTATE_CONDUIT, DRAW_SCRAP,
-//               THRESHOLD_READY, PASS
-// Host → Guest: STATE_UPDATE, MATRIX_STATE_UPDATE, INVENTORY_UPDATE
+//               THRESHOLD_READY
+// Host → Guest: STATE_UPDATE, MATRIX_STATE_UPDATE, INVENTORY_UPDATE, AP_UNLOCK
 // Both → Both (separate channel): CHAT
 
 export interface BaseMessage {
@@ -44,8 +44,12 @@ export interface ThresholdReadyMessage extends BaseMessage {
   ready: boolean;
 }
 
-export interface PassMessage extends BaseMessage {
-  type: 'PASS';
+// Host → Guest only — a Shared Unlock fired; Guest syncs pool and marks the
+// node pair triggered in its local world (APUnlockSystem consumes this).
+export interface ApUnlockMessage {
+  type:     'AP_UNLOCK';
+  unlockId: number;
+  newAP:    number;
 }
 
 // Host → Guest only
@@ -94,7 +98,7 @@ export type GameMessage =
   | RotateConduitMessage
   | DrawScrapMessage
   | ThresholdReadyMessage
-  | PassMessage
+  | ApUnlockMessage
   | StateUpdateMessage
   | MatrixStateUpdateMessage
   | InventoryUpdateMessage;

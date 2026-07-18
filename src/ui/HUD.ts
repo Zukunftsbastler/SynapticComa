@@ -2,8 +2,10 @@
 // (called from main.ts render loop). No EventBus — read GameState directly
 // (Decision 7: no EventBus in this codebase).
 //
-// Layout: AP pool circles (top-left) | round counter (top-center) |
+// Layout: AP pool vials (top-left) | Dead End indicator (top-center) |
 //         active ability icons (top-right)
+// The AP pool is persistent: it never resets, and Shared Unlock surges can push
+// it above the level's starting value (the vial row grows to match).
 // Art direction: medical macabre palette from docs/art_and_ui.md.
 
 import { GameState } from '@/state/GameState';
@@ -22,7 +24,7 @@ const ABILITY_LABELS: Partial<Record<AbilityType, string>> = {
 export class HUD {
   private el:         HTMLElement;
   private apRow:      HTMLElement;
-  private roundEl:    HTMLElement;
+  private deadEndEl:  HTMLElement;
   private abilityEl:  HTMLElement;
 
   constructor(container: HTMLElement) {
@@ -36,14 +38,19 @@ export class HUD {
     this.apRow = document.createElement('div');
     this.apRow.style.cssText = 'display:flex;gap:6px;align-items:center;';
 
-    this.roundEl = document.createElement('div');
-    this.roundEl.style.cssText = 'color:#c8a87c;font-size:0.85rem;letter-spacing:0.1em;';
+    this.deadEndEl = document.createElement('div');
+    this.deadEndEl.style.cssText = [
+      'color:#8a2020;font-size:0.85rem;letter-spacing:0.15em;',
+      'border:1px solid #4a1010;padding:2px 10px;display:none;',
+      'background:#120404;',
+    ].join('');
+    this.deadEndEl.textContent = '⊘ DEAD END';
 
     this.abilityEl = document.createElement('div');
     this.abilityEl.style.cssText = 'display:flex;gap:6px;align-items:center;';
 
     this.el.appendChild(this.apRow);
-    this.el.appendChild(this.roundEl);
+    this.el.appendChild(this.deadEndEl);
     this.el.appendChild(this.abilityEl);
     container.appendChild(this.el);
   }
@@ -51,14 +58,17 @@ export class HUD {
   /** Call each render frame to sync display with current GameState. */
   update(): void {
     this.renderAP();
-    this.renderRound();
+    this.renderDeadEnd();
     this.renderAbilities();
   }
 
   private renderAP(): void {
     const { apPool, apMax } = GameState;
+    // The pool is persistent and can surge above the starting value — the
+    // vial row grows with the high-water mark (never a "round reset" refill).
+    const vials = Math.max(apMax, apPool);
     const circles: string[] = [];
-    for (let i = 0; i < apMax; i++) {
+    for (let i = 0; i < vials; i++) {
       const filled = i < apPool;
       circles.push(
         `<span style="width:14px;height:14px;border-radius:50%;display:inline-block;` +
@@ -70,8 +80,11 @@ export class HUD {
       circles.join('');
   }
 
-  private renderRound(): void {
-    this.roundEl.textContent = `ROUND ${GameState.roundNumber}`;
+  // Dead End: subtle, language-agnostic-adjacent indicator (art_and_ui.md §5 —
+  // the board does not flash or alarm; the silence communicates the state).
+  private renderDeadEnd(): void {
+    this.deadEndEl.style.display = GameState.deadEnd ? 'block' : 'none';
+    this.el.style.opacity = GameState.deadEnd ? '0.85' : '1';
   }
 
   private renderAbilities(): void {

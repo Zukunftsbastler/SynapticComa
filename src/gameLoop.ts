@@ -4,7 +4,7 @@ import { FIXED_TIMESTEP, MAX_DELTA } from '@/constants';
 import { RenderSystem } from '@/systems/RenderSystem';
 import { InputSystem } from '@/systems/InputSystem';
 import { APSystem } from '@/systems/APSystem';
-import { RoundSystem } from '@/systems/RoundSystem';
+import { APUnlockSystem } from '@/systems/APUnlockSystem';
 import { MovementSystem } from '@/systems/MovementSystem';
 import { CollectionSystem } from '@/systems/CollectionSystem';
 import { MatrixInsertSystem } from '@/systems/MatrixInsertSystem';
@@ -35,6 +35,13 @@ export function setDriver(driver: PixiDriver): void {
   _driver = driver;
 }
 
+// Optional per-frame UI hook (HUD polling) — runs after RenderSystem each frame.
+let _uiHook: (() => void) | null = null;
+
+export function setUiHook(hook: () => void): void {
+  _uiHook = hook;
+}
+
 let accumulator = 0;
 let lastTime = 0;
 
@@ -43,7 +50,6 @@ function runSystems(w: IWorld): void {
   // Systems that are Host-only guard themselves internally.
   InputSystem(w, GameState);
   APSystem(w, GameState);
-  RoundSystem(w, GameState);
   MatrixRoutingSystem(w);
   AbilitySystem(w);
   MovementSystem(w, GameState);
@@ -52,6 +58,7 @@ function runSystems(w: IWorld): void {
   CollisionSystem(w, GameState);
   ExitSystem(w, GameState);
   ThresholdSystem(w, GameState);
+  APUnlockSystem(w, GameState);
   MatrixInsertSystem(w, GameState);
   MatrixRotateSystem(w, GameState);
   ScrapPoolSystem(w, GameState);
@@ -63,6 +70,7 @@ function renderFrame(w: IWorld): void {
   if (_driver) {
     RenderSystem(w, _driver, GameState.localPlayerId);
   }
+  if (_uiHook) _uiHook();
 }
 
 function tick(timestamp: number): void {

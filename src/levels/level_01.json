@@ -1,21 +1,79 @@
 {
   "id": "level_01",
   "name": "Tutorial: Movement",
+  "initialAP": 14,
+  "apUnlockNodes": [
+    {
+      "id": "unlock_01",
+      "value": 4,
+      "hexA": {
+        "q": -1,
+        "r": 1
+      },
+      "hexB": {
+        "q": -1,
+        "r": 1
+      }
+    }
+  ],
   "thresholdEnabled": false,
-  "initialInventory": { "player0": [], "player1": [] },
+  "initialInventory": {
+    "player0": [],
+    "player1": []
+  },
   "scrapPool": [],
   "entities": [
-    { "type": "avatar",    "id": "avatar_p1",   "playerId": 0, "q": 0, "r": 2,  "z": 0 },
-    { "type": "avatar",    "id": "avatar_p2",   "playerId": 1, "q": 0, "r": 2,  "z": 1 },
-    { "type": "exit",      "id": "exit_p1",     "playerId": 0, "q": 0, "r": -2, "z": 0 },
-    { "type": "exit",      "id": "exit_p2",     "playerId": 1, "q": 0, "r": -2, "z": 1, "initiallyLocked": true }
+    {
+      "type": "avatar",
+      "id": "avatar_p1",
+      "playerId": 0,
+      "q": 0,
+      "r": 2,
+      "z": 0
+    },
+    {
+      "type": "avatar",
+      "id": "avatar_p2",
+      "playerId": 1,
+      "q": 0,
+      "r": 2,
+      "z": 1
+    },
+    {
+      "type": "exit",
+      "id": "exit_p1",
+      "playerId": 0,
+      "q": 0,
+      "r": -2,
+      "z": 0
+    },
+    {
+      "type": "exit",
+      "id": "exit_p2",
+      "playerId": 1,
+      "q": 0,
+      "r": -2,
+      "z": 1,
+      "initiallyLocked": true
+    }
   ],
   "matrix": {
     "nodes": [
-      { "id": "node_c3r0", "column": 3, "row": 0, "abilityType": 1 }
+      {
+        "id": "node_c3r0",
+        "column": 3,
+        "row": 0,
+        "abilityType": 1
+      }
     ],
     "conduits": [
-      { "id": "matrix_col2_row0", "column": 2, "row": 0, "shape": 0, "rotation": 0 }
+      {
+        "id": "matrix_col2_row0",
+        "column": 2,
+        "row": 0,
+        "shape": 0,
+        "rotation": 0
+      }
     ]
   }
 }

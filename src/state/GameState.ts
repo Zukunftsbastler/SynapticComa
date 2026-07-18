@@ -15,7 +15,9 @@ export interface GameStateData {
   pendingInputs:    GameMessage[];
   outboundMessages: GameMessage[];
   currentLevel:     string;
-  roundNumber:      number;
+  // True while the Dead End condition holds: AP = 0, no untriggered Shared
+  // Unlocks remain, and neither avatar can reach its exit (mechanics.md §7).
+  deadEnd:          boolean;
   thresholdState:   { p1Ready: boolean; p2Ready: boolean };
   thresholdEnabled: boolean;
   phase:            'SETUP' | 'PLAYING' | 'THRESHOLD' | 'LEVEL_COMPLETE';
@@ -39,7 +41,7 @@ function makeInitialState(): GameStateData {
     pendingInputs:    [],
     outboundMessages: [],
     currentLevel:     '',
-    roundNumber:      1,
+    deadEnd:          false,
     thresholdState:   { p1Ready: false, p2Ready: false },
     thresholdEnabled: false,
     phase:            'SETUP',

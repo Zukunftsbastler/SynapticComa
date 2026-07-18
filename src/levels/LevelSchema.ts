@@ -87,9 +87,28 @@ export interface ScrapPlateDef {
   rotation: number;
 }
 
+/**
+ * A Shared Unlock pair (decisions_needed.md D4, option C): one hex per
+ * dimension, linked by `id`. Both avatars must occupy their node in the same
+ * tick; the pair then grants `value` AP once (mechanics.md §2).
+ */
+export interface ApUnlockNodeDef {
+  id: string;
+  value: number;
+  hexA: { q: number; r: number };
+  hexB: { q: number; r: number };
+}
+
 export interface LevelDef {
   id: string;
   name: string;
+  /**
+   * Starting AP for the persistent pool — never resets during play.
+   * Design contract: initialAP = optimalCost + margin (level_design.md §6.1).
+   * Values are provisional until the Sprint-14 solver verifies them.
+   */
+  initialAP: number;
+  apUnlockNodes: ApUnlockNodeDef[];
   thresholdEnabled: boolean;
   initialInventory: {
     player0: InventoryConduitDef[];

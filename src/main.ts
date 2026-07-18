@@ -1,12 +1,13 @@
 import { Application } from 'pixi.js';
 import { addEntity, addComponent } from 'bitecs';
-import { startLoop, world, setDriver } from '@/gameLoop';
+import { startLoop, world, setDriver, setUiHook } from '@/gameLoop';
 import { PixiDriver } from '@/rendering/PixiDriver';
 import { hexesInRadius } from '@/rendering/HexMath';
 import {
   Position, Renderable, Dimension, Avatar, MatrixNode,
-  Movable, APPool, Static, Collectible, Conduit,
+  Movable, APPool, APUnlock, Static, Collectible, Conduit,
 } from '@/components';
+import { HUD } from '@/ui/HUD';
 import { entityRegistry } from '@/registry/EntityRegistry';
 import { registerForCollection } from '@/systems/CollectionSystem';
 import { inventory } from '@/state/InventoryState';
@@ -155,6 +156,26 @@ async function main(): Promise<void> {
     registerForCollection(c.key, eid);
   }
 
+  // ── Shared Unlock test pair at (-1, 1) in both dimensions ────────────────
+  for (const z of [0, 1] as const) {
+    const eid = addEntity(world);
+    addComponent(world, Position,   eid);
+    addComponent(world, Renderable, eid);
+    addComponent(world, Dimension,  eid);
+    addComponent(world, APUnlock,   eid);
+    Position.q[eid]          = -1;
+    Position.r[eid]          = 1;
+    Position.z[eid]          = z;
+    Dimension.layer[eid]     = z;
+    APUnlock.id[eid]         = 1;
+    APUnlock.value[eid]      = 4;
+    APUnlock.triggered[eid]  = 0;
+    Renderable.spriteId[eid] = SpriteId.AP_UNLOCK_NODE;
+    Renderable.visible[eid]  = 1;
+    Renderable.layer[eid]    = 0;
+    entityRegistry.register(`unlock_01_${z === 0 ? 'a' : 'b'}`, eid);
+  }
+
   // ── Debug: F1 prints inventory counts to console ─────────────────────────
   window.addEventListener('keydown', (e) => {
     if (e.key === 'F1') {
@@ -220,6 +241,10 @@ async function main(): Promise<void> {
   // Hold the reference so destroy() can be called on level reload.
   const _matrixUI = new MatrixUI(matrixOrigin.x, matrixOrigin.y);
   // Usage: _matrixUI.destroy() before calling loadLevel() in Sprint 9.
+
+  // ── HUD (AP vials, Dead End indicator, ability badges) ───────────────────
+  const hud = new HUD(document.body);
+  setUiHook(() => hud.update());
 
   startLoop();
 }

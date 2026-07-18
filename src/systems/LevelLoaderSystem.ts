@@ -27,7 +27,7 @@ import { createExit, createThreshold, createWall } from '@/entities/ExitFactory'
 import {
   createSourceNodes, createAbilityNode, createMatrixConduit,
 } from '@/entities/MatrixNodeFactory';
-import { AP_DEFAULT } from '@/constants';
+import { createApUnlockPair } from '@/entities/ApUnlockFactory';
 import type { LevelDef, EntityDef } from '@/levels/LevelSchema';
 import type { ConduitShape } from '@/types';
 
@@ -82,12 +82,19 @@ function populateWorld(world: IWorld, def: LevelDef): void {
     createMatrixConduit(world, conduitDef);
   }
 
-  // Singleton APPool entity.
+  // Shared Unlock pairs — the only AP-gain mechanism (mechanics.md §2).
+  def.apUnlockNodes.forEach((unlockDef, i) => {
+    createApUnlockPair(world, unlockDef, i + 1);
+  });
+
+  // Singleton APPool entity — persistent pool seeded from the level's initialAP.
   const apEid = addEntity(world);
   addComponent(world, APPool, apEid);
-  APPool.current[apEid] = AP_DEFAULT;
-  APPool.max[apEid]     = AP_DEFAULT;
+  APPool.current[apEid] = def.initialAP;
+  APPool.max[apEid]     = def.initialAP;
   GameState.apPoolEid   = apEid;
+  GameState.apPool      = def.initialAP;
+  GameState.apMax       = def.initialAP;
 
   // Populate initial inventory.
   inventory.player0 = def.initialInventory.player0.map(c => ({

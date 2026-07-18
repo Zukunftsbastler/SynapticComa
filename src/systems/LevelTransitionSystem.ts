@@ -30,6 +30,7 @@ import {
   exitQuery,
 } from '@/queries';
 import type { GameStateData } from '@/state/GameState';
+import { isDeadEnd } from '@/systems/deadEnd';
 
 export function LevelTransitionSystem(world: IWorld, state: GameStateData): void {
   // ── BoardFlipEvent ─────────────────────────────────────────────────────────
@@ -59,15 +60,24 @@ export function LevelTransitionSystem(world: IWorld, state: GameStateData): void
     executeLevelComplete(state);
     for (let i = 0; i < completes.length; i++) removeEntity(world, completes[i]);
   }
+
+  // ── Dead End evaluation (read-only; runs on both clients) ─────────────────
+  // Sets the flag for RenderSystem/HUD; a Dead End allows a free manual
+  // restart without consuming the retry (mechanics.md §7).
+  const dead = isDeadEnd(world, state);
+  if (dead && !state.deadEnd) {
+    console.debug('[LevelTransitionSystem] Dead End reached — free restart available.');
+  }
+  state.deadEnd = dead;
 }
 
 // ── Effect helpers ────────────────────────────────────────────────────────────
 
-function executeBoardFlip(state: GameStateData): void {
+function executeBoardFlip(_state: GameStateData): void {
   // Full board-flip effect (hazard swap, dimension transition) implemented in
-  // Sprint 9 when level JSON is available. For now: transition to next round.
-  state.roundNumber += 1;
-  console.debug(`[LevelTransitionSystem] Board flip — round ${state.roundNumber}`);
+  // Sprint 9 when level JSON is available. The Matrix and AP pool persist
+  // across the flip (level_design.md §4.2).
+  console.debug('[LevelTransitionSystem] Board flip.');
 }
 
 function executeAvatarDestroyed(state: GameStateData): void {
