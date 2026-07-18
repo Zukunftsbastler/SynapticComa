@@ -1,7 +1,7 @@
 {
   "id": "level_01",
   "name": "Tutorial: Movement",
-  "initialAP": 14,
+  "initialAP": 8,
   "apUnlockNodes": [
     {
       "id": "unlock_01",

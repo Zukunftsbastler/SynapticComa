@@ -1,7 +1,7 @@
 {
   "id": "level_09",
   "name": "Forced Rotation",
-  "initialAP": 14,
+  "initialAP": 8,
   "apUnlockNodes": [
     {
       "id": "unlock_01",

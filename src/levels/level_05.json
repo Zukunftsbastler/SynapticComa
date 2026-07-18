@@ -1,7 +1,7 @@
 {
   "id": "level_05",
   "name": "Shared Routing",
-  "initialAP": 14,
+  "initialAP": 12,
   "apUnlockNodes": [
     {
       "id": "unlock_01",

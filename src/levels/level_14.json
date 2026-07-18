@@ -1,7 +1,7 @@
 {
   "id": "level_14",
   "name": "Threshold at Low AP",
-  "initialAP": 14,
+  "initialAP": 7,
   "apUnlockNodes": [
     {
       "id": "unlock_01",

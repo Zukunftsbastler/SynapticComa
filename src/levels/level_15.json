@@ -1,7 +1,7 @@
 {
   "id": "level_15",
   "name": "Master Set Teaser",
-  "initialAP": 16,
+  "initialAP": 8,
   "apUnlockNodes": [
     {
       "id": "unlock_01",

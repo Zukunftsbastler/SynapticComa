@@ -1,7 +1,7 @@
 {
   "id": "level_13",
   "name": "Critical Rotation",
-  "initialAP": 16,
+  "initialAP": 7,
   "apUnlockNodes": [
     {
       "id": "unlock_01",

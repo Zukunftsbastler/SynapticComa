@@ -1,11 +1,11 @@
 {
   "id": "level_10",
   "name": "Tight Budget",
-  "initialAP": 12,
+  "initialAP": 6,
   "apUnlockNodes": [
     {
       "id": "unlock_01",
-      "value": 4,
+      "value": 2,
       "hexA": {
         "q": -1,
         "r": 1

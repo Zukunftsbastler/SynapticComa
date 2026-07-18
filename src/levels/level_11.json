@@ -1,7 +1,7 @@
 {
   "id": "level_11",
   "name": "Threshold Tutorial",
-  "initialAP": 16,
+  "initialAP": 9,
   "apUnlockNodes": [
     {
       "id": "unlock_01",
