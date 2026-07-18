@@ -32,6 +32,7 @@ import { InventoryPanel } from '@/ui/InventoryPanel';
 import { AbilityPanel } from '@/ui/AbilityPanel';
 import { MatrixUI } from '@/ui/MatrixUI';
 import { LevelCompleteScreen, NeuralCollapseScreen } from '@/ui/LevelCompleteScreen';
+import { MonitorStrip } from '@/ui/MonitorStrip';
 import { CANVAS_WIDTH, CANVAS_HEIGHT } from '@/constants';
 
 let driver:    PixiDriver;
@@ -102,10 +103,17 @@ function startSession(result: LobbyResult): void {
   const hud       = new HUD(document.body);
   const invPanel  = new InventoryPanel(document.body);
   const abilities = new AbilityPanel(document.body);
+  const monitor   = new MonitorStrip(document.body, networked);
   setUiHook(() => {
+    // Local mode: when P1 dissolves into the Nexus, hand control to P2 so the
+    // player is never left staring at an empty board.
+    if (!networked && GameState.p1HasExited && GameState.viewPlayerId === 0) {
+      GameState.viewPlayerId = 1;
+    }
     hud.update();
     invPanel.update();
     abilities.update();
+    monitor.update();
     watchGamePhase();
   });
 

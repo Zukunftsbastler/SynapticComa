@@ -109,6 +109,8 @@ export interface LevelDef {
    */
   initialAP: number;
   apUnlockNodes: ApUnlockNodeDef[];
+  /** Hex-grid radius per dimension (default 3). Movement is bounded to it. */
+  gridRadius?: number;
   thresholdEnabled: boolean;
   initialInventory: {
     player0: InventoryConduitDef[];

@@ -51,6 +51,7 @@ interface StaticLevel {
   unlocks:      { value: number; a: { q: number; r: number }; b: { q: number; r: number } }[];
   abilityCells: { col: 2 | 4; row: number; abilityType: number }[]; // 0-indexed cols 2/4 = matrix cols 3/5
   budget:       number;                        // initialAP + Σ unlock values
+  gridRadius:   number;                        // board boundary (MovementSystem mirror)
 }
 
 // ── Mutable search state ─────────────────────────────────────────────────────
@@ -167,6 +168,7 @@ function isBlocked(
   level: StaticLevel, abilities: Set<number>, state: SState,
   z: number, q: number, r: number, forLanding: boolean,
 ): boolean {
+  if (hexDistance(0, 0, q, r) > level.gridRadius) return true; // board edge
   const info = level.hexes.get(hexKey(z, q, r));
   // P2's exit is Static until P1 has exited (sequential exit rule).
   if (z === 1 && q === level.exits[1].q && r === level.exits[1].r && state.p1 !== null) {
@@ -427,7 +429,8 @@ function buildStaticLevel(def: LevelDef): StaticLevel {
     .map(n => ({ col: (n.column === 3 ? 2 : 4) as 2 | 4, row: n.row, abilityType: n.abilityType }));
 
   const budget = def.initialAP + unlocks.reduce((a, u) => a + u.value, 0);
-  return { hexes, exits, collectibles, unlocks, abilityCells, budget };
+  const gridRadius = def.gridRadius ?? 3;
+  return { hexes, exits, collectibles, unlocks, abilityCells, budget, gridRadius };
 }
 
 function buildStartState(def: LevelDef): SState {

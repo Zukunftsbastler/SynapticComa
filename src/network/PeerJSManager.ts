@@ -16,8 +16,24 @@ import type { GameMessage, HandshakeMessage, ChatMessage } from '@/network/messa
 
 export type AnyMessage = GameMessage | HandshakeMessage | ChatMessage;
 
+// Room codes use an unambiguous alphabet (no 0/O, 1/I) and map onto a
+// deterministic PeerJS id: the Host claims `sycoma-<code>` at the broker, and
+// the Guest connects to exactly that id. (The previous implementation showed
+// the first 6 chars of a *random* broker id as the "code" — a Guest connecting
+// to that fragment could never find the real peer.)
+const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+const CODE_PREFIX   = 'sycoma-';
+
+function generateRoomCode(): string {
+  let code = '';
+  for (let i = 0; i < 6; i++) {
+    code += CODE_ALPHABET[Math.floor(Math.random() * CODE_ALPHABET.length)];
+  }
+  return code;
+}
+
 export class PeerJSManager {
-  private peer: Peer;
+  private peer: Peer | null = null;
   private mainConn:   DataConnection | null = null;
   private chatConn:   DataConnection | null = null;
 
@@ -25,16 +41,16 @@ export class PeerJSManager {
   private onChatCallback:    (msg: ChatMessage) => void = () => {};
   private onDisconnectCallback: () => void = () => {};
 
-  constructor(options?: ConstructorParameters<typeof Peer>[1]) {
-    this.peer = new Peer(options ?? {});
-  }
-
-  /** Host: open peer, return 6-char uppercase room code. */
+  /** Host: claim a deterministic room id at the broker, return the code. */
   hostGame(): Promise<string> {
+    const code = generateRoomCode();
+    this.peer = new Peer(CODE_PREFIX + code.toLowerCase());
+    const peer = this.peer;
     return new Promise((resolve, reject) => {
-      this.peer.on('open', id => resolve(id.slice(0, 6).toUpperCase()));
-      this.peer.on('error', reject);
-      this.peer.on('connection', conn => {
+      const timer = setTimeout(() => reject(new Error('Signaling server timeout')), 15000);
+      peer.on('open', () => { clearTimeout(timer); resolve(code); });
+      peer.on('error', err => { clearTimeout(timer); reject(err); });
+      peer.on('connection', conn => {
         if (conn.label === 'chat') {
           this.chatConn = conn;
           this.setupChatConnection(conn);
@@ -46,28 +62,36 @@ export class PeerJSManager {
     });
   }
 
-  /** Guest: connect to host's room code. */
+  /** Guest: connect to the Host's deterministic room id. */
   joinGame(code: string): Promise<void> {
-    const peerId = code.toLowerCase();
+    const hostId = CODE_PREFIX + code.trim().toLowerCase();
+    this.peer = new Peer();
+    const peer = this.peer;
     return new Promise((resolve, reject) => {
-      this.mainConn = this.peer.connect(peerId, { label: 'main', reliable: true });
-      this.chatConn = this.peer.connect(peerId, { label: 'chat', reliable: true });
+      const timer = setTimeout(() => reject(new Error('Connection timeout')), 15000);
+      peer.on('error', err => { clearTimeout(timer); reject(err); });
+      peer.on('open', () => {
+        this.mainConn = peer.connect(hostId, { label: 'main', reliable: true });
+        this.chatConn = peer.connect(hostId, { label: 'chat', reliable: true });
 
-      let mainOpen = false;
-      let chatOpen = false;
-      const tryResolve = () => { if (mainOpen && chatOpen) resolve(); };
+        let mainOpen = false;
+        let chatOpen = false;
+        const tryResolve = () => {
+          if (mainOpen && chatOpen) { clearTimeout(timer); resolve(); }
+        };
 
-      this.mainConn.on('open', () => {
-        mainOpen = true;
-        this.setupMainConnection(this.mainConn!);
-        tryResolve();
+        this.mainConn.on('open', () => {
+          mainOpen = true;
+          this.setupMainConnection(this.mainConn!);
+          tryResolve();
+        });
+        this.chatConn.on('open', () => {
+          chatOpen = true;
+          this.setupChatConnection(this.chatConn!);
+          tryResolve();
+        });
+        this.mainConn.on('error', err => { clearTimeout(timer); reject(err); });
       });
-      this.chatConn.on('open', () => {
-        chatOpen = true;
-        this.setupChatConnection(this.chatConn!);
-        tryResolve();
-      });
-      this.mainConn.on('error', reject);
     });
   }
 

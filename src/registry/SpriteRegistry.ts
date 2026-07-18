@@ -41,6 +41,9 @@ export const enum SpriteId {
 
   // --- Shared Unlock ---
   AP_UNLOCK_NODE       = 22,  // Shared Unlock hex (one per dimension, paired)
+
+  // --- Walls ---
+  WALL_HEX             = 23,  // solid impassable hex
 }
 
 // Maps SpriteId to the public asset path.
@@ -69,4 +72,5 @@ export const SPRITE_PATHS: Record<SpriteId, string> = {
   [SpriteId.EXIT_NEXUS_B]:         '/sprites/exit_nexus_b.webp',
   [SpriteId.THRESHOLD_HEX]:        '/sprites/threshold_hex.webp',
   [SpriteId.AP_UNLOCK_NODE]:       '/sprites/ap_unlock_node.webp',
+  [SpriteId.WALL_HEX]:             '/sprites/wall_hex.webp',
 };

@@ -19,6 +19,12 @@ export function hexCorners(cx: number, cy: number, S: number): [number, number][
 
 // The 6 axial neighbor directions for a flat-top hex grid.
 // Order: E, NE, NW, W, SW, SE
+/** Axial hex distance between two cells. */
+export function hexDistance(aq: number, ar: number, bq: number, br: number): number {
+  const dq = aq - bq, dr = ar - br;
+  return (Math.abs(dq) + Math.abs(dr) + Math.abs(dq + dr)) / 2;
+}
+
 export const HEX_DIRECTIONS: [number, number][] = [
   [ 1,  0],
   [ 1, -1],

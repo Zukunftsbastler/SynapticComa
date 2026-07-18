@@ -22,6 +22,8 @@ import {
 } from '@/components';
 import { staticQuery, phaseBarrierQuery, pushableQuery } from '@/queries';
 import { entityRegistry } from '@/registry/EntityRegistry';
+import { hexDistance } from '@/rendering/HexMath';
+import { GameState } from '@/state/GameState';
 import type { GameStateData } from '@/state/GameState';
 import { abilityFlags } from '@/systems/AbilitySystem';
 import type { MoveAvatarMessage, StateUpdateMessage } from '@/network/messages';
@@ -42,7 +44,11 @@ function pushableAt(world: IWorld, tq: number, tr: number, tz: number): number {
 
 // Checks whether (tq, tr, tz) is freely passable this tick.
 // PhaseBarrier passability depends on phaseShiftActive flag.
+// The board boundary (GameState.gridRadius) is a hard wall — wisps never
+// leave the visible hex grid.
 function isHexPassable(world: IWorld, tq: number, tr: number, tz: number): boolean {
+  if (hexDistance(0, 0, tq, tr) > GameState.gridRadius) return false;
+
   const statics = staticQuery(world);
   for (let i = 0; i < statics.length; i++) {
     const eid = statics[i];

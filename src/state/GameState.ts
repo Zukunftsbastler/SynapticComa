@@ -24,6 +24,8 @@ export interface GameStateData {
   // True while the Dead End condition holds: AP = 0, no untriggered Shared
   // Unlocks remain, and neither avatar can reach its exit (mechanics.md §7).
   deadEnd:          boolean;
+  // Board radius of the current level — movement never leaves this boundary.
+  gridRadius:       number;
   thresholdState:   { p1Ready: boolean; p2Ready: boolean };
   thresholdEnabled: boolean;
   phase:            'SETUP' | 'PLAYING' | 'THRESHOLD' | 'LEVEL_COMPLETE';
@@ -49,6 +51,7 @@ function makeInitialState(): GameStateData {
     outboundMessages: [],
     currentLevel:     '',
     deadEnd:          false,
+    gridRadius:       3,
     thresholdState:   { p1Ready: false, p2Ready: false },
     thresholdEnabled: false,
     phase:            'SETUP',

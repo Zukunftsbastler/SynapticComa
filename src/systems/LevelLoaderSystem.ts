@@ -13,7 +13,9 @@
 import { createWorld, deleteWorld } from 'bitecs';
 import type { IWorld } from 'bitecs';
 import { addEntity, addComponent } from 'bitecs';
-import { APPool } from '@/components';
+import { APPool, Position, Renderable, Dimension } from '@/components';
+import { hexesInRadius } from '@/rendering/HexMath';
+import { SpriteId } from '@/registry/SpriteRegistry';
 import { entityRegistry } from '@/registry/EntityRegistry';
 import { clearCollectionRegistry } from '@/systems/CollectionSystem';
 import { inventory } from '@/state/InventoryState';
@@ -64,6 +66,27 @@ function dispatchEntityFactory(world: IWorld, def: EntityDef): void {
 }
 
 function populateWorld(world: IWorld, def: LevelDef): void {
+  // Floor tiles for both dimensions — the visible board. Movement is bounded
+  // to this radius (MovementSystem checks GameState.gridRadius).
+  const radius = def.gridRadius ?? 3;
+  GameState.gridRadius = radius;
+  for (const z of [0, 1] as const) {
+    for (const { q, r } of hexesInRadius(radius)) {
+      const eid = addEntity(world);
+      addComponent(world, Position,   eid);
+      addComponent(world, Renderable, eid);
+      addComponent(world, Dimension,  eid);
+      Position.q[eid]          = q;
+      Position.r[eid]          = r;
+      Position.z[eid]          = z;
+      Dimension.layer[eid]     = z;
+      Renderable.spriteId[eid] = z === 0 ? SpriteId.HEX_ID_FLOOR : SpriteId.HEX_SUPEREGO_FLOOR;
+      Renderable.visible[eid]  = 1;
+      Renderable.layer[eid]    = 0;
+      Renderable.dirty[eid]    = 1;
+    }
+  }
+
   // Hex grid entities (avatars, hazards, exits, etc.)
   for (const entityDef of def.entities) {
     dispatchEntityFactory(world, entityDef);

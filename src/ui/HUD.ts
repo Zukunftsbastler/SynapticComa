@@ -76,7 +76,7 @@ export class HUD {
       );
     }
     this.apRow.innerHTML =
-      `<span style="color:#7a6040;font-size:0.75rem;margin-right:4px">AP</span>` +
+      `<span style="color:#7a6040;font-size:0.75rem;margin-right:4px">AP ${apPool}</span>` +
       circles.join('');
   }
 

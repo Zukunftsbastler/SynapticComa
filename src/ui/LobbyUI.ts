@@ -88,8 +88,8 @@ export class LobbyUI {
         this.destroy();
         this.onConnected({ role: 0, levelId: 'level_01', networked: true });
       });
-    } catch {
-      this.setStatus('Connection failed. Reload to retry.');
+    } catch (err) {
+      this.setStatus(`Connection failed: ${(err as Error).message ?? err}. Reload to retry.`);
     }
   }
 
@@ -108,8 +108,8 @@ export class LobbyUI {
         this.destroy();
         this.onConnected({ role: 1, levelId: handshake.levelId, networked: true });
       });
-    } catch {
-      this.setStatus('Could not connect. Check the code and retry.');
+    } catch (err) {
+      this.setStatus(`Could not connect: ${(err as Error).message ?? err}. Check the code and retry.`);
     }
   }
 

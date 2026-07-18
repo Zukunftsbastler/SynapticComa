@@ -21,7 +21,7 @@ import {
   avatarQuery, exitQuery, apUnlockQuery,
   staticQuery, phaseBarrierQuery, lethalQuery,
 } from '@/queries';
-import { HEX_DIRECTIONS } from '@/rendering/HexMath';
+import { HEX_DIRECTIONS, hexDistance } from '@/rendering/HexMath';
 import { abilityFlags } from '@/systems/AbilitySystem';
 import { HazardType } from '@/types';
 import type { GameStateData } from '@/state/GameState';
@@ -106,6 +106,7 @@ export function canAvatarReachExit(
     for (const [q, r] of frontier) {
       for (const [dq, dr] of HEX_DIRECTIONS) {
         const nq = q + dq, nr = r + dr;
+        if (hexDistance(0, 0, nq, nr) > state.gridRadius) continue; // board edge
         const key = `${nq},${nr}`;
         if (visited.has(key) || blocked.has(key)) continue;
         if (nq === exitQ && nr === exitR) return true;

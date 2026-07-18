@@ -54,11 +54,17 @@ export function createThreshold(world: IWorld, def: ThresholdDef): number {
 export function createWall(world: IWorld, def: WallDef): number {
   const eid = addEntity(world);
   addComponent(world, Position, eid);
+  addComponent(world, Renderable, eid);
+  addComponent(world, Dimension, eid);
   addComponent(world, Static, eid);
 
   Position.q[eid] = def.q;
   Position.r[eid] = def.r;
   Position.z[eid] = def.z;
+  Dimension.layer[eid]     = def.z;
+  Renderable.spriteId[eid] = SpriteId.WALL_HEX;
+  Renderable.visible[eid]  = 1;
+  Renderable.dirty[eid]    = 1;
 
   entityRegistry.register(def.id, eid);
   return eid;
