@@ -1,7 +1,8 @@
 // All network message types for Synaptic Coma.
 // Guest → Host: MOVE_AVATAR, INSERT_CONDUIT, ROTATE_CONDUIT, DRAW_SCRAP,
 //               THRESHOLD_READY
-// Host → Guest: STATE_UPDATE, MATRIX_STATE_UPDATE, INVENTORY_UPDATE, AP_UNLOCK
+// Host → Guest: STATE_UPDATE, MATRIX_STATE_UPDATE, INVENTORY_UPDATE, AP_UNLOCK,
+//               COLLECTED, PHASE_UPDATE, LEVEL_LOAD
 // Both → Both (separate channel): CHAT
 
 export interface BaseMessage {
@@ -61,10 +62,41 @@ export interface StateUpdateMessage {
   apPool:   number;
 }
 
-// Host → Guest only — full 5×5 matrix after any matrix mutation
+// Host → Guest only — full 5×5 matrix after any matrix mutation.
+// scrapCount lets the Guest mirror the face-down pile size (count is public
+// knowledge; contents never cross the wire — communication_rules.md §4).
 export interface MatrixStateUpdateMessage {
   type: 'MATRIX_STATE_UPDATE';
   grid: { shape: number; rotation: number; active: boolean }[][];
+  scrapCount: number;
+}
+
+// Host → Guest only — an avatar collected a floor conduit. The Guest removes
+// the entity; if it was the Guest's own avatar, the plate enters its inventory.
+export interface CollectedMessage {
+  type:     'COLLECTED';
+  entityId: string;
+  playerId: 0 | 1;
+  shape:    number;
+  rotation: number;
+}
+
+// Host → Guest only — authoritative game-phase transition (exit sequence,
+// failure, level complete). Keeps the Guest's GameState lifecycle in sync.
+export interface PhaseUpdateMessage {
+  type:         'PHASE_UPDATE';
+  phase:        'SETUP' | 'PLAYING' | 'THRESHOLD' | 'LEVEL_COMPLETE';
+  p1HasExited:  boolean;
+  failureCount: number;
+}
+
+// Host → Guest only — the Host is loading a level (next level, failure retry,
+// or free Dead End restart). The Guest loads the same level with the same
+// carried-over failure count.
+export interface LevelLoadMessage {
+  type:         'LEVEL_LOAD';
+  levelId:      string;
+  failureCount: number;
 }
 
 // Host → Guest only — reveals the shape drawn blind from the Scrap Pool.
@@ -101,4 +133,7 @@ export type GameMessage =
   | ApUnlockMessage
   | StateUpdateMessage
   | MatrixStateUpdateMessage
-  | InventoryUpdateMessage;
+  | InventoryUpdateMessage
+  | CollectedMessage
+  | PhaseUpdateMessage
+  | LevelLoadMessage;

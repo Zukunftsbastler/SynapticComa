@@ -45,7 +45,7 @@ export function initKeyboardInput(getAvatarEntityId: () => string): void {
         dq:       delta[0],
         dr:       delta[1],
         seq:      GameState.outSeq++,
-        senderId: GameState.localPlayerId,
+        senderId: GameState.viewPlayerId,
         tick:     0, // filled by NetworkSystem before send
       };
 

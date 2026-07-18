@@ -10,6 +10,7 @@ import type { IWorld } from 'bitecs';
 import { Conduit, MatrixNode } from '@/components';
 import { conduitQuery } from '@/queries';
 import { computeFaceMask } from '@/utils/ConduitFaceMask';
+import { scrapPool } from '@/state/ScrapPoolState';
 import type { GameStateData } from '@/state/GameState';
 import type { RotateConduitMessage, MatrixStateUpdateMessage } from '@/network/messages';
 import { buildMatrixStatePayload } from './matrixStateHelpers';
@@ -41,6 +42,7 @@ export function MatrixRotateSystem(world: IWorld, state: GameStateData): void {
     const update: MatrixStateUpdateMessage = {
       type: 'MATRIX_STATE_UPDATE',
       grid: buildMatrixStatePayload(world),
+      scrapCount: scrapPool.plates.length,
     };
     state.outboundMessages.push(update);
   }

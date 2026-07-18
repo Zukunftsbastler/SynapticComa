@@ -8,8 +8,9 @@
 // Cost: 0 AP (collection is free; it happens automatically on step-over).
 // Floor collectibles render as the ??? icon (CONDUIT_UNKNOWN) until collected.
 //
-// The Guest learns about removed entities implicitly: the Host stops issuing
-// draw commands for them and their position is no longer in any STATE_UPDATE.
+// Broadcasts COLLECTED so the Guest removes the entity from its mirror world;
+// the plate's shape enters the Guest's inventory only if the Guest collected it
+// (GuestSyncSystem enforces the privacy rule).
 
 import type { IWorld } from 'bitecs';
 import { removeEntity } from 'bitecs';
@@ -18,6 +19,7 @@ import { avatarQuery, collectibleQuery } from '@/queries';
 import { entityRegistry } from '@/registry/EntityRegistry';
 import { inventory } from '@/state/InventoryState';
 import type { GameStateData } from '@/state/GameState';
+import type { CollectedMessage } from '@/network/messages';
 import { ConduitShape } from '@/types';
 
 // Secondary reverse map: bitECS eid → registry key, for per-entity cleanup.
@@ -67,6 +69,16 @@ export function CollectionSystem(world: IWorld, state: GameStateData): void {
       entityRegistry.delete(key);
       reverseMap.delete(ceid);
       removeEntity(world, ceid);
+
+      // Tell the Guest: remove the entity; reveal the plate only to its collector.
+      const collectedMsg: CollectedMessage = {
+        type:     'COLLECTED',
+        entityId: key,
+        playerId: pid as 0 | 1,
+        shape,
+        rotation,
+      };
+      state.outboundMessages.push(collectedMsg);
 
       console.debug(
         `[CollectionSystem] P${pid + 1} collected ${ConduitShape[shape]} ` +

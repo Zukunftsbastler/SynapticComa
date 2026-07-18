@@ -44,6 +44,7 @@ export function ScrapPoolSystem(world: IWorld, state: GameStateData): void {
     const matrixUpdate: MatrixStateUpdateMessage = {
       type: 'MATRIX_STATE_UPDATE',
       grid: buildMatrixStatePayload(world),
+      scrapCount: scrapPool.plates.length,
     };
     state.outboundMessages.push(matrixUpdate);
 

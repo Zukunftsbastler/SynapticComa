@@ -30,7 +30,20 @@ import {
   exitQuery,
 } from '@/queries';
 import type { GameStateData } from '@/state/GameState';
+import type { PhaseUpdateMessage } from '@/network/messages';
 import { isDeadEnd } from '@/systems/deadEnd';
+
+// Queues an authoritative PHASE_UPDATE for the Guest. Only ever reached on the
+// Host: the event entities consumed here are created by Host-only systems.
+function broadcastPhase(state: GameStateData): void {
+  const msg: PhaseUpdateMessage = {
+    type:         'PHASE_UPDATE',
+    phase:        state.phase,
+    p1HasExited:  state.p1HasExited,
+    failureCount: state.failureCount,
+  };
+  state.outboundMessages.push(msg);
+}
 
 export function LevelTransitionSystem(world: IWorld, state: GameStateData): void {
   // ── BoardFlipEvent ─────────────────────────────────────────────────────────
@@ -81,18 +94,23 @@ function executeBoardFlip(_state: GameStateData): void {
 }
 
 function executeAvatarDestroyed(state: GameStateData): void {
-  // Level failure. Increment failure counter and pause the simulation.
-  // Sprint 9 will trigger full level reload via LevelLoaderSystem.
+  // Level failure. Increment failure counter and pause the simulation; the
+  // campaign controller (main.ts) reacts to the phase change with a retry
+  // reload or the Neural Collapse screen.
   state.failureCount += 1;
   state.phase = 'SETUP'; // halt the simulation until reload
+  broadcastPhase(state);
   console.debug(
     `[LevelTransitionSystem] Avatar destroyed — failure #${state.failureCount}.`,
   );
 }
 
-function executeP1Exited(world: IWorld, state: GameStateData): void {
-  // Remove Static from P2's exit hex so it becomes traversable.
-  state.p1HasExited = true;
+/**
+ * Removes Static from P2's exit so it becomes traversable. Exported so
+ * GuestSyncSystem can apply the same effect when PHASE_UPDATE reports
+ * p1HasExited on the Guest's mirror world.
+ */
+export function activateP2Exit(world: IWorld): void {
   const exits = exitQuery(world);
   for (let i = 0; i < exits.length; i++) {
     const eid = exits[i];
@@ -104,7 +122,14 @@ function executeP1Exited(world: IWorld, state: GameStateData): void {
   }
 }
 
+function executeP1Exited(world: IWorld, state: GameStateData): void {
+  state.p1HasExited = true;
+  activateP2Exit(world);
+  broadcastPhase(state);
+}
+
 function executeLevelComplete(state: GameStateData): void {
   state.phase = 'LEVEL_COMPLETE';
+  broadcastPhase(state);
   console.debug('[LevelTransitionSystem] Level complete!');
 }

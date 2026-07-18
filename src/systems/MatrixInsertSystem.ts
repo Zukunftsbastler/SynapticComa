@@ -91,6 +91,7 @@ export function MatrixInsertSystem(world: IWorld, state: GameStateData): void {
     const update: MatrixStateUpdateMessage = {
       type: 'MATRIX_STATE_UPDATE',
       grid: buildMatrixStatePayload(world),
+      scrapCount: scrapPool.plates.length,
     };
     state.outboundMessages.push(update);
   }

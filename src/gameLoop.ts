@@ -3,6 +3,7 @@ import type { IWorld } from 'bitecs';
 import { FIXED_TIMESTEP, MAX_DELTA } from '@/constants';
 import { RenderSystem } from '@/systems/RenderSystem';
 import { InputSystem } from '@/systems/InputSystem';
+import { GuestSyncSystem } from '@/systems/GuestSyncSystem';
 import { APSystem } from '@/systems/APSystem';
 import { APUnlockSystem } from '@/systems/APUnlockSystem';
 import { MovementSystem } from '@/systems/MovementSystem';
@@ -49,6 +50,7 @@ function runSystems(w: IWorld): void {
   // Fixed-step system pipeline (Decision 2 — Host Authority).
   // Systems that are Host-only guard themselves internally.
   InputSystem(w, GameState);
+  GuestSyncSystem(w, GameState);
   APSystem(w, GameState);
   MatrixRoutingSystem(w);
   AbilitySystem(w);
@@ -68,7 +70,9 @@ function runSystems(w: IWorld): void {
 
 function renderFrame(w: IWorld): void {
   if (_driver) {
-    RenderSystem(w, _driver, GameState.localPlayerId);
+    // viewPlayerId (not localPlayerId): in local mode the Host toggles which
+    // dimension it views; in networked play the two ids are identical.
+    RenderSystem(w, _driver, GameState.viewPlayerId);
   }
   if (_uiHook) _uiHook();
 }

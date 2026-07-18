@@ -44,7 +44,7 @@ export class InventoryPanel {
 
   /** Call each render frame. */
   update(): void {
-    const pid = GameState.localPlayerId;
+    const pid = GameState.viewPlayerId;
     const inv = pid === 0 ? inventory.player0 : inventory.player1;
 
     if (inv.length === 0) {

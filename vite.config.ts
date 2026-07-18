@@ -7,5 +7,8 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
-  assetsInclude: ['**/*.webp', '**/*.json'],
+  // Note: *.json must NOT appear in assetsInclude — level files are imported
+  // as modules by LevelLoaderSystem; treating them as static assets makes the
+  // vite:json plugin fail ("Failed to parse JSON file").
+  assetsInclude: ['**/*.webp'],
 });

@@ -1,23 +1,144 @@
+// main.ts — campaign controller.
+//
+// Boot sequence: Lobby (HOST / JOIN / LOCAL) → loadLevel → play.
+// Owns the per-level UI lifecycle (MatrixUI listeners are torn down and
+// rebuilt on every level load) and the campaign flow:
+//   LEVEL_COMPLETE → LevelCompleteScreen → next level (Host decides)
+//   1st failure    → automatic retry reload (failureCount carried over)
+//   2nd failure    → NeuralCollapseScreen → back to lobby (page reload)
+//   Dead End       → Enter restarts the level free of charge (no retry spent)
+//
+// Networked play: the Host drives every level load and mirrors it to the
+// Guest via LEVEL_LOAD (sent directly — resetGameState clears the outbound
+// queue, so the tick pipeline cannot carry it). Local play: one machine,
+// keys 1/2 toggle which wisp is viewed/controlled; the simulation always
+// stays Host-authoritative (GameState.viewPlayerId vs. localPlayerId).
+
 import { Application } from 'pixi.js';
-import { addEntity, addComponent } from 'bitecs';
-import { startLoop, world, setDriver, setUiHook } from '@/gameLoop';
+import { startLoop, world, setWorld, setDriver, setUiHook } from '@/gameLoop';
 import { PixiDriver } from '@/rendering/PixiDriver';
-import { hexesInRadius } from '@/rendering/HexMath';
-import {
-  Position, Renderable, Dimension, Avatar, MatrixNode,
-  Movable, APPool, APUnlock, Static, Collectible, Conduit,
-} from '@/components';
-import { HUD } from '@/ui/HUD';
-import { entityRegistry } from '@/registry/EntityRegistry';
-import { registerForCollection } from '@/systems/CollectionSystem';
-import { inventory } from '@/state/InventoryState';
-import { MatrixUI } from '@/ui/MatrixUI';
-import { ConduitShape } from '@/types';
-import { computeFaceMask } from '@/utils/ConduitFaceMask';
-import { SpriteId } from '@/registry/SpriteRegistry';
-import { GameState, resetGameState } from '@/state/GameState';
+import { loadLevel } from '@/systems/LevelLoaderSystem';
+import { setGuestLevelLoadHandler } from '@/systems/GuestSyncSystem';
+import { GameState } from '@/state/GameState';
+import { loadProgress, ProgressionState } from '@/state/ProgressionState';
+import { LEVEL_ORDER } from '@/levels/levelIndex';
 import { initKeyboardInput } from '@/input/KeyboardInput';
-import { CANVAS_WIDTH, CANVAS_HEIGHT, MATRIX_ROWS, MATRIX_COLS, AP_DEFAULT } from '@/constants';
+import { peerManager } from '@/network/PeerJSManager';
+import type { LevelLoadMessage } from '@/network/messages';
+import { LobbyUI } from '@/ui/LobbyUI';
+import type { LobbyResult } from '@/ui/LobbyUI';
+import { HUD } from '@/ui/HUD';
+import { InventoryPanel } from '@/ui/InventoryPanel';
+import { AbilityPanel } from '@/ui/AbilityPanel';
+import { MatrixUI } from '@/ui/MatrixUI';
+import { LevelCompleteScreen, NeuralCollapseScreen } from '@/ui/LevelCompleteScreen';
+import { CANVAS_WIDTH, CANVAS_HEIGHT } from '@/constants';
+
+let driver:    PixiDriver;
+let matrixUI:  MatrixUI | null = null;
+let overlay:   { destroy(): void } | null = null;
+let networked = false;
+let transitioning = false;
+
+async function goToLevel(levelId: string, carriedFailures: number): Promise<void> {
+  transitioning = true;
+  overlay?.destroy();
+  overlay = null;
+  matrixUI?.destroy();
+  matrixUI = null;
+
+  setWorld(await loadLevel(world, levelId));
+  GameState.failureCount = carriedFailures;
+
+  // Keep the campaign index aligned with what is actually being played.
+  const idx = LEVEL_ORDER.indexOf(levelId);
+  if (idx >= 0) ProgressionState.currentLevelIndex = idx;
+
+  const origin = driver.getMatrixOrigin();
+  matrixUI = new MatrixUI(origin.x, origin.y);
+
+  // Host mirrors every load to the Guest — next level, retry, or free restart.
+  if (networked && GameState.localPlayerId === 0) {
+    const msg: LevelLoadMessage = { type: 'LEVEL_LOAD', levelId, failureCount: carriedFailures };
+    peerManager.send(msg);
+  }
+  transitioning = false;
+}
+
+function watchGamePhase(): void {
+  if (transitioning || overlay) return;
+
+  // ── Level complete ────────────────────────────────────────────────────────
+  if (GameState.phase === 'LEVEL_COMPLETE') {
+    const interactive = !networked || GameState.localPlayerId === 0;
+    overlay = new LevelCompleteScreen(
+      document.body,
+      nextId => { void goToLevel(nextId, 0); },
+      ()     => window.location.reload(),   // "Level Select" → lobby, progress persisted
+      interactive,
+    );
+    return;
+  }
+
+  // ── Failure (CollisionSystem halted the simulation) ───────────────────────
+  if (GameState.phase === 'SETUP' && GameState.currentLevel !== '') {
+    if (GameState.failureCount >= 2) {
+      overlay = new NeuralCollapseScreen(document.body, () => window.location.reload());
+    } else if (!networked || GameState.localPlayerId === 0) {
+      // First failure: instant retry, failure count carried over (mechanics.md §7).
+      const level = GameState.currentLevel;
+      const failures = GameState.failureCount;
+      overlay = { destroy() {} }; // block re-entry while the timer runs
+      setTimeout(() => { void goToLevel(level, failures); }, 800);
+    }
+  }
+}
+
+function startSession(result: LobbyResult): void {
+  networked = result.networked;
+  GameState.viewPlayerId = result.networked ? result.role : 0;
+
+  // ── Persistent UI (polls GameState each frame; survives level reloads) ────
+  const hud       = new HUD(document.body);
+  const invPanel  = new InventoryPanel(document.body);
+  const abilities = new AbilityPanel(document.body);
+  setUiHook(() => {
+    hud.update();
+    invPanel.update();
+    abilities.update();
+    watchGamePhase();
+  });
+
+  // ── Input ────────────────────────────────────────────────────────────────
+  initKeyboardInput(() => `avatar_p${GameState.viewPlayerId + 1}`);
+
+  window.addEventListener('keydown', (e) => {
+    // Local mode: 1/2 toggles which wisp this machine views and controls.
+    if (!networked && (e.key === '1' || e.key === '2')) {
+      GameState.viewPlayerId = e.key === '1' ? 0 : 1;
+    }
+    // Dead End: Enter restarts the level without consuming the retry.
+    if (
+      e.key === 'Enter' && GameState.deadEnd && !transitioning &&
+      (!networked || GameState.localPlayerId === 0)
+    ) {
+      void goToLevel(GameState.currentLevel, GameState.failureCount);
+    }
+  });
+
+  // ── Guest follows the Host's level loads ─────────────────────────────────
+  setGuestLevelLoadHandler((levelId, failureCount) => {
+    void goToLevel(levelId, failureCount);
+  });
+
+  // ── Enter the campaign at the persisted position (Host/local decides) ────
+  const startId = result.role === 0
+    ? LEVEL_ORDER[Math.min(ProgressionState.currentLevelIndex, LEVEL_ORDER.length - 1)]
+    : result.levelId;
+  void goToLevel(startId, 0);
+
+  startLoop();
+}
 
 async function main(): Promise<void> {
   const app = new Application();
@@ -28,225 +149,11 @@ async function main(): Promise<void> {
   });
   document.body.appendChild(app.canvas);
 
-  const driver = new PixiDriver(app);
+  driver = new PixiDriver(app);
   setDriver(driver);
 
-  // ── GameState bootstrap (local single-machine dev mode, Player 1 = Host) ──
-  resetGameState({ localPlayerId: 0, phase: 'PLAYING' });
-
-  // ── APPool singleton entity ───────────────────────────────────────────────
-  {
-    const eid = addEntity(world);
-    addComponent(world, APPool, eid);
-    APPool.current[eid]    = AP_DEFAULT;
-    APPool.max[eid]        = AP_DEFAULT;
-    GameState.apPoolEid    = eid;
-  }
-
-  // ── Dimension A hex grid (radius 3) ──────────────────────────────────────
-  for (const { q, r } of hexesInRadius(3)) {
-    const eid = addEntity(world);
-    addComponent(world, Position,   eid);
-    addComponent(world, Renderable, eid);
-    addComponent(world, Dimension,  eid);
-    Position.q[eid]          = q;
-    Position.r[eid]          = r;
-    Position.z[eid]          = 0;
-    Renderable.spriteId[eid] = SpriteId.HEX_ID_FLOOR;
-    Renderable.visible[eid]  = 1;
-    Renderable.layer[eid]    = 0;
-    Dimension.layer[eid]     = 0;
-  }
-
-  // ── Dimension B hex grid (radius 3) ──────────────────────────────────────
-  for (const { q, r } of hexesInRadius(3)) {
-    const eid = addEntity(world);
-    addComponent(world, Position,   eid);
-    addComponent(world, Renderable, eid);
-    addComponent(world, Dimension,  eid);
-    Position.q[eid]          = q;
-    Position.r[eid]          = r;
-    Position.z[eid]          = 1;
-    Renderable.spriteId[eid] = SpriteId.HEX_SUPEREGO_FLOOR;
-    Renderable.visible[eid]  = 1;
-    Renderable.layer[eid]    = 0;
-    Dimension.layer[eid]     = 1;
-  }
-
-  // ── P1 Avatar (Dimension A) ───────────────────────────────────────────────
-  {
-    const eid = addEntity(world);
-    addComponent(world, Position,   eid);
-    addComponent(world, Renderable, eid);
-    addComponent(world, Dimension,  eid);
-    addComponent(world, Avatar,     eid);
-    addComponent(world, Movable,    eid);
-    Position.q[eid]          = 0;
-    Position.r[eid]          = 0;
-    Position.z[eid]          = 0;
-    Renderable.spriteId[eid] = SpriteId.AVATAR_P1;
-    Renderable.visible[eid]  = 1;
-    Renderable.layer[eid]    = 1;
-    Dimension.layer[eid]     = 0;
-    Avatar.playerId[eid]     = 0;
-    Movable.canMove[eid]     = 1;
-    entityRegistry.register('avatar_p1', eid);
-  }
-
-  // ── P2 Avatar (Dimension B) ───────────────────────────────────────────────
-  {
-    const eid = addEntity(world);
-    addComponent(world, Position,   eid);
-    addComponent(world, Renderable, eid);
-    addComponent(world, Dimension,  eid);
-    addComponent(world, Avatar,     eid);
-    addComponent(world, Movable,    eid);
-    Position.q[eid]          = 0;
-    Position.r[eid]          = 0;
-    Position.z[eid]          = 1;
-    Renderable.spriteId[eid] = SpriteId.AVATAR_P2;
-    Renderable.visible[eid]  = 1;
-    Renderable.layer[eid]    = 1;
-    Dimension.layer[eid]     = 1;
-    Avatar.playerId[eid]     = 1;
-    Movable.canMove[eid]     = 1;
-    entityRegistry.register('avatar_p2', eid);
-  }
-
-  // ── Static wall test: one blocked hex in Dim A ────────────────────────────
-  {
-    const eid = addEntity(world);
-    addComponent(world, Position,   eid);
-    addComponent(world, Renderable, eid);
-    addComponent(world, Dimension,  eid);
-    addComponent(world, Static,     eid);
-    Position.q[eid]          = 1;
-    Position.r[eid]          = 0;
-    Position.z[eid]          = 0;
-    Renderable.spriteId[eid] = SpriteId.HAZARD_LOCKED_RED;
-    Renderable.visible[eid]  = 1;
-    Renderable.layer[eid]    = 0;
-    Dimension.layer[eid]     = 0;
-  }
-
-  // ── Collectible conduits (test: 2 in Dim A, 1 in Dim B) ──────────────────
-  const testCollectibles = [
-    { key: 'conduit_a1', q:  2, r: -1, z: 0, shape: ConduitShape.STRAIGHT,   rotation: 0 },
-    { key: 'conduit_a2', q: -1, r:  2, z: 0, shape: ConduitShape.CURVED,     rotation: 1 },
-    { key: 'conduit_b1', q:  0, r:  2, z: 1, shape: ConduitShape.T_JUNCTION, rotation: 0 },
-  ];
-  for (const c of testCollectibles) {
-    const eid = addEntity(world);
-    addComponent(world, Position,    eid);
-    addComponent(world, Renderable,  eid);
-    addComponent(world, Dimension,   eid);
-    addComponent(world, Collectible, eid);
-    addComponent(world, Conduit,     eid);
-    Position.q[eid]          = c.q;
-    Position.r[eid]          = c.r;
-    Position.z[eid]          = c.z;
-    Renderable.spriteId[eid] = SpriteId.CONDUIT_UNKNOWN; // ??? until collected
-    Renderable.visible[eid]  = 1;
-    Renderable.layer[eid]    = 1;
-    Dimension.layer[eid]     = c.z;
-    Conduit.shape[eid]       = c.shape;
-    Conduit.rotation[eid]    = c.rotation;
-    Conduit.faceMask[eid]    = 0;
-    entityRegistry.register(c.key, eid);
-    registerForCollection(c.key, eid);
-  }
-
-  // ── Shared Unlock test pair at (-1, 1) in both dimensions ────────────────
-  for (const z of [0, 1] as const) {
-    const eid = addEntity(world);
-    addComponent(world, Position,   eid);
-    addComponent(world, Renderable, eid);
-    addComponent(world, Dimension,  eid);
-    addComponent(world, APUnlock,   eid);
-    Position.q[eid]          = -1;
-    Position.r[eid]          = 1;
-    Position.z[eid]          = z;
-    Dimension.layer[eid]     = z;
-    APUnlock.id[eid]         = 1;
-    APUnlock.value[eid]      = 4;
-    APUnlock.triggered[eid]  = 0;
-    Renderable.spriteId[eid] = SpriteId.AP_UNLOCK_NODE;
-    Renderable.visible[eid]  = 1;
-    Renderable.layer[eid]    = 0;
-    entityRegistry.register(`unlock_01_${z === 0 ? 'a' : 'b'}`, eid);
-  }
-
-  // ── Debug: F1 prints inventory counts to console ─────────────────────────
-  window.addEventListener('keydown', (e) => {
-    if (e.key === 'F1') {
-      console.log(
-        `[Inventory] P1: ${inventory.player0.length} conduit(s), ` +
-        `P2: ${inventory.player1.length} conduit(s)`,
-        '\nP1:', inventory.player0,
-        '\nP2:', inventory.player1,
-      );
-    }
-  });
-
-  // ── DNA Matrix ────────────────────────────────────────────────────────────
-  // Source nodes (col 1) — always powered, no conduit component.
-  // Ability nodes (col 3, 5) — powered by routing, no conduit component.
-  // Conduit slots (col 2, 4) — start empty; players insert plates via MatrixUI.
-  for (let row = 0; row < MATRIX_ROWS; row++) {
-    for (const col of [1, 3, 5]) {
-      const eid = addEntity(world);
-      addComponent(world, MatrixNode, eid);
-      MatrixNode.column[eid]      = col;
-      MatrixNode.row[eid]         = row;
-      MatrixNode.abilityType[eid] = col === 1 ? 0 : row + 1; // simple test ability IDs
-      MatrixNode.active[eid]      = col === 1 ? 1 : 0; // source nodes always on
-    }
-  }
-
-  // Pre-populate column 2 with one Straight conduit at row 0 as a test.
-  {
-    const eid = addEntity(world);
-    addComponent(world, Conduit,    eid);
-    addComponent(world, MatrixNode, eid);
-    const shape    = ConduitShape.STRAIGHT;
-    const rotation = 0;
-    Conduit.shape[eid]          = shape;
-    Conduit.rotation[eid]       = rotation;
-    Conduit.faceMask[eid]       = computeFaceMask(shape, rotation);
-    MatrixNode.column[eid]      = 2;
-    MatrixNode.row[eid]         = 0;
-    MatrixNode.abilityType[eid] = 0;
-    MatrixNode.active[eid]      = 0;
-  }
-
-  // ── Keyboard input ────────────────────────────────────────────────────────
-  // In local dev mode: Q/W/E/A/S/D move P1 avatar.
-  // Press '1'/'2' to switch which avatar you're controlling (and which dimension renders).
-  let controlledAvatar = 'avatar_p1';
-  initKeyboardInput(() => controlledAvatar);
-
-  window.addEventListener('keydown', (e) => {
-    if (e.key === '1') {
-      GameState.localPlayerId = 0;
-      controlledAvatar = 'avatar_p1';
-    }
-    if (e.key === '2') {
-      GameState.localPlayerId = 1;
-      controlledAvatar = 'avatar_p2';
-    }
-  });
-
-  // ── MatrixUI ──────────────────────────────────────────────────────────────
-  const matrixOrigin = driver.getMatrixOrigin();
-  // Hold the reference so destroy() can be called on level reload.
-  const _matrixUI = new MatrixUI(matrixOrigin.x, matrixOrigin.y);
-  // Usage: _matrixUI.destroy() before calling loadLevel() in Sprint 9.
-
-  // ── HUD (AP vials, Dead End indicator, ability badges) ───────────────────
-  const hud = new HUD(document.body);
-  setUiHook(() => hud.update());
-
-  startLoop();
+  loadProgress();
+  new LobbyUI(document.body, startSession);
 }
 
 main().catch(console.error);

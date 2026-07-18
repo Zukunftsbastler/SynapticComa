@@ -98,7 +98,7 @@ export class MatrixUI {
 
     // R: pre-orient pending rotation (0 AP). Guard: player must hold a tile.
     if (e.key.toLowerCase() === 'r') {
-      const pid = GameState.localPlayerId;
+      const pid = GameState.viewPlayerId;
       const inv = pid === 0 ? inventory.player0 : inventory.player1;
       if (inv.length === 0) return; // Task 5: guard — nothing to rotate
       this.pendingRotation = (((this.pendingRotation ?? -1) + 1) % 4);
@@ -109,7 +109,7 @@ export class MatrixUI {
     // Tab: cycle selected inventory slot.
     if (e.key === 'Tab') {
       e.preventDefault();
-      const pid = GameState.localPlayerId;
+      const pid = GameState.viewPlayerId;
       const inv = pid === 0 ? inventory.player0 : inventory.player1;
       if (inv.length > 0) {
         this.selectedSlot = (this.selectedSlot + 1) % inv.length;
@@ -121,7 +121,7 @@ export class MatrixUI {
   // ── Message dispatch ──────────────────────────────────────────────────────
 
   private fireInsert(column: 2 | 4, fromTop: boolean): void {
-    const pid = GameState.localPlayerId;
+    const pid = GameState.viewPlayerId;
     const inv = pid === 0 ? inventory.player0 : inventory.player1;
     if (inv.length === 0) {
       console.debug('[MatrixUI] Insert rejected: inventory empty');
@@ -145,12 +145,12 @@ export class MatrixUI {
       tick:           0,
     };
 
-    if (pid === 0) GameState.pendingInputs.push(msg);
-    else           GameState.outboundMessages.push(msg);
+    if (GameState.localPlayerId === 0) GameState.pendingInputs.push(msg);
+    else                                GameState.outboundMessages.push(msg);
   }
 
   private fireRotate(col1: number, row: number): void {
-    const pid = GameState.localPlayerId;
+    const pid = GameState.viewPlayerId;
 
     // Task 4: use explicit column + row, not a regex-parsed entityId string.
     const msg: RotateConduitMessage = {
@@ -163,7 +163,7 @@ export class MatrixUI {
       tick:     0,
     };
 
-    if (pid === 0) GameState.pendingInputs.push(msg);
-    else           GameState.outboundMessages.push(msg);
+    if (GameState.localPlayerId === 0) GameState.pendingInputs.push(msg);
+    else                                GameState.outboundMessages.push(msg);
   }
 }

@@ -10,11 +10,18 @@ import type { HandshakeMessage } from '@/network/messages';
 import { initNetworkSystem } from '@/network/NetworkSystem';
 import { GameState } from '@/state/GameState';
 
+export type LobbyResult = {
+  role: 0 | 1;
+  levelId: string;
+  /** false = local single-machine session (no PeerJS connection). */
+  networked: boolean;
+};
+
 export class LobbyUI {
   private el: HTMLElement;
-  private onConnected: (role: 0 | 1, levelId: string) => void;
+  private onConnected: (result: LobbyResult) => void;
 
-  constructor(container: HTMLElement, onConnected: (role: 0 | 1, levelId: string) => void) {
+  constructor(container: HTMLElement, onConnected: (result: LobbyResult) => void) {
     this.onConnected = onConnected;
     this.el = document.createElement('div');
     this.el.id = 'lobby';
@@ -33,6 +40,7 @@ export class LobbyUI {
       <div style="display:flex;gap:12px;margin-top:8px">
         <button id="btn-host" style="${btnStyle()}">HOST</button>
         <button id="btn-join" style="${btnStyle()}">JOIN</button>
+        <button id="btn-local" style="${btnStyle()}">LOCAL</button>
       </div>
       <div id="lobby-status" style="font-size:0.9rem;color:#7a6040;min-height:1.5em"></div>
       <div id="lobby-join-row" style="display:none;gap:8px;align-items:center">
@@ -45,6 +53,12 @@ export class LobbyUI {
     `;
 
     this.el.querySelector('#btn-host')!.addEventListener('click', () => this.startHost());
+    this.el.querySelector('#btn-local')!.addEventListener('click', () => {
+      // Local single-machine session: keys 1/2 switch the controlled wisp.
+      GameState.localPlayerId = 0;
+      this.destroy();
+      this.onConnected({ role: 0, levelId: 'level_01', networked: false });
+    });
     this.el.querySelector('#btn-join')!.addEventListener('click', () => {
       const row = this.el.querySelector('#lobby-join-row') as HTMLElement;
       row.style.display = 'flex';
@@ -72,7 +86,7 @@ export class LobbyUI {
           type: 'HANDSHAKE', nonce: handshake.nonce, levelId: 'level_01', role: 0,
         } as unknown as HandshakeMessage);
         this.destroy();
-        this.onConnected(0, 'level_01');
+        this.onConnected({ role: 0, levelId: 'level_01', networked: true });
       });
     } catch {
       this.setStatus('Connection failed. Reload to retry.');
@@ -92,7 +106,7 @@ export class LobbyUI {
       initNetworkSystem((handshake: HandshakeMessage) => {
         GameState.localPlayerId = 1;
         this.destroy();
-        this.onConnected(1, handshake.levelId);
+        this.onConnected({ role: 1, levelId: handshake.levelId, networked: true });
       });
     } catch {
       this.setStatus('Could not connect. Check the code and retry.');

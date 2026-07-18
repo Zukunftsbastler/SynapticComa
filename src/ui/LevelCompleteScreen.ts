@@ -19,6 +19,8 @@ export class LevelCompleteScreen {
     container: HTMLElement,
     onNextLevel: OnNextLevel,
     onNeuralCollapse: OnNeuralCollapse,
+    /** false on the Guest: the Host drives level advancement (LEVEL_LOAD). */
+    interactive = true,
   ) {
     markLevelComplete(GameState.currentLevel, GameState.failureCount);
 
@@ -39,6 +41,19 @@ export class LevelCompleteScreen {
 
     const btnRow = document.createElement('div');
     btnRow.style.cssText = 'display:flex;gap:12px;';
+
+    if (!interactive) {
+      // Guest: the Host decides when to continue; this screen is dismissed by
+      // the incoming LEVEL_LOAD (campaign controller destroys it).
+      const waiting = document.createElement('div');
+      waiting.textContent = 'WAITING FOR HOST…';
+      waiting.style.cssText = 'color:#7a6040;letter-spacing:0.2em;';
+      this.el.appendChild(heading);
+      this.el.appendChild(levelLabel);
+      this.el.appendChild(waiting);
+      container.appendChild(this.el);
+      return;
+    }
 
     const nextId = advanceToNextLevel(LEVEL_ORDER);
     if (nextId) {

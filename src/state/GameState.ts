@@ -11,7 +11,13 @@ export interface PushAttempt {
 export interface GameStateData {
   apPool:           number;
   apMax:            number;
+  // Authority role: 0 = Host (authoritative simulation), 1 = Guest.
   localPlayerId:    0 | 1;
+  // Which player this client is currently viewing/acting as. In networked
+  // play this always equals localPlayerId. In local single-machine mode the
+  // Host stays authoritative (localPlayerId 0) while viewPlayerId toggles
+  // between 0 and 1 to control either wisp.
+  viewPlayerId:     0 | 1;
   pendingInputs:    GameMessage[];
   outboundMessages: GameMessage[];
   currentLevel:     string;
@@ -38,6 +44,7 @@ function makeInitialState(): GameStateData {
     apPool:           AP_DEFAULT,
     apMax:            AP_DEFAULT,
     localPlayerId:    0,
+    viewPlayerId:     0,
     pendingInputs:    [],
     outboundMessages: [],
     currentLevel:     '',
