@@ -14,6 +14,7 @@
 // and prevent duplicate dispatches.
 
 import { GameState } from '@/state/GameState';
+import { uiState, disarmInsert } from '@/ui/uiState';
 import { inventory } from '@/state/InventoryState';
 import type { InsertConduitMessage, RotateConduitMessage } from '@/network/messages';
 import { MATRIX_ROWS } from '@/constants';
@@ -28,7 +29,6 @@ const CONDUIT_COLS_0IDX = [1, 3]; // columns 2 and 4 (0-indexed)
 export class MatrixUI {
   private originX: number;
   private originY: number;
-  private selectedSlot:     number      = 0;
   private pendingRotation:  number | null = null;
 
   // Bound handler references kept for removeEventListener cleanup.
@@ -112,8 +112,8 @@ export class MatrixUI {
       const pid = GameState.viewPlayerId;
       const inv = pid === 0 ? inventory.player0 : inventory.player1;
       if (inv.length > 0) {
-        this.selectedSlot = (this.selectedSlot + 1) % inv.length;
-        console.debug(`[MatrixUI] Selected inventory slot: ${this.selectedSlot}`);
+        uiState.selectedSlot = (uiState.selectedSlot + 1) % inv.length;
+        console.debug(`[MatrixUI] Selected inventory slot: ${uiState.selectedSlot}`);
       }
     }
   }
@@ -127,7 +127,7 @@ export class MatrixUI {
       console.debug('[MatrixUI] Insert rejected: inventory empty');
       return;
     }
-    const slot    = Math.min(this.selectedSlot, inv.length - 1);
+    const slot    = Math.min(uiState.selectedSlot, inv.length - 1);
     const conduit = inv[slot];
     const rotation = (this.pendingRotation ?? conduit.rotation) as 0 | 1 | 2 | 3;
     this.pendingRotation = null;
@@ -147,6 +147,7 @@ export class MatrixUI {
 
     if (GameState.localPlayerId === 0) GameState.pendingInputs.push(msg);
     else                                GameState.outboundMessages.push(msg);
+    disarmInsert();
   }
 
   private fireRotate(col1: number, row: number): void {

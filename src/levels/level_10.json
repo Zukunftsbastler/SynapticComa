@@ -1,7 +1,7 @@
 {
   "id": "level_10",
   "name": "Tight Budget",
-  "initialAP": 7,
+  "initialAP": 9,
   "apUnlockNodes": [
     {
       "id": "unlock_01",

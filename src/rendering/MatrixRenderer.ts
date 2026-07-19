@@ -12,6 +12,7 @@
 import type { IWorld } from 'bitecs';
 import { Conduit, MatrixNode } from '@/components';
 import { conduitQuery, matrixNodeQuery } from '@/queries';
+import { uiState } from '@/ui/uiState';
 import type { RenderCommandBuffer } from './RenderCommandBuffer';
 import { MATRIX_ROWS, MATRIX_COLS } from '@/constants';
 
@@ -129,17 +130,22 @@ export function renderMatrix(
 
   // ── Insert arrows (top/bottom of conduit columns 2 & 4) ────────────────────
   // These match MatrixUI's click hit zones exactly — an invisible affordance
-  // is no affordance.
+  // is no affordance. While a plate is armed (clicked in the inventory), the
+  // arrows pulse gold so the player sees exactly where to click next.
+  const armed = uiState.insertArmed;
+  const pulse = armed ? 0.65 + 0.35 * Math.sin(performance.now() / 150) : 0.9;
+  const arrowSize  = armed ? 20 : 15;
+  const arrowColor = armed ? 0xFFD84A : 0xC9A227;
   for (const colIdx of [1, 3]) {
     const cx = originX + colIdx * (CELL + GAP) + CELL / 2;
-    buf.push({
-      cmd: 'drawText', x: cx, y: originY - 12,
-      text: '▼', color: 0xC9A227, size: 15, alpha: 0.9,
-    });
-    buf.push({
-      cmd: 'drawText', x: cx, y: originY + MATRIX_ROWS * (CELL + GAP) + 9,
-      text: '▲', color: 0xC9A227, size: 15, alpha: 0.9,
-    });
+    const topY    = originY - 12;
+    const bottomY = originY + MATRIX_ROWS * (CELL + GAP) + 9;
+    if (armed) {
+      buf.push({ cmd: 'drawCircle', x: cx, y: topY, radius: 13, fillColor: 0xC9A227, alpha: pulse * 0.25 });
+      buf.push({ cmd: 'drawCircle', x: cx, y: bottomY, radius: 13, fillColor: 0xC9A227, alpha: pulse * 0.25 });
+    }
+    buf.push({ cmd: 'drawText', x: cx, y: topY, text: '▼', color: arrowColor, size: arrowSize, alpha: pulse });
+    buf.push({ cmd: 'drawText', x: cx, y: bottomY, text: '▲', color: arrowColor, size: arrowSize, alpha: pulse });
   }
 }
 

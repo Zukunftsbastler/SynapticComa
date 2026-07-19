@@ -35,6 +35,7 @@ import { MatrixUI } from '@/ui/MatrixUI';
 import { LevelCompleteScreen, NeuralCollapseScreen } from '@/ui/LevelCompleteScreen';
 import { MonitorStrip } from '@/ui/MonitorStrip';
 import { LegendPanel } from '@/ui/LegendPanel';
+import { TutorialPopups } from '@/tutorial/TutorialPopups';
 import { CANVAS_WIDTH, CANVAS_HEIGHT } from '@/constants';
 
 let driver:    PixiDriver;
@@ -115,6 +116,7 @@ function startSession(result: LobbyResult): void {
   const abilities = new AbilityPanel(document.body);
   const monitor   = new MonitorStrip(document.body, networked);
   const legend    = new LegendPanel(document.body);
+  const tutorials = new TutorialPopups(document.body);
   setUiHook(() => {
     // Local mode: when P1 dissolves into the Nexus, hand control to P2 so the
     // player is never left staring at an empty board.
@@ -126,6 +128,7 @@ function startSession(result: LobbyResult): void {
     abilities.update();
     monitor.update();
     legend.update();
+    tutorials.update();
     watchGamePhase();
   });
 
