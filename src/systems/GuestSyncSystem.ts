@@ -18,6 +18,7 @@ import { inventory } from '@/state/InventoryState';
 import { scrapPool } from '@/state/ScrapPoolState';
 import { createMatrixConduit } from '@/entities/MatrixNodeFactory';
 import { activateP2Exit } from '@/systems/LevelTransitionSystem';
+import { markActivity } from '@/state/GameState';
 import type { GameStateData } from '@/state/GameState';
 import type {
   GameMessage, StateUpdateMessage, MatrixStateUpdateMessage,
@@ -72,6 +73,8 @@ function applyStateUpdate(
 ): void {
   syncApPool(state, msg.apPool);
   // entityId '' signals an AP-only update (no position change).
+  if (msg.entityId === 'avatar_p1') markActivity(state, 0);
+  if (msg.entityId === 'avatar_p2') markActivity(state, 1);
   if (msg.entityId !== '' && entityRegistry.has(msg.entityId)) {
     const eid = entityRegistry.get(msg.entityId);
     Position.q[eid]       = msg.q;
@@ -127,6 +130,7 @@ function applyInventoryUpdate(state: GameStateData, msg: InventoryUpdateMessage)
 function applyCollected(
   world: IWorld, state: GameStateData, msg: CollectedMessage,
 ): void {
+  markActivity(state, msg.playerId);
   if (entityRegistry.has(msg.entityId)) {
     const eid = entityRegistry.get(msg.entityId);
     removeEntity(world, eid);

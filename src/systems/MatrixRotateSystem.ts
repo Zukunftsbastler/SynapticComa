@@ -11,6 +11,7 @@ import { Conduit, MatrixNode } from '@/components';
 import { conduitQuery } from '@/queries';
 import { computeFaceMask } from '@/utils/ConduitFaceMask';
 import { scrapPool } from '@/state/ScrapPoolState';
+import { markActivity } from '@/state/GameState';
 import type { GameStateData } from '@/state/GameState';
 import type { RotateConduitMessage, MatrixStateUpdateMessage } from '@/network/messages';
 import { buildMatrixStatePayload } from './matrixStateHelpers';
@@ -45,6 +46,7 @@ export function MatrixRotateSystem(world: IWorld, state: GameStateData): void {
       scrapCount: scrapPool.plates.length,
     };
     state.outboundMessages.push(update);
+    markActivity(state, input.senderId);
   }
 
   state.pendingInputs = state.pendingInputs.filter(m => m.type !== 'ROTATE_CONDUIT');

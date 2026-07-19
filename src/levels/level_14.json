@@ -1,6 +1,6 @@
 {
   "id": "level_14",
-  "name": "Threshold at Low AP",
+  "name": "Low Reserves",
   "initialAP": 7,
   "apUnlockNodes": [
     {
@@ -16,7 +16,7 @@
       }
     }
   ],
-  "thresholdEnabled": true,
+  "thresholdEnabled": false,
   "initialInventory": {
     "player0": [
       {
@@ -67,20 +67,6 @@
       "r": -2,
       "z": 1,
       "initiallyLocked": true
-    },
-    {
-      "type": "threshold",
-      "id": "threshold_p1",
-      "q": 1,
-      "r": 0,
-      "z": 0
-    },
-    {
-      "type": "threshold",
-      "id": "threshold_p2",
-      "q": -1,
-      "r": 0,
-      "z": 1
     },
     {
       "type": "hazard",

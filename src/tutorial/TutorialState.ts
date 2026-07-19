@@ -5,6 +5,7 @@
 const STORAGE_KEY = 'synaptic_coma_tutorial';
 
 export enum ConceptId {
+  ROLES       = 'ROLES',
   UNLOCK_NODE = 'UNLOCK_NODE',
   INSERT      = 'INSERT',
   JUMP        = 'JUMP',

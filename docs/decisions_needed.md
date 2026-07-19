@@ -22,6 +22,24 @@
 >
 > The original questions are preserved below for context and for Chris's review.
 
+---
+
+## D14 — Role Asymmetry: Should the Id and the Superego Have Different Verbs? *(NEW, 2026-07-19 — open)*
+
+**Trigger:** Till's playtest verdict: "the puzzle consists less of communication than of waiting — it must be clear from each role WHY one player solves certain tasks and the other the rest."
+
+**Current state:** Both players are mechanically identical; only level geometry differentiates them. The Id/Superego identity is now visible in the UI (SPRINT_013) but carries no rules weight.
+
+**Proposal (for the team to decide):** give each fragment role-true capabilities:
+- **(A) The Id gathers, the Superego orders.** Only the Id's dimension contains collectible plates ("impulses grow in the subconscious"); only the Superego may Insert/Rotate ("order is imposed by the critic"). Plates flow from Id to Superego through a new shared "synapse buffer" (1 AP to deposit at a node, visible count only). Every level becomes a hand-off conversation.
+- **(B) Soft asymmetry.** Both keep all verbs, but the Id collects at 0 AP / inserts at 3 AP, the Superego inverse — roles are preferred, not enforced.
+- **(C) Ability-scope asymmetry** — resolves the long-flagged §5.6 divergence at the same time: abilities apply only to the player whose source row routes them; levels are designed so each player must route for the *other* ("I can see your ⇈ node's row — you can't").
+
+Option A is the strongest narrative fit and forces the desired dialogue but requires re-levelling 1–15 (solver-supported, so provable). Option C fixes a doc/code divergence and creates cross-routing dialogue with less relevelling. A **and** C combined is the maximal version.
+
+**Relevant files:** `docs/mechanics.md §3/§5.6`, `docs/narrative.md §2`, `SPRINTS/SPRINT_013`
+**Owner:** all three — this reshapes the core loop. 🔢 Chris: any option changes the AP economy; the solver can re-verify all 15 levels per variant.
+
 **Purpose:** This document lists every foundational game design question that is currently unresolved, inconsistent, or not yet agreed upon by all contributors. Nothing moves to implementation until all three contributors have signed off on every item here.
 
 **Definition of Done:** All three contributors — Till, Andreas, and Chris — have explicitly agreed on each item. "Agreed" means a written reply in the pull request, a GitHub comment, or a documented outcome from a shared call. Silence is not agreement.

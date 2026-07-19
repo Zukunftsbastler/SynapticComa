@@ -21,6 +21,7 @@ import { conduitQuery } from '@/queries';
 import { computeFaceMask } from '@/utils/ConduitFaceMask';
 import { scrapPool } from '@/state/ScrapPoolState';
 import { inventory } from '@/state/InventoryState';
+import { markActivity } from '@/state/GameState';
 import type { GameStateData } from '@/state/GameState';
 import type { InsertConduitMessage, MatrixStateUpdateMessage } from '@/network/messages';
 import { MATRIX_ROWS } from '@/constants';
@@ -94,6 +95,7 @@ export function MatrixInsertSystem(world: IWorld, state: GameStateData): void {
       scrapCount: scrapPool.plates.length,
     };
     state.outboundMessages.push(update);
+    markActivity(state, input.senderId);
   }
 
   state.pendingInputs = state.pendingInputs.filter(m => m.type !== 'INSERT_CONDUIT');

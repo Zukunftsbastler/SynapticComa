@@ -63,12 +63,12 @@ export class MonitorStrip {
 
     if (!gs.p1HasExited) {
       if (gs.viewPlayerId === 0) {
-        parts.push(`GUIDE P1 (VIOLET) TO THE GREEN NEXUS EXIT · KEYS ${P1_KEYS} (SHOWN ON TILES) OR CLICK A NEIGHBOR TILE · 1 AP/STEP`);
+        parts.push(`YOU ARE THE ID (VIOLET) — REACH THE GREEN NEXUS EXIT · KEYS ${P1_KEYS} (SHOWN ON TILES) OR CLICK A NEIGHBOR TILE · 1 AP/STEP`);
       } else {
-        parts.push(`GUIDE P2 (CYAN) · KEYS ${P2_KEYS} (SHOWN ON TILES) OR CLICK · P1 MUST REACH ITS EXIT FIRST`);
+        parts.push(`YOU ARE THE SUPEREGO (CYAN) · KEYS ${P2_KEYS} (SHOWN ON TILES) OR CLICK · THE ID MUST REACH ITS EXIT FIRST`);
       }
     } else {
-      parts.push(`P1 HAS MERGED WITH THE NEXUS. GUIDE P2 (CYAN) TO THE NOW-OPEN EXIT · KEYS ${P2_KEYS} OR CLICK`);
+      parts.push(`THE ID HAS MERGED WITH THE NEXUS. GUIDE THE SUPEREGO (CYAN) TO THE NOW-OPEN EXIT · KEYS ${P2_KEYS} OR CLICK`);
     }
 
     if (this.hasUntriggeredUnlock()) {

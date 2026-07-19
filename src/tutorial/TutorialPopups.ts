@@ -11,10 +11,21 @@
 import { GameState } from '@/state/GameState';
 import { world } from '@/gameLoop';
 import { inventory } from '@/state/InventoryState';
-import { abilityFlags } from '@/systems/AbilitySystem';
-import { apUnlockQuery } from '@/queries';
-import { APUnlock } from '@/components';
+import { apUnlockQuery, matrixNodeQuery } from '@/queries';
+import { APUnlock, MatrixNode } from '@/components';
+import { AbilityType } from '@/types';
 import { ConceptId, hasSeen, markSeen } from './TutorialState';
+
+// Does the CURRENT level's matrix contain a node of this ability?
+// Used for level-START briefings: a mechanic is explained the moment it can
+// matter — before it is powered — so players can plan (and talk) toward it.
+function levelHasAbility(type: AbilityType): boolean {
+  const nodes = matrixNodeQuery(world);
+  for (let i = 0; i < nodes.length; i++) {
+    if (MatrixNode.abilityType[nodes[i]] === type) return true;
+  }
+  return false;
+}
 
 interface Concept {
   id:      ConceptId;
@@ -24,6 +35,20 @@ interface Concept {
 }
 
 const CONCEPTS: Concept[] = [
+  {
+    id: ConceptId.ROLES,
+    trigger: () => GameState.currentLevel !== '',
+    title: 'TWO FRAGMENTS, ONE MIND',
+    bodyHtml:
+      `The patient's psyche is split.<br><br>` +
+      `<b style="color:#8B2FC9">P1 — THE ID</b>: raw impulse. Its dimension is ` +
+      `organic, hungry, littered with buried resources.<br>` +
+      `<b style="color:#3AAED8">P2 — THE SUPEREGO</b>: cold order. Its dimension ` +
+      `is structured, guarded, rule-bound.<br><br>` +
+      `You see only your own half of the mind. The DNA Matrix in the middle is ` +
+      `the last bridge between you — every plate placed there changes <i>both</i> ` +
+      `worlds. <b>Talk about what you need. Stay silent about what you hold.</b>`,
+  },
   {
     id: ConceptId.UNLOCK_NODE,
     trigger: () => {
@@ -60,16 +85,20 @@ const CONCEPTS: Concept[] = [
   },
   {
     id: ConceptId.JUMP,
-    trigger: () => abilityFlags.jumpActive,
-    title: '⇈ JUMP IS POWERED',
+    // Level-START briefing: fires when a ⇈ node exists in the matrix — not
+    // when it is finally powered. Whoever cannot route it themselves learns
+    // what to ask their partner for; that conversation is the game.
+    trigger: () => levelHasAbility(AbilityType.JUMP),
+    title: '⇈ JUMP NODE IN THE MATRIX',
     bodyHtml:
-      `While the ⇈ node glows, your wisp can leap <b>2 tiles in a straight ` +
-      `line for 1 AP</b> — and the tile in between <b>does not matter</b>: ` +
-      `doors, chasms, even walls are simply vaulted.<br><br>` +
-      `<b>Click a tile two steps away</b> (straight line) to jump. ` +
-      `With keys, the jump fires automatically when the single step is blocked.<br><br>` +
-      `Careful: if the ⇈ path in the matrix is severed mid-level, the ability ` +
-      `dies instantly.`,
+      `This level's matrix holds a <b>⇈ JUMP node</b>. While it is powered, a ` +
+      `wisp can leap <b>2 tiles in a straight line for 1 AP</b> — and the tile ` +
+      `in between <b>does not matter</b>: doors, chasms, even walls are vaulted.<br><br>` +
+      `<b>Click a tile two steps away</b> (straight line) to jump. With keys, ` +
+      `the jump fires automatically when the single step is blocked.<br><br>` +
+      `<b>Hold no plates?</b> Then you cannot power ⇈ yourself — tell your ` +
+      `partner where you are stuck and what a jump would solve. ` +
+      `If the ⇈ path is severed mid-level, the ability dies instantly.`,
   },
 ];
 

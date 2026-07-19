@@ -27,6 +27,7 @@ export class HUD {
   private levelEl:    HTMLElement;
   private deadEndEl:  HTMLElement;
   private abilityEl:  HTMLElement;
+  private partnerEl!: HTMLElement;
 
   constructor(container: HTMLElement) {
     this.el = document.createElement('div');
@@ -59,9 +60,21 @@ export class HUD {
     this.abilityEl = document.createElement('div');
     this.abilityEl.style.cssText = 'display:flex;gap:6px;align-items:center;';
 
+    // Partner pulse: signals THAT the other fragment acts — never what it sees.
+    this.partnerEl = document.createElement('div');
+    this.partnerEl.style.cssText = [
+      'display:flex;gap:6px;align-items:center;font-size:0.7rem;',
+      'letter-spacing:0.1em;padding:2px 8px;border:1px solid #2a2018;',
+    ].join('');
+
+    const right = document.createElement('div');
+    right.style.cssText = 'display:flex;gap:10px;align-items:center;';
+    right.appendChild(this.partnerEl);
+    right.appendChild(this.abilityEl);
+
     this.el.appendChild(this.apRow);
     this.el.appendChild(center);
-    this.el.appendChild(this.abilityEl);
+    this.el.appendChild(right);
     container.appendChild(this.el);
   }
 
@@ -70,7 +83,25 @@ export class HUD {
     this.renderAP();
     this.renderLevel();
     this.renderDeadEnd();
+    this.renderPartner();
     this.renderAbilities();
+  }
+
+  // The partner's "neural activity" trace: a pulsing dot while they act
+  // (movement, matrix work, collection), fading to idle after ~2 s.
+  private renderPartner(): void {
+    const partner = GameState.viewPlayerId === 0 ? 1 : 0;
+    const name    = partner === 0 ? 'ID' : 'SUPEREGO';
+    const color   = partner === 0 ? '#8B2FC9' : '#3AAED8';
+    const sinceMs = Date.now() - GameState.lastActionAt[partner];
+    const active  = sinceMs < 2000;
+    const pulse   = active ? 0.45 + 0.55 * Math.abs(Math.sin(Date.now() / 180)) : 0.2;
+    this.partnerEl.innerHTML =
+      `<span style="width:10px;height:10px;border-radius:50%;display:inline-block;` +
+      `background:${color};opacity:${pulse.toFixed(2)};` +
+      `box-shadow:${active ? `0 0 8px ${color}` : 'none'};"></span>` +
+      `<span style="color:${active ? color : '#4a4038'}">` +
+      `${name} ${active ? 'ACTIVE' : 'IDLE'}</span>`;
   }
 
   private renderLevel(): void {

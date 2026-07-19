@@ -12,11 +12,15 @@ The human brain is divided, and the coma has violently separated the patient's p
 * **Hex Grid Environment:** The board looks like living tissue, brain matter, and tangled veins.
 * **Hazards:** Acidic enzymes (water hazards), grasping synapses (locked doors), and repressed fears (static or moving obstacles).
 
+**Gameplay role (see decisions_needed.md D14):** the Id is the *gatherer* — impulses (conduit plates) surface in its flesh; it feels where resources lie. Its tasks should always answer: "only raw instinct could reach this."
+
 ### Dimension B: The Superego (Player 2)
 * **The Theme:** The critical, moral, and logical mind. It is rigid, mechanical, and driven by rules.
 * **Visual Identity:** Cold blues, sterile whites, metallic silvers, and sharp neon lines.
 * **Hex Grid Environment:** The board looks like a pristine, clinical laboratory crossed with a supercomputer's motherboard.
 * **Hazards:** Firewall lasers (barriers), logic gates (locked doors), and automated security protocols (static or moving obstacles).
+
+**Gameplay role (see decisions_needed.md D14):** the Superego is the *orderer* — it imposes structure on what the Id unearths. Its tasks should always answer: "only discipline could arrange this."
 
 ## 3. The DNA Matrix: The Neural Pathways
 The shared square board in the center of the table represents the patient's core neural pathways—the only place where the Id and the Superego still connect.

@@ -23,7 +23,7 @@ import {
 import { staticQuery, phaseBarrierQuery, pushableQuery } from '@/queries';
 import { entityRegistry } from '@/registry/EntityRegistry';
 import { hexDistance } from '@/rendering/HexMath';
-import { GameState } from '@/state/GameState';
+import { GameState, markActivity } from '@/state/GameState';
 import type { GameStateData } from '@/state/GameState';
 import { abilityFlags } from '@/systems/AbilitySystem';
 import type { MoveAvatarMessage, StateUpdateMessage } from '@/network/messages';
@@ -119,6 +119,7 @@ export function MovementSystem(world: IWorld, state: GameStateData): void {
           q: tq, r: tr, apPool: state.apPool,
         };
         state.outboundMessages.push(update);
+        markActivity(state, input.senderId);
         continue;
       }
       if (input.jump === true) continue; // explicit jump blocked — no fallback
@@ -143,6 +144,7 @@ export function MovementSystem(world: IWorld, state: GameStateData): void {
           q: Position.q[eid], r: Position.r[eid], apPool: state.apPool,
         };
         state.outboundMessages.push(update);
+        markActivity(state, input.senderId);
         continue;
       }
     }
@@ -160,6 +162,7 @@ export function MovementSystem(world: IWorld, state: GameStateData): void {
       q: tq, r: tr, apPool: state.apPool,
     };
     state.outboundMessages.push(update);
+    markActivity(state, input.senderId);
   }
 
   // Remove all consumed MOVE_AVATAR messages.

@@ -1,3 +1,23 @@
+// Display names for the level-select screen (kept in sync with the JSONs'
+// "name" fields; validate:levels is the source of truth for content).
+export const LEVEL_NAMES: Record<string, string> = {
+  level_01: 'Tutorial: Movement',
+  level_02: 'Locked Door',
+  level_03: 'Scrap Pool',
+  level_04: 'Column Shift',
+  level_05: 'Shared Routing',
+  level_06: 'Insert Sequence',
+  level_07: 'T-Junction Coordination',
+  level_08: 'Red Herring',
+  level_09: 'Forced Rotation',
+  level_10: 'Tight Budget',
+  level_11: 'Convergence',
+  level_12: 'Leap of Faith',
+  level_13: 'Critical Rotation',
+  level_14: 'Low Reserves',
+  level_15: 'Master Set Teaser',
+};
+
 export const LEVEL_ORDER: string[] = [
   'level_01',
   'level_02',

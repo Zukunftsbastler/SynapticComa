@@ -44,6 +44,15 @@ export interface GameStateData {
   failureCount:     number;
   // Push attempts written by MovementSystem, consumed by PushSystem each tick.
   pushAttempts:     PushAttempt[];
+  // Timestamp (ms) of each player's last successful action — feeds the
+  // partner-activity pulse in the HUD. Deliberately coarse: it signals THAT
+  // the partner acts, never WHAT they see (information asymmetry stays intact).
+  lastActionAt:     [number, number];
+}
+
+/** Records that a player just acted (movement, matrix ops, collection). */
+export function markActivity(state: GameStateData, playerId: 0 | 1): void {
+  state.lastActionAt[playerId] = Date.now();
 }
 
 function makeInitialState(): GameStateData {
@@ -67,6 +76,7 @@ function makeInitialState(): GameStateData {
     p1HasExited:      false,
     failureCount:     0,
     pushAttempts:     [],
+    lastActionAt:     [0, 0],
   };
 }
 

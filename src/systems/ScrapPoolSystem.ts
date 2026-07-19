@@ -12,6 +12,7 @@
 import type { IWorld } from 'bitecs';
 import { scrapPool } from '@/state/ScrapPoolState';
 import { inventory } from '@/state/InventoryState';
+import { markActivity } from '@/state/GameState';
 import type { GameStateData } from '@/state/GameState';
 import type { DrawScrapMessage, MatrixStateUpdateMessage, InventoryUpdateMessage } from '@/network/messages';
 import { buildMatrixStatePayload } from './matrixStateHelpers';
@@ -57,6 +58,7 @@ export function ScrapPoolSystem(world: IWorld, state: GameStateData): void {
       entityId,
     };
     state.outboundMessages.push(invUpdate);
+    markActivity(state, input.senderId);
   }
 
   state.pendingInputs = state.pendingInputs.filter(m => m.type !== 'DRAW_SCRAP');

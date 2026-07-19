@@ -61,7 +61,7 @@ export class InventoryPanel {
     const pid = GameState.viewPlayerId;
     const inv = pid === 0 ? inventory.player0 : inventory.player1;
     // Inventories are per player — always say whose plates these are.
-    this.titleEl.textContent = `P${pid + 1} PLATES`;
+    this.titleEl.textContent = pid === 0 ? 'THE ID — PLATES' : 'THE SUPEREGO — PLATES';
     this.titleEl.style.color = pid === 0 ? '#a86ac9' : '#5aa8c9';
     this.hintEl.style.display = uiState.insertArmed && inv.length > 0 ? 'block' : 'none';
 

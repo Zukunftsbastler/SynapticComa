@@ -33,6 +33,7 @@ import { InventoryPanel } from '@/ui/InventoryPanel';
 import { AbilityPanel } from '@/ui/AbilityPanel';
 import { MatrixUI } from '@/ui/MatrixUI';
 import { LevelCompleteScreen, NeuralCollapseScreen } from '@/ui/LevelCompleteScreen';
+import { LevelSelectScreen } from '@/ui/LevelSelectScreen';
 import { MonitorStrip } from '@/ui/MonitorStrip';
 import { LegendPanel } from '@/ui/LegendPanel';
 import { TutorialPopups } from '@/tutorial/TutorialPopups';
@@ -73,6 +74,15 @@ async function goToLevel(levelId: string, carriedFailures: number): Promise<void
   transitioning = false;
 }
 
+function openLevelSelect(closable: boolean): void {
+  overlay?.destroy();
+  overlay = new LevelSelectScreen(
+    document.body,
+    levelId => { overlay = null; void goToLevel(levelId, 0); },
+    closable ? () => { overlay = null; } : undefined,
+  );
+}
+
 function watchGamePhase(): void {
   if (transitioning || overlay) return;
 
@@ -81,8 +91,8 @@ function watchGamePhase(): void {
     const interactive = !networked || GameState.localPlayerId === 0;
     overlay = new LevelCompleteScreen(
       document.body,
-      nextId => { void goToLevel(nextId, 0); },
-      ()     => window.location.reload(),   // "Level Select" → lobby, progress persisted
+      nextId => { overlay = null; void goToLevel(nextId, 0); },
+      ()     => openLevelSelect(false),
       interactive,
     );
     return;
@@ -91,7 +101,7 @@ function watchGamePhase(): void {
   // ── Failure (CollisionSystem halted the simulation) ───────────────────────
   if (GameState.phase === 'SETUP' && GameState.currentLevel !== '') {
     if (GameState.failureCount >= 2) {
-      overlay = new NeuralCollapseScreen(document.body, () => window.location.reload());
+      overlay = new NeuralCollapseScreen(document.body, () => openLevelSelect(false));
     } else if (!networked || GameState.localPlayerId === 0) {
       // First failure: instant retry, failure count carried over (mechanics.md §7).
       const level = GameState.currentLevel;
@@ -148,6 +158,18 @@ function startSession(result: LobbyResult): void {
     ) {
       void goToLevel(GameState.currentLevel, GameState.failureCount);
     }
+    // Esc: level select (host/local decide the level; the Guest follows).
+    if (
+      e.key === 'Escape' && !transitioning &&
+      (!networked || GameState.localPlayerId === 0)
+    ) {
+      if (overlay instanceof LevelSelectScreen) {
+        overlay.destroy();
+        overlay = null;
+      } else if (!overlay) {
+        openLevelSelect(true);
+      }
+    }
   });
 
   // ── Guest follows the Host's level loads ─────────────────────────────────
@@ -155,11 +177,13 @@ function startSession(result: LobbyResult): void {
     void goToLevel(levelId, failureCount);
   });
 
-  // ── Enter the campaign at the persisted position (Host/local decides) ────
-  const startId = result.role === 0
-    ? LEVEL_ORDER[Math.min(ProgressionState.currentLevelIndex, LEVEL_ORDER.length - 1)]
-    : result.levelId;
-  void goToLevel(startId, 0);
+  // ── Host/local: choose the level; Guest: load the handshake level and
+  //    follow the Host's LEVEL_LOAD messages from there. ────────────────────
+  if (result.role === 0) {
+    openLevelSelect(false);
+  } else {
+    void goToLevel(result.levelId, 0);
+  }
 
   startLoop();
 }
