@@ -4,6 +4,7 @@
 //   - Click on a column-2 or column-4 TOP arrow    → InsertConduitMessage (fromTop=true)
 //   - Click on a column-2 or column-4 BOTTOM arrow → InsertConduitMessage (fromTop=false)
 //   - Click on an existing matrix conduit tile      → RotateConduitMessage (column + row)
+//   - Click on the Scrap Pool pile                  → DrawScrapMessage (blind draw, 1 AP)
 //   - Press R while holding a conduit               → pre-orient pending rotation (0 AP)
 //   - Tab                                           → cycle selected inventory slot
 //
@@ -16,7 +17,9 @@
 import { GameState } from '@/state/GameState';
 import { uiState, disarmInsert } from '@/ui/uiState';
 import { inventory } from '@/state/InventoryState';
-import type { InsertConduitMessage, RotateConduitMessage } from '@/network/messages';
+import { scrapPool } from '@/state/ScrapPoolState';
+import { scrapPileRect } from '@/rendering/MatrixRenderer';
+import type { InsertConduitMessage, RotateConduitMessage, DrawScrapMessage } from '@/network/messages';
 import { MATRIX_ROWS } from '@/constants';
 
 const CELL         = 48;
@@ -90,6 +93,14 @@ export class MatrixUI {
     const cell = this.hitTestCell(e.clientX, e.clientY);
     if (cell && CONDUIT_COLS_0IDX.includes(cell.col0)) {
       this.fireRotate(cell.col0 + 1, cell.row);
+      return;
+    }
+
+    // Scrap Pool pile: blind draw (1 AP). Geometry shared with the renderer.
+    const pile = scrapPileRect(this.originX, this.originY);
+    if (e.clientX >= pile.x && e.clientX <= pile.x + pile.w &&
+        e.clientY >= pile.y && e.clientY <= pile.y + pile.h) {
+      this.fireDraw();
     }
   }
 
@@ -148,6 +159,22 @@ export class MatrixUI {
     if (GameState.localPlayerId === 0) GameState.pendingInputs.push(msg);
     else                                GameState.outboundMessages.push(msg);
     disarmInsert();
+  }
+
+  private fireDraw(): void {
+    if (scrapPool.plates.length === 0) {
+      console.debug('[MatrixUI] Draw rejected: scrap pool empty');
+      return;
+    }
+    const msg: DrawScrapMessage = {
+      type:     'DRAW_SCRAP',
+      apCost:   1,
+      seq:      GameState.outSeq++,
+      senderId: GameState.viewPlayerId,
+      tick:     0,
+    };
+    if (GameState.localPlayerId === 0) GameState.pendingInputs.push(msg);
+    else                                GameState.outboundMessages.push(msg);
   }
 
   private fireRotate(col1: number, row: number): void {

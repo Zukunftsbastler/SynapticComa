@@ -2,12 +2,18 @@
 // economy (generative_levels.md §5). Exits non-zero if any level lacks a
 // solvability proof, so it can gate CI/builds.
 //
-// Beyond the solvability proof, two design contracts are enforced as gates:
+// Beyond the solvability proof, three design contracts are enforced as gates:
 //   1. Fairness: apSlack ≥ 1 — a level where every single AP is spoken for
 //      (slack 0) turns any wasted action into a Dead End; forbidden at all
 //      campaign tiers (generative_levels.md §2.4).
 //   2. Interaction: minSwitches ≥ 1 — solving must involve both players
 //      acting; a level one player could clear alone is a design error.
+//   3. UI reachability: every proof runs with only the actions the input/UI
+//      layer can actually produce (static scan of src/input + src/ui for the
+//      message-type literals). "Rules-solvable" is not "playable": DRAW_SCRAP
+//      once had a system and solver support but no UI producer, which made
+//      Level 3 provably solvable yet impossible to play. A level failing only
+//      under this restriction is reported as a UI-REACHABILITY failure.
 //
 // The run also exports src/levels/levelMeta.json — solver-derived metadata
 // (optimal cost, slack, difficulty, interaction intensity) consumed by the
@@ -34,8 +40,56 @@ const ABILITY_SHORT: Record<number, string> = {
 const NODE_LIMIT          = 10_000_000;
 const SWITCH_PHASE_BUDGET = 2_000_000;
 
-const levelsDir = join(dirname(fileURLToPath(import.meta.url)), '../src/levels');
+const srcDir    = join(dirname(fileURLToPath(import.meta.url)), '../src');
+const levelsDir = join(srcDir, 'levels');
 const files = readdirSync(levelsDir).filter(f => /^level_\d+\.json$/.test(f)).sort();
+
+// ── UI action-reachability scan ──────────────────────────────────────────────
+// A solver action is only usable in a proof if some module in the input/UI
+// layer constructs the corresponding GameMessage (object literal with the
+// `type:` discriminant). Systems merely CONSUME messages, so only src/input
+// and src/ui count as producers.
+const KIND_TO_MESSAGE = {
+  MOVE:   'MOVE_AVATAR',
+  INSERT: 'INSERT_CONDUIT',
+  ROTATE: 'ROTATE_CONDUIT',
+  DRAW:   'DRAW_SCRAP',
+} as const;
+type SolverKind = keyof typeof KIND_TO_MESSAGE;
+
+function scanUiProducers(): Set<SolverKind> {
+  const producerDirs = [join(srcDir, 'input'), join(srcDir, 'ui')];
+  let source = '';
+  for (const dir of producerDirs) {
+    for (const f of readdirSync(dir).filter(f => f.endsWith('.ts'))) {
+      source += readFileSync(join(dir, f), 'utf8');
+    }
+  }
+  const producible = new Set<SolverKind>();
+  for (const [kind, msgType] of Object.entries(KIND_TO_MESSAGE)) {
+    if (new RegExp(`type:\\s*['"]${msgType}['"]`).test(source)) {
+      producible.add(kind as SolverKind);
+    }
+  }
+  return producible;
+}
+
+const producibleKinds = scanUiProducers();
+const unreachableKinds = (Object.keys(KIND_TO_MESSAGE) as SolverKind[])
+  .filter(k => !producibleKinds.has(k));
+if (unreachableKinds.includes('MOVE')) {
+  console.error('FATAL: no UI producer for MOVE_AVATAR — the game is not playable at all.');
+  process.exit(1);
+}
+const disabledKinds = unreachableKinds.filter(
+  (k): k is 'INSERT' | 'ROTATE' | 'DRAW' => k !== 'MOVE',
+);
+if (disabledKinds.length > 0) {
+  console.warn(
+    `\n⚠ Solver actions without any UI producer: ${disabledKinds.join(', ')} — ` +
+    'all proofs run WITHOUT them (playability, not just rules-solvability).',
+  );
+}
 
 let failed = 0;
 const rows: string[] = [];
@@ -45,13 +99,22 @@ for (const file of files) {
   const def = JSON.parse(readFileSync(join(levelsDir, file), 'utf8')) as LevelDef;
   const unlockTotal = def.apUnlockNodes.reduce((a, u) => a + u.value, 0);
   const t0 = performance.now();
-  const result = solveLevel(def, NODE_LIMIT, { switchPhaseNodeBudget: SWITCH_PHASE_BUDGET });
+  const result = solveLevel(def, NODE_LIMIT, {
+    switchPhaseNodeBudget: SWITCH_PHASE_BUDGET,
+    disabledKinds,
+  });
   const ms = Math.round(performance.now() - t0);
 
   if (!result.solvable) {
     failed++;
+    // Distinguish "rules allow no solution" from "the UI cannot deliver the
+    // actions the solution needs" — the latter is a code bug, not a level bug.
+    let uiOnly = false;
+    if (disabledKinds.length > 0) {
+      uiOnly = solveLevel(def, NODE_LIMIT, { skipSwitchMetric: true }).solvable;
+    }
     rows.push(
-      `${def.id.padEnd(10)} ✗ UNSOLVABLE (${result.reason}) ` +
+      `${def.id.padEnd(10)} ✗ ${uiOnly ? `UI-REACHABILITY (needs: ${disabledKinds.join('/')})` : `UNSOLVABLE (${result.reason})`} ` +
       `nodes=${result.nodesExpanded} ${ms}ms  [${def.name}]`,
     );
     continue;
@@ -66,7 +129,7 @@ for (const file of files) {
   const requiredAbilities: string[] = [];
   for (const t of abilityTypes) {
     const without = solveLevel(def, 1_500_000, {
-      disabledAbility: t as AbilityType, skipSwitchMetric: true,
+      disabledAbility: t as AbilityType, skipSwitchMetric: true, disabledKinds,
     });
     if (!without.solvable) requiredAbilities.push(ABILITY_SHORT[t] ?? String(t));
   }

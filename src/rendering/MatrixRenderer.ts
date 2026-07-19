@@ -13,6 +13,9 @@ import type { IWorld } from 'bitecs';
 import { Conduit, MatrixNode } from '@/components';
 import { conduitQuery, matrixNodeQuery } from '@/queries';
 import { uiState } from '@/ui/uiState';
+import { scrapPool } from '@/state/ScrapPoolState';
+import { inventory } from '@/state/InventoryState';
+import { GameState } from '@/state/GameState';
 import type { RenderCommandBuffer } from './RenderCommandBuffer';
 import { MATRIX_ROWS, MATRIX_COLS } from '@/constants';
 
@@ -42,6 +45,21 @@ function colType(col: number): 'source' | 'conduit' | 'ability' {
   if (col === 1)           return 'source';
   if (col === 2 || col === 4) return 'conduit';
   return 'ability'; // col 3 or 5
+}
+
+// Scrap Pool pile geometry — single source of truth shared with MatrixUI's
+// click hit zone (an invisible affordance is no affordance; a drifting hit
+// zone is worse). Centered below the tray, clear of the bottom insert arrows.
+export function scrapPileRect(
+  originX: number, originY: number,
+): { x: number; y: number; w: number; h: number } {
+  const totalW = MATRIX_COLS * CELL + (MATRIX_COLS - 1) * GAP;
+  return {
+    x: originX + totalW / 2 - 34,
+    y: originY + MATRIX_ROWS * (CELL + GAP) + 30,
+    w: 68,
+    h: 44,
+  };
 }
 
 export function renderMatrix(
@@ -146,6 +164,40 @@ export function renderMatrix(
     }
     buf.push({ cmd: 'drawText', x: cx, y: topY, text: '▼', color: arrowColor, size: arrowSize, alpha: pulse });
     buf.push({ cmd: 'drawText', x: cx, y: bottomY, text: '▲', color: arrowColor, size: arrowSize, alpha: pulse });
+  }
+
+  // ── Scrap Pool pile (click → blind draw, 1 AP) ─────────────────────────────
+  // Face-down stack below the tray. Count is public knowledge; contents never
+  // shown (mechanics.md §4.3). Pulses when the viewing player holds no plates
+  // and the pool could supply one — the Level-3 teaching moment.
+  const pile  = scrapPileRect(originX, originY);
+  const count = scrapPool.plates.length;
+  const viewerInv = GameState.viewPlayerId === 0 ? inventory.player0 : inventory.player1;
+  const hint  = count > 0 && viewerInv.length === 0;
+  const hintPulse = hint ? 0.55 + 0.45 * Math.sin(performance.now() / 150) : 1;
+
+  if (count === 0) {
+    // Empty pool: dim recess only.
+    buf.push({ cmd: 'drawRect', x: pile.x, y: pile.y, width: pile.w, height: pile.h, fillColor: C_CELL_EMPTY, alpha: 0.5 });
+  } else {
+    if (hint) {
+      buf.push({ cmd: 'drawCircle', x: pile.x + pile.w / 2, y: pile.y + pile.h / 2, radius: 34, fillColor: 0xC9A227, alpha: hintPulse * 0.22 });
+    }
+    // Stack effect: up to three offset face-down plates.
+    const layers = Math.min(count, 3);
+    for (let i = layers - 1; i >= 0; i--) {
+      buf.push({
+        cmd: 'drawRect',
+        x: pile.x + 4 - i * 2, y: pile.y + 4 - i * 2,
+        width: pile.w - 8, height: pile.h - 8,
+        fillColor: C_CONDUIT_BODY, alpha: 1,
+      });
+    }
+    // Face-down marker + public count.
+    buf.push({ cmd: 'drawText', x: pile.x + pile.w / 2 - 12, y: pile.y + pile.h / 2, text: '?', color: 0x8a6a30, size: 18, alpha: hintPulse });
+    buf.push({ cmd: 'drawText', x: pile.x + pile.w / 2 + 14, y: pile.y + pile.h / 2, text: `×${count}`, color: 0xC9A227, size: 13, alpha: 1 });
+    // Draw affordance: the same gold arrow language as the insert arrows.
+    buf.push({ cmd: 'drawText', x: pile.x + pile.w / 2, y: pile.y - 12, text: '⤒', color: hint ? 0xFFD84A : 0xC9A227, size: hint ? 18 : 14, alpha: hintPulse });
   }
 }
 

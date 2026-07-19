@@ -11,6 +11,7 @@
 import { GameState } from '@/state/GameState';
 import { world } from '@/gameLoop';
 import { inventory } from '@/state/InventoryState';
+import { scrapPool } from '@/state/ScrapPoolState';
 import { apUnlockQuery, matrixNodeQuery } from '@/queries';
 import { APUnlock, MatrixNode } from '@/components';
 import { AbilityType } from '@/types';
@@ -82,6 +83,23 @@ const CONCEPTS: Concept[] = [
       `falls face-down into the Scrap Pool. <i>Where your plate lands depends on ` +
       `which end you push from.</i><br><br>` +
       `Keyboard: [TAB] select · [R] pre-rotate (free) · click a placed plate = rotate (1 AP).`,
+  },
+  {
+    id: ConceptId.SCRAP_DRAW,
+    // Fires when the pool holds plates while the viewing player's hands are
+    // empty — the Level-3 opening position, where drawing is the only way in.
+    trigger: () => {
+      const inv = GameState.viewPlayerId === 0 ? inventory.player0 : inventory.player1;
+      return scrapPool.plates.length > 0 && inv.length === 0;
+    },
+    title: 'THE SCRAP POOL',
+    bodyHtml:
+      `Below the matrix lies a <b>face-down pile</b> of ejected plates. Everyone ` +
+      `sees <i>how many</i>; no one sees <i>what</i>.<br><br>` +
+      `<b>Click the pile</b> to draw one blind for <b>1 AP</b> — it lands in ` +
+      `your private inventory, shape revealed only to you.<br><br>` +
+      `You may say you drew. You may <b>never describe the shape</b> — ` +
+      `talk about goals, not about plates.`,
   },
   {
     id: ConceptId.JUMP,

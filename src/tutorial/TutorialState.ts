@@ -9,6 +9,7 @@ export enum ConceptId {
   UNLOCK_NODE = 'UNLOCK_NODE',
   INSERT      = 'INSERT',
   JUMP        = 'JUMP',
+  SCRAP_DRAW  = 'SCRAP_DRAW',
 }
 
 const seen = new Set<string>();

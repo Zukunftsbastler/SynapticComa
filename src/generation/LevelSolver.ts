@@ -239,6 +239,14 @@ export interface SolveOptions {
    * = false).
    */
   switchPhaseNodeBudget?: number;
+  /**
+   * Action kinds the solver may NOT use. The validator passes every kind the
+   * input/UI layer cannot actually produce: a proof that relies on an action
+   * no player can trigger is not a proof of playability. (Found the hard way:
+   * DRAW_SCRAP had rules, a system, and solver support — but no UI producer,
+   * making Level 3 rules-solvable yet unplayable.)
+   */
+  disabledKinds?: ReadonlyArray<'INSERT' | 'ROTATE' | 'DRAW'>;
 }
 
 export function solveLevel(
@@ -251,6 +259,7 @@ export function solveLevel(
     );
   }
   const start = buildStartState(def);
+  const disabledKinds = new Set(opts.disabledKinds ?? []);
 
   let nodesExpanded = 0;
   let currentLimit  = 0;
@@ -361,7 +370,7 @@ export function solveLevel(
     }
 
     // ── INSERT actions (cost 2) ──────────────────────────────────────────
-    if (budget >= 2 && apAvail >= 2) {
+    if (budget >= 2 && apAvail >= 2 && !disabledKinds.has('INSERT')) {
       for (let shape = 0; shape < s.inventory.length; shape++) {
         if (s.inventory[shape] === 0) continue;
         for (const colIdx of [0, 1] as const) {
@@ -382,7 +391,8 @@ export function solveLevel(
     }
 
     // ── ROTATE actions (cost 1, 90° CW per action) ───────────────────────
-    for (const colIdx of [0, 1] as const) {
+    const rotateCols: readonly (0 | 1)[] = disabledKinds.has('ROTATE') ? [] : [0, 1];
+    for (const colIdx of rotateCols) {
       for (let row = 0; row < MATRIX_ROWS; row++) {
         const cell = s.matrix[colIdx][row];
         if (!cell || effectiveRotations(cell.shape) === 1) continue;
@@ -397,7 +407,8 @@ export function solveLevel(
     }
 
     // ── DRAW action (cost 1; adversarial AND over all possible shapes) ───
-    const scrapTotal = s.scrap.reduce((a, b) => a + b, 0);
+    const scrapTotal = disabledKinds.has('DRAW')
+      ? 0 : s.scrap.reduce((a, b) => a + b, 0);
     if (scrapTotal > 0 && budget >= 1) {
       let allBranchesHold = true;
       let worstWitness: SolverAction[] | null = null;

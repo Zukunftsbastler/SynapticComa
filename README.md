@@ -53,6 +53,7 @@ Open two browser tabs at `http://localhost:5173`. In the first tab click **HOST*
 | R | Rotate selected conduit (clockwise, before insertion) |
 | Click matrix column | Insert selected conduit from top or bottom (2 AP) |
 | Click conduit in matrix | Rotate that conduit in place (1 AP) |
+| Click scrap pile (below matrix) | Blind draw from the Scrap Pool (1 AP) |
 | 1 / 2 | (Dev) Switch controlled player |
 
 ## Tech Stack
