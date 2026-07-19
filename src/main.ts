@@ -52,6 +52,10 @@ async function goToLevel(levelId: string, carriedFailures: number): Promise<void
 
   setWorld(await loadLevel(world, levelId));
   GameState.failureCount = carriedFailures;
+  // Local mode: every level starts with P1 in control. Without this, the
+  // auto-switch to P2 (after P1's exit) leaks into the next level and the
+  // player starts staring at P2's empty inventory.
+  if (!networked) GameState.viewPlayerId = 0;
 
   // Keep the campaign index aligned with what is actually being played.
   const idx = LEVEL_ORDER.indexOf(levelId);

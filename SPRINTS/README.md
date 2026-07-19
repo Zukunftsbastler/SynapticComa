@@ -15,5 +15,6 @@
 | [008 — Playability Hotfixes](SPRINT_008-Playability-Hotfixes.md) | 2026-07-19 | First-playtest fixes: floor tiles, board edges, entity color code, Monitor status strip, deterministic room codes |
 | [009 — Controls & Feedback](SPRINT_009-Controls-and-Feedback.md) | 2026-07-19 | On-board key hints, click-to-move, both boards visible in local mode, provable early Dead-End detection; P2's missing U/O keys |
 | [010 — Movement, Gates & Juice](SPRINT_010-Movement-Gates-and-Juice.md) | 2026-07-19 | Jump semantics fixed (playtest ruling), gate walls make the matrix mandatory on L2–10 (noMatrix proofs), graphical legend, ability glyphs + insert arrows, movement tween, ECS FX system |
+| [011 — Player-Sensitive UI](SPRINT_011-Player-Sensitive-UI.md) | 2026-07-19 | Legend filtered to the viewed player's board and shortened; viewPlayerId no longer leaks across levels (the Level-10 "missing plates" bug); inventory panel names its owner; Monitor points to the partner's plates |
 
 **Next planned:** The Monitor (concept triggers, highlight framing, scripted "Calibration" intro) · Neuro-Resonance (`Conduit.base`, ResonanceSystem, solver extension) · Generator (Deep Coma endless mode, Daily Synapse).

@@ -19,6 +19,7 @@ const ROT_LABELS = ['0°', '90°', '180°', '270°'];
 
 export class InventoryPanel {
   private el:       HTMLElement;
+  private titleEl!: HTMLElement;
   private listEl:   HTMLElement;
   private selectedIndex = 0;
 
@@ -31,8 +32,8 @@ export class InventoryPanel {
     ].join('');
 
     const title = document.createElement('div');
-    title.textContent = 'INVENTORY';
     title.style.cssText = 'color:#7a6040;font-size:0.7rem;letter-spacing:0.15em;margin-bottom:6px;';
+    this.titleEl = title;
 
     this.listEl = document.createElement('div');
     this.listEl.style.cssText = 'display:flex;flex-direction:column;gap:3px;';
@@ -46,6 +47,9 @@ export class InventoryPanel {
   update(): void {
     const pid = GameState.viewPlayerId;
     const inv = pid === 0 ? inventory.player0 : inventory.player1;
+    // Inventories are per player — always say whose plates these are.
+    this.titleEl.textContent = `P${pid + 1} PLATES`;
+    this.titleEl.style.color = pid === 0 ? '#a86ac9' : '#5aa8c9';
 
     if (inv.length === 0) {
       this.listEl.innerHTML = '<span style="color:#4a3018">— empty —</span>';

@@ -75,9 +75,14 @@ export class MonitorStrip {
       parts.push('GOLD NODE: BOTH WISPS ON IT SIMULTANEOUSLY = +AP');
     }
 
-    const inv = GameState.viewPlayerId === 0 ? inventory.player0 : inventory.player1;
+    const inv   = GameState.viewPlayerId === 0 ? inventory.player0 : inventory.player1;
+    const other = GameState.viewPlayerId === 0 ? inventory.player1 : inventory.player0;
     if (inv.length > 0) {
       parts.push(`YOU HOLD ${inv.length} PLATE${inv.length > 1 ? 'S' : ''}: [TAB] SELECT · [R] PRE-ROTATE · CLICK ▼/▲ ON THE MATRIX TO INSERT (2 AP)`);
+    } else if (!this.networked && other.length > 0) {
+      // Local mode: don't let the player hunt for plates the other wisp holds.
+      const otherId = GameState.viewPlayerId === 0 ? 2 : 1;
+      parts.push(`P${otherId} HOLDS ${other.length} PLATE${other.length > 1 ? 'S' : ''} — PRESS [${otherId}] TO SWITCH AND INSERT`);
     } else {
       parts.push('MATRIX: CLICK ▼/▲ = INSERT PLATE (2 AP) · CLICK PLATE = ROTATE (1 AP)');
     }
