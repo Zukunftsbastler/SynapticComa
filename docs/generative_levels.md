@@ -74,11 +74,16 @@ interface SolverProof {
   optimalCost: number;          // minimal AP expenditure (worst-case draws)
   solutionPath: SolverAction[]; // one witness solution
   coordinationSteps: number;    // actions requiring both players (unlocks, threshold)
+  minSwitches: number;          // interaction intensity — see below
   deadEndDistance: number;      // min APs a pair can waste before the level becomes unsolvable
 }
 ```
 
 `deadEndDistance` is computed by re-running the solver from perturbed states and is the key fairness metric: levels where a single early mistake locks the level (`deadEndDistance ≤ 1`) are rejected below difficulty tier "brutal".
+
+**`minSwitches` — interaction intensity.** The minimal number of control hand-offs between the two players across *any* solution (matrix actions are player-agnostic; only avatar moves have a fixed actor). This is the level's measured demand for communication — the game's actual goal. Design reading: values may and should *grow* over the campaign; a level with `minSwitches = 0` would be single-player-solvable and is rejected by the build gate. Presentation rule: the value is shown to players as a **static property of the level** (like difficulty) — never as a par value, score, or live counter of their own hand-offs. Minimizing interaction is explicitly *not* a player goal; the metric exists so designers can steer it upward, not so players can optimize it downward.
+
+Build-time campaign validation (`npm run validate:levels`) exports these proof metrics per level to `src/levels/levelMeta.json` (generated file — never hand-edited), which the UI reads for the interaction-intensity display. Two design contracts are enforced as build gates: `apSlack ≥ 1` (fairness) and `minSwitches ≥ 1` (interaction).
 
 ### 2.5 Runtime Reuse: Dead End Detection
 

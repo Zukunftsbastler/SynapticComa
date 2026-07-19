@@ -11,6 +11,7 @@
 import { GameState } from '@/state/GameState';
 import { abilityFlags } from '@/systems/AbilitySystem';
 import { AbilityType } from '@/types';
+import { getLevelMeta } from '@/levels/levelMeta';
 
 const ABILITY_LABELS: Partial<Record<AbilityType, string>> = {
   [AbilityType.JUMP]:         '↑↑ JUMP',
@@ -25,6 +26,7 @@ export class HUD {
   private el:         HTMLElement;
   private apRow:      HTMLElement;
   private levelEl:    HTMLElement;
+  private syncEl:     HTMLElement;
   private deadEndEl:  HTMLElement;
   private abilityEl:  HTMLElement;
   private partnerEl!: HTMLElement;
@@ -46,6 +48,14 @@ export class HUD {
     this.levelEl = document.createElement('div');
     this.levelEl.style.cssText = 'color:#7a6040;font-size:0.8rem;letter-spacing:0.15em;';
 
+    // Interaction intensity (solver's minSwitches): a static property of the
+    // level, like difficulty. Deliberately NOT paired with any live counter of
+    // the players' own hand-offs — communication is the game's goal, and this
+    // number must never read as a par value to minimize (levelMeta.ts).
+    this.syncEl = document.createElement('div');
+    this.syncEl.style.cssText = 'color:#4a4038;font-size:0.65rem;letter-spacing:0.2em;';
+    this.syncEl.title = 'Interaction intensity: minimum player hand-offs any solution requires';
+
     this.deadEndEl = document.createElement('div');
     this.deadEndEl.style.cssText = [
       'color:#8a2020;font-size:0.85rem;letter-spacing:0.15em;',
@@ -55,6 +65,7 @@ export class HUD {
     this.deadEndEl.textContent = '⊘ DEAD END';
 
     center.appendChild(this.levelEl);
+    center.appendChild(this.syncEl);
     center.appendChild(this.deadEndEl);
 
     this.abilityEl = document.createElement('div');
@@ -108,6 +119,11 @@ export class HUD {
     const id = GameState.currentLevel.replace('level_', 'LEVEL ');
     this.levelEl.textContent = GameState.currentLevel
       ? `${id} — ${GameState.currentLevelName.toUpperCase()}`
+      : '';
+    const meta = getLevelMeta(GameState.currentLevel);
+    // "+" marks an upper bound (search hit its node budget for this level).
+    this.syncEl.textContent = meta
+      ? `⇄ SYNC ${meta.minSwitches}${meta.minSwitchesExact ? '' : '+'}`
       : '';
   }
 

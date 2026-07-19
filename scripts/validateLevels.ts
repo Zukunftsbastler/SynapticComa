@@ -2,31 +2,50 @@
 // economy (generative_levels.md §5). Exits non-zero if any level lacks a
 // solvability proof, so it can gate CI/builds.
 //
+// Beyond the solvability proof, two design contracts are enforced as gates:
+//   1. Fairness: apSlack ≥ 1 — a level where every single AP is spoken for
+//      (slack 0) turns any wasted action into a Dead End; forbidden at all
+//      campaign tiers (generative_levels.md §2.4).
+//   2. Interaction: minSwitches ≥ 1 — solving must involve both players
+//      acting; a level one player could clear alone is a design error.
+//
+// The run also exports src/levels/levelMeta.json — solver-derived metadata
+// (optimal cost, slack, difficulty, interaction intensity) consumed by the
+// game UI. The file is generated; never edit it by hand.
+//
 // Run: npm run validate:levels
 
-import { readdirSync, readFileSync } from 'node:fs';
+import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { solveLevel } from '@/generation/LevelSolver';
 import { scoreDifficulty } from '@/generation/DifficultyModel';
 import { AbilityType } from '@/types';
 import type { LevelDef } from '@/levels/LevelSchema';
+import type { LevelMeta } from '@/levels/levelMeta';
 
 const ABILITY_SHORT: Record<number, string> = {
   1: 'JUMP', 2: 'PUSH', 3: 'RED', 4: 'BLUE', 5: 'PHASE', 6: 'FIRE',
 };
+
+// The switch-metric phase gets a raised node budget here: this script runs
+// offline, and an exact minSwitches is worth minutes — the value ships to the
+// UI via levelMeta.json. Levels that still exhaust it keep the witness bound.
+const NODE_LIMIT          = 10_000_000;
+const SWITCH_PHASE_BUDGET = 2_000_000;
 
 const levelsDir = join(dirname(fileURLToPath(import.meta.url)), '../src/levels');
 const files = readdirSync(levelsDir).filter(f => /^level_\d+\.json$/.test(f)).sort();
 
 let failed = 0;
 const rows: string[] = [];
+const meta: Record<string, LevelMeta> = {};
 
 for (const file of files) {
   const def = JSON.parse(readFileSync(join(levelsDir, file), 'utf8')) as LevelDef;
   const unlockTotal = def.apUnlockNodes.reduce((a, u) => a + u.value, 0);
   const t0 = performance.now();
-  const result = solveLevel(def);
+  const result = solveLevel(def, NODE_LIMIT, { switchPhaseNodeBudget: SWITCH_PHASE_BUDGET });
   const ms = Math.round(performance.now() - t0);
 
   if (!result.solvable) {
@@ -53,14 +72,34 @@ for (const file of files) {
   }
 
   const d = scoreDifficulty(result, def.initialAP, unlockTotal)!;
+
+  // Gate 1 — fairness: slack 0 means one wasted AP is a Dead End.
+  const gateErrors: string[] = [];
+  if (d.apSlack < 1) gateErrors.push(`apSlack=${d.apSlack} < 1 (fairness)`);
+  // Gate 2 — interaction: both players must act to solve.
+  if (result.minSwitches < 1) gateErrors.push('minSwitches=0 (single-player solvable)');
+  if (gateErrors.length > 0) failed++;
+
+  meta[def.id] = {
+    optimalCost:       result.optimalCost,
+    apSlack:           d.apSlack,
+    difficulty:        d.score,
+    minSwitches:       result.minSwitches,
+    minSwitchesExact:  result.minSwitchesExact,
+    coordinationSteps: result.coordinationSteps,
+    drawSteps:         result.drawSteps,
+    matrixRequired,
+  };
+
   rows.push(
-    `${def.id.padEnd(10)} ✓ optimal=${String(result.optimalCost).padStart(2)} AP  ` +
+    `${def.id.padEnd(10)} ${gateErrors.length ? '✗' : '✓'} optimal=${String(result.optimalCost).padStart(2)} AP  ` +
     `slack=${String(d.apSlack).padStart(2)}  D=${d.score.toFixed(2).padStart(5)}  ` +
     `sync=${result.minSwitches}${result.minSwitchesExact ? '' : '≤'} ` +
     `coord=${result.coordinationSteps} draws=${result.drawSteps}  ` +
     `matrix=${matrixRequired ? 'REQ' : 'opt'}  ` +
     `needs=[${requiredAbilities.join(',') || '—'}]  ` +
-    `${ms}ms  [${def.name}]`,
+    `${ms}ms  [${def.name}]` +
+    (gateErrors.length ? `\n${''.padEnd(11)}   GATE: ${gateErrors.join('; ')}` : ''),
   );
 }
 
@@ -70,7 +109,11 @@ for (const r of rows) console.log(r);
 console.log('═'.repeat(100));
 
 if (failed > 0) {
-  console.error(`\n${failed} level(s) without a solvability proof.`);
+  console.error(`\n${failed} level(s) failed (missing proof or design-contract gate).`);
   process.exit(1);
 }
-console.log('\nAll levels provably solvable (worst-case blind draws included).');
+
+const metaPath = join(levelsDir, 'levelMeta.json');
+writeFileSync(metaPath, JSON.stringify(meta, null, 2) + '\n');
+console.log(`\nAll levels provably solvable (worst-case blind draws included).`);
+console.log(`Metadata exported → ${metaPath}`);

@@ -232,6 +232,13 @@ export interface SolveOptions {
   disabledAbility?: AbilityType;
   /** Skip the second search phase that computes minimal player switches. */
   skipSwitchMetric?: boolean;
+  /**
+   * Node budget for the switch-metric phase (default 400k). The campaign
+   * metadata export raises this so `minSwitches` is exact wherever feasible;
+   * when the budget is hit, the witness upper bound is kept (`minSwitchesExact`
+   * = false).
+   */
+  switchPhaseNodeBudget?: number;
 }
 
 export function solveLevel(
@@ -441,7 +448,7 @@ export function solveLevel(
         let minSwitches = witnessSwitches(witness);
         let minSwitchesExact = false;
         if (!opts.skipSwitchMetric && minSwitches > 0) {
-          const phase2NodeCap = nodesExpanded + 400_000;
+          const phase2NodeCap = nodesExpanded + (opts.switchPhaseNodeBudget ?? 400_000);
           try {
             currentLimit = level.budget;
             for (let sw = 0; sw < minSwitches; sw++) {

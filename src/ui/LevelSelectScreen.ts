@@ -6,6 +6,7 @@
 // first not-yet-completed level of the campaign.
 
 import { LEVEL_ORDER, LEVEL_NAMES } from '@/levels/levelIndex';
+import { getLevelMeta } from '@/levels/levelMeta';
 import { ProgressionState, resetProgress } from '@/state/ProgressionState';
 import { resetTutorial } from '@/tutorial/TutorialState';
 
@@ -48,9 +49,16 @@ export class LevelSelectScreen {
         `letter-spacing:0.05em;cursor:${unlocked ? 'pointer' : 'default'};`,
         'display:flex;flex-direction:column;gap:4px;align-items:center;width:140px;',
       ].join('');
+      // Interaction intensity (solver metadata): shown as a property of the
+      // level — never as a target for the players to minimize (levelMeta.ts).
+      const meta = unlocked ? getLevelMeta(id) : undefined;
+      const sync = meta
+        ? `<span style="color:#4a4038;font-size:0.6rem;letter-spacing:0.15em;">` +
+          `⇄ ${meta.minSwitches}${meta.minSwitchesExact ? '' : '+'}</span>`
+        : '';
       btn.innerHTML =
         `<span style="font-size:0.9rem;">${done ? '✓ ' : unlocked ? '' : '🔒 '}${String(idx + 1).padStart(2, '0')}</span>` +
-        `<span>${(LEVEL_NAMES[id] ?? id).toUpperCase()}</span>`;
+        `<span>${(LEVEL_NAMES[id] ?? id).toUpperCase()}</span>` + sync;
       if (unlocked) {
         btn.addEventListener('click', () => { this.destroy(); onPick(id); });
       }

@@ -1,7 +1,7 @@
 {
   "id": "level_02",
   "name": "Locked Door",
-  "initialAP": 8,
+  "initialAP": 12,
   "apUnlockNodes": [
     {
       "id": "unlock_01",
