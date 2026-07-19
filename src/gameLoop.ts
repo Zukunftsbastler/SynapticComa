@@ -2,23 +2,7 @@ import { createWorld } from 'bitecs';
 import type { IWorld } from 'bitecs';
 import { FIXED_TIMESTEP, MAX_DELTA } from '@/constants';
 import { RenderSystem } from '@/systems/RenderSystem';
-import { InputSystem } from '@/systems/InputSystem';
-import { GuestSyncSystem } from '@/systems/GuestSyncSystem';
-import { APSystem } from '@/systems/APSystem';
-import { APUnlockSystem } from '@/systems/APUnlockSystem';
-import { MovementSystem } from '@/systems/MovementSystem';
-import { CollectionSystem } from '@/systems/CollectionSystem';
-import { MatrixInsertSystem } from '@/systems/MatrixInsertSystem';
-import { MatrixRotateSystem } from '@/systems/MatrixRotateSystem';
-import { ScrapPoolSystem } from '@/systems/ScrapPoolSystem';
-import { MatrixRoutingSystem } from '@/systems/MatrixRoutingSystem';
-import { AbilitySystem } from '@/systems/AbilitySystem';
-import { CollisionSystem } from '@/systems/CollisionSystem';
-import { PushSystem } from '@/systems/PushSystem';
-import { ThresholdSystem } from '@/systems/ThresholdSystem';
-import { FxSystem } from '@/systems/FxSystem';
-import { LevelTransitionSystem } from '@/systems/LevelTransitionSystem';
-import { ExitSystem } from '@/systems/ExitSystem';
+import { runCoreSystems } from '@/systems/pipeline';
 import { NetworkSystem } from '@/network/NetworkSystem';
 import { tickTweens } from '@/rendering/TweenManager';
 import type { PixiDriver } from '@/rendering/PixiDriver';
@@ -49,25 +33,10 @@ let accumulator = 0;
 let lastTime = 0;
 
 function runSystems(w: IWorld): void {
-  // Fixed-step system pipeline (Decision 2 — Host Authority).
-  // Systems that are Host-only guard themselves internally.
-  InputSystem(w, GameState);
-  GuestSyncSystem(w, GameState);
-  APSystem(w, GameState);
-  MatrixRoutingSystem(w);
-  AbilitySystem(w);
-  MovementSystem(w, GameState);
-  PushSystem(w, GameState);
-  CollectionSystem(w, GameState);
-  CollisionSystem(w, GameState);
-  ExitSystem(w, GameState);
-  ThresholdSystem(w, GameState);
-  APUnlockSystem(w, GameState);
-  MatrixInsertSystem(w, GameState);
-  MatrixRotateSystem(w, GameState);
-  ScrapPoolSystem(w, GameState);
-  FxSystem(w);
-  LevelTransitionSystem(w, GameState);
+  // Fixed-step system pipeline (Decision 2 — Host Authority). Order lives in
+  // systems/pipeline.ts (shared with the headless witness-replay gate);
+  // transport is appended here because PeerJS is browser-only.
+  runCoreSystems(w, GameState);
   NetworkSystem(w, GameState);
 }
 

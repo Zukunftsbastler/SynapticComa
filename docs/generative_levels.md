@@ -83,7 +83,14 @@ interface SolverProof {
 
 **`minSwitches` — interaction intensity.** The minimal number of control hand-offs between the two players across *any* solution (matrix actions are player-agnostic; only avatar moves have a fixed actor). This is the level's measured demand for communication — the game's actual goal. Design reading: values may and should *grow* over the campaign; a level with `minSwitches = 0` would be single-player-solvable and is rejected by the build gate. Presentation rule: the value is shown to players as a **static property of the level** (like difficulty) — never as a par value, score, or live counter of their own hand-offs. Minimizing interaction is explicitly *not* a player goal; the metric exists so designers can steer it upward, not so players can optimize it downward.
 
-Build-time campaign validation (`npm run validate:levels`) exports these proof metrics per level to `src/levels/levelMeta.json` (generated file — never hand-edited), which the UI reads for the interaction-intensity display. Two design contracts are enforced as build gates: `apSlack ≥ 1` (fairness) and `minSwitches ≥ 1` (interaction).
+Build-time campaign validation (`npm run validate:levels`) exports these proof metrics per level to `src/levels/levelMeta.json` (generated file — never hand-edited), which the UI reads for the interaction-intensity display. Four contracts are enforced as build gates:
+
+1. **Fairness:** `apSlack ≥ 1` — slack 0 turns any wasted AP into a Dead End.
+2. **Interaction:** `minSwitches ≥ 1` — a level one player could clear alone is a design error.
+3. **UI reachability:** proofs may only use actions the input/UI layer can actually produce (static producer scan over `src/input` + `src/ui`). A level failing only under this restriction is a *code* bug (`UI-REACHABILITY`), not a level bug.
+4. **Witness replay:** the solver's witness is replayed headless through the real system pipeline (`generation/WitnessReplay.ts` over `systems/pipeline.ts`) — every action must be accepted at its exact AP cost and the run must end in `LEVEL_COMPLETE`. This pins the solver's rule model to the shipped systems; any semantic divergence fails the build with the offending action named.
+
+**Standing rule:** a new mechanic enters the solver only together with (a) its capability-map entry (`KIND_TO_MESSAGE` in `scripts/validateLevels.ts`), (b) its UI producer, and (c) its replay synthesis in `WitnessReplay.ts`. The gates then enforce the triple forever — this is what makes generated levels that stack many mechanics safe to ship.
 
 ### 2.5 Runtime Reuse: Dead End Detection
 

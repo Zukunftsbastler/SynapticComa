@@ -41,7 +41,7 @@ export class InventoryPanel {
 
     this.hintEl = document.createElement('div');
     this.hintEl.style.cssText = 'color:#c9a227;font-size:0.65rem;margin-top:5px;display:none;';
-    this.hintEl.textContent = '→ click a ▼/▲ arrow on the matrix';
+    this.hintEl.textContent = '[R] rotate · hover an ▼/▲ arrow to preview the push';
 
     this.el.appendChild(this.titleEl);
     this.el.appendChild(this.listEl);
@@ -74,6 +74,10 @@ export class InventoryPanel {
     this.listEl.innerHTML = inv.map((item, i) => {
       const selected = i === uiState.selectedSlot;
       const armed    = selected && uiState.insertArmed;
+      // Pre-insert rotation ([R], 0 AP) applies to the selected plate; show
+      // the EFFECTIVE orientation in gold so the state is never invisible.
+      const pending  = selected && uiState.pendingRotation !== null;
+      const rotation = pending ? uiState.pendingRotation! : item.rotation;
       return (
         `<div data-slot="${i}" style="padding:2px 4px;cursor:pointer;` +
         `background:${armed ? '#3a2a08' : selected ? '#2a1808' : 'transparent'};` +
@@ -81,7 +85,8 @@ export class InventoryPanel {
         `color:${selected ? '#e8c88c' : '#c8a87c'};` +
         `display:flex;justify-content:space-between;gap:8px;">` +
         `<span>${SHAPE_LABELS[item.shape as ConduitShape] ?? '?'}</span>` +
-        `<span style="color:#7a6040">${ROT_LABELS[item.rotation] ?? ''}</span>` +
+        `<span style="color:${pending ? '#c9a227' : '#7a6040'}">` +
+        `${pending ? '↻ ' : ''}${ROT_LABELS[rotation] ?? ''}</span>` +
         `</div>`
       );
     }).join('');

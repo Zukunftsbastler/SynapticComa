@@ -12,6 +12,8 @@
 import type { IWorld } from 'bitecs';
 import { Conduit, MatrixNode } from '@/components';
 import { conduitQuery, matrixNodeQuery } from '@/queries';
+import { computeFaceMask } from '@/utils/ConduitFaceMask';
+import type { ConduitShape } from '@/types';
 import { uiState } from '@/ui/uiState';
 import { scrapPool } from '@/state/ScrapPoolState';
 import { inventory } from '@/state/InventoryState';
@@ -166,13 +168,57 @@ export function renderMatrix(
     buf.push({ cmd: 'drawText', x: cx, y: bottomY, text: '▲', color: arrowColor, size: arrowSize, alpha: pulse });
   }
 
+  const viewerInv = GameState.viewPlayerId === 0 ? inventory.player0 : inventory.player1;
+
+  // ── Push preview (feedforward, "Verrücktes Labyrinth" mechanic) ────────────
+  // While a plate is armed and the pointer rests on an insert arrow, show the
+  // full consequence of the push BEFORE it is bought: a ghost of the incoming
+  // plate (with its chosen pre-rotation) at the entry row, a shift marker on
+  // every plate in the column, and a red ejection warning at the far end.
+  // This is what makes the column-slide constraint legible: middle rows are
+  // visibly reached by pushing MORE plates in — including the partner's.
+  const hover = uiState.hoverInsert;
+  const armedPlate = viewerInv[Math.min(uiState.selectedSlot, viewerInv.length - 1)];
+  if (armed && hover && armedPlate) {
+    const col1 = hover.col0 + 1; // 2 or 4
+    const ghostRot  = uiState.pendingRotation ?? armedPlate.rotation;
+    const ghostMask = computeFaceMask(armedPlate.shape as ConduitShape, ghostRot);
+    const entryRow  = hover.fromTop ? 0 : MATRIX_ROWS - 1;
+    const gx = originX + hover.col0 * (CELL + GAP);
+    const gy = originY + entryRow * (CELL + GAP);
+    const ghostPulse = 0.5 + 0.3 * Math.sin(performance.now() / 150);
+
+    // Incoming plate ghost at the entry cell.
+    buf.push({ cmd: 'drawRect', x: gx, y: gy, width: CELL, height: CELL, fillColor: 0xC9A227, alpha: 0.18 });
+    drawPipe(buf, gx, gy, CELL, ghostMask, false, 0xFFD84A, ghostPulse);
+
+    // Shift markers and ejection warning for every plate in the column.
+    for (let row = 0; row < MATRIX_ROWS; row++) {
+      if (!conduitMap.has(`${col1}_${row}`)) continue;
+      const cx2 = originX + hover.col0 * (CELL + GAP) + CELL / 2;
+      const cy2 = originY + row * (CELL + GAP) + CELL / 2;
+      const shifted = row + (hover.fromTop ? 1 : -1);
+      if (shifted < 0 || shifted >= MATRIX_ROWS) {
+        // This plate would be ejected face-down into the Scrap Pool.
+        const ex = originX + hover.col0 * (CELL + GAP);
+        const ey = originY + row * (CELL + GAP);
+        buf.push({ cmd: 'drawRect', x: ex, y: ey, width: CELL, height: CELL, fillColor: 0x8a2020, alpha: 0.30 });
+        buf.push({ cmd: 'drawText', x: cx2, y: cy2, text: '✕', color: 0xFF5A5A, size: 20, alpha: ghostPulse + 0.2 });
+      } else {
+        buf.push({
+          cmd: 'drawText', x: cx2, y: cy2,
+          text: hover.fromTop ? '▼' : '▲', color: 0xFFD84A, size: 16, alpha: ghostPulse,
+        });
+      }
+    }
+  }
+
   // ── Scrap Pool pile (click → blind draw, 1 AP) ─────────────────────────────
   // Face-down stack below the tray. Count is public knowledge; contents never
   // shown (mechanics.md §4.3). Pulses when the viewing player holds no plates
   // and the pool could supply one — the Level-3 teaching moment.
   const pile  = scrapPileRect(originX, originY);
   const count = scrapPool.plates.length;
-  const viewerInv = GameState.viewPlayerId === 0 ? inventory.player0 : inventory.player1;
   const hint  = count > 0 && viewerInv.length === 0;
   const hintPulse = hint ? 0.55 + 0.45 * Math.sin(performance.now() / 150) : 1;
 
@@ -214,6 +260,7 @@ const ABILITY_GLYPHS: Record<number, { text: string; color: number }> = {
 
 // Draws the etched pipe grooves over a conduit plate cell.
 // faceMask bits: 0=E, 1=S, 2=W, 3=N.
+// overrideColor/alpha: used by the push preview to draw ghost plates.
 function drawPipe(
   buf: RenderCommandBuffer,
   cx: number,
@@ -221,29 +268,31 @@ function drawPipe(
   size: number,
   faceMask: number,
   powered: boolean,
+  overrideColor?: number,
+  alpha = 1,
 ): void {
-  const color = powered ? C_PIPE_LIT : C_PIPE_UNLIT;
+  const color = overrideColor ?? (powered ? C_PIPE_LIT : C_PIPE_UNLIT);
   const half  = size / 2;
   const thick = size * 0.14; // pipe width
   const ht    = thick / 2;
 
   // Center hub
-  buf.push({ cmd: 'drawRect', x: cx + half - ht, y: cy + half - ht, width: thick, height: thick, fillColor: color, alpha: 1 });
+  buf.push({ cmd: 'drawRect', x: cx + half - ht, y: cy + half - ht, width: thick, height: thick, fillColor: color, alpha });
 
   // East segment
   if ((faceMask >> 0) & 1) {
-    buf.push({ cmd: 'drawRect', x: cx + half, y: cy + half - ht, width: half, height: thick, fillColor: color, alpha: 1 });
+    buf.push({ cmd: 'drawRect', x: cx + half, y: cy + half - ht, width: half, height: thick, fillColor: color, alpha });
   }
   // South segment
   if ((faceMask >> 1) & 1) {
-    buf.push({ cmd: 'drawRect', x: cx + half - ht, y: cy + half, width: thick, height: half, fillColor: color, alpha: 1 });
+    buf.push({ cmd: 'drawRect', x: cx + half - ht, y: cy + half, width: thick, height: half, fillColor: color, alpha });
   }
   // West segment
   if ((faceMask >> 2) & 1) {
-    buf.push({ cmd: 'drawRect', x: cx, y: cy + half - ht, width: half, height: thick, fillColor: color, alpha: 1 });
+    buf.push({ cmd: 'drawRect', x: cx, y: cy + half - ht, width: half, height: thick, fillColor: color, alpha });
   }
   // North segment
   if ((faceMask >> 3) & 1) {
-    buf.push({ cmd: 'drawRect', x: cx + half - ht, y: cy, width: thick, height: half, fillColor: color, alpha: 1 });
+    buf.push({ cmd: 'drawRect', x: cx + half - ht, y: cy, width: thick, height: half, fillColor: color, alpha });
   }
 }

@@ -82,6 +82,11 @@ const CONCEPTS: Concept[] = [
       `The whole column <b>slides one slot</b> — a plate shoved past the far end ` +
       `falls face-down into the Scrap Pool. <i>Where your plate lands depends on ` +
       `which end you push from.</i><br><br>` +
+      `<b>Plates only enter at the ends.</b> To reach the middle rows, ` +
+      `<b>push more plates in behind</b> — every insert shoves the whole chain ` +
+      `one row deeper. Your partner's inserts push your plates too: reaching ` +
+      `row 2 or 3 is usually a <i>two-person</i> maneuver.<br><br>` +
+      `Hover an arrow <i>before</i> clicking to preview where every plate ends up.<br>` +
       `Keyboard: [TAB] select · [R] pre-rotate (free) · click a placed plate = rotate (1 AP).`,
   },
   {

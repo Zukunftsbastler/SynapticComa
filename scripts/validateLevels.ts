@@ -14,6 +14,11 @@
 //      once had a system and solver support but no UI producer, which made
 //      Level 3 provably solvable yet impossible to play. A level failing only
 //      under this restriction is reported as a UI-REACHABILITY failure.
+//   4. Witness replay: the solver's witness is replayed headless through the
+//      REAL system pipeline (generation/WitnessReplay.ts) — every action must
+//      be accepted at its exact AP cost and the run must end LEVEL_COMPLETE.
+//      This closes the remaining gap: the solver's model of the rules vs.
+//      what the shipped systems actually do.
 //
 // The run also exports src/levels/levelMeta.json — solver-derived metadata
 // (optimal cost, slack, difficulty, interaction intensity) consumed by the
@@ -25,6 +30,7 @@ import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { solveLevel } from '@/generation/LevelSolver';
+import { replayWitness } from '@/generation/WitnessReplay';
 import { scoreDifficulty } from '@/generation/DifficultyModel';
 import { AbilityType } from '@/types';
 import type { LevelDef } from '@/levels/LevelSchema';
@@ -141,6 +147,14 @@ for (const file of files) {
   if (d.apSlack < 1) gateErrors.push(`apSlack=${d.apSlack} < 1 (fairness)`);
   // Gate 2 — interaction: both players must act to solve.
   if (result.minSwitches < 1) gateErrors.push('minSwitches=0 (single-player solvable)');
+  // Gate 4 — witness replay through the real system pipeline.
+  const replay = await replayWitness(def.id, result.solutionPath);
+  if (!replay.ok) {
+    gateErrors.push(
+      `WITNESS-REPLAY failed at step ${replay.step} ` +
+      `[${replay.action.kind} ${replay.action.detail}]: ${replay.reason}`,
+    );
+  }
   if (gateErrors.length > 0) failed++;
 
   meta[def.id] = {

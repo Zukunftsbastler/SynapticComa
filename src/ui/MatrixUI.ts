@@ -32,11 +32,11 @@ const CONDUIT_COLS_0IDX = [1, 3]; // columns 2 and 4 (0-indexed)
 export class MatrixUI {
   private originX: number;
   private originY: number;
-  private pendingRotation:  number | null = null;
 
   // Bound handler references kept for removeEventListener cleanup.
   private readonly _onClick:   (e: MouseEvent)    => void;
   private readonly _onKeydown: (e: KeyboardEvent) => void;
+  private readonly _onMove:    (e: MouseEvent)    => void;
 
   constructor(originX: number, originY: number) {
     this.originX = originX;
@@ -44,15 +44,19 @@ export class MatrixUI {
 
     this._onClick   = this.handleClick.bind(this);
     this._onKeydown = this.handleKeydown.bind(this);
+    this._onMove    = this.handleMouseMove.bind(this);
 
-    window.addEventListener('click',   this._onClick);
-    window.addEventListener('keydown', this._onKeydown);
+    window.addEventListener('click',     this._onClick);
+    window.addEventListener('keydown',   this._onKeydown);
+    window.addEventListener('mousemove', this._onMove);
   }
 
   // Call during level reload / world teardown to prevent listener accumulation.
   destroy(): void {
-    window.removeEventListener('click',   this._onClick);
-    window.removeEventListener('keydown', this._onKeydown);
+    window.removeEventListener('click',     this._onClick);
+    window.removeEventListener('keydown',   this._onKeydown);
+    window.removeEventListener('mousemove', this._onMove);
+    uiState.hoverInsert = null;
   }
 
   // ── Hit testing ──────────────────────────────────────────────────────────
@@ -104,16 +108,27 @@ export class MatrixUI {
     }
   }
 
+  // Feedforward: track which insert arrow the pointer rests on while a plate
+  // is armed — MatrixRenderer draws the push preview from uiState.hoverInsert.
+  private handleMouseMove(e: MouseEvent): void {
+    if (!uiState.insertArmed || GameState.phase !== 'PLAYING') {
+      if (uiState.hoverInsert) uiState.hoverInsert = null;
+      return;
+    }
+    uiState.hoverInsert = this.hitTestArrow(e.clientX, e.clientY);
+  }
+
   private handleKeydown(e: KeyboardEvent): void {
     if (GameState.phase !== 'PLAYING') return;
 
     // R: pre-orient pending rotation (0 AP). Guard: player must hold a tile.
+    // Visible state: InventoryPanel shows the pending angle; the push preview
+    // ghost renders the plate's face-mask at this rotation.
     if (e.key.toLowerCase() === 'r') {
       const pid = GameState.viewPlayerId;
       const inv = pid === 0 ? inventory.player0 : inventory.player1;
       if (inv.length === 0) return; // Task 5: guard — nothing to rotate
-      this.pendingRotation = (((this.pendingRotation ?? -1) + 1) % 4);
-      console.debug(`[MatrixUI] Pre-orient rotation: ${this.pendingRotation * 90}°`);
+      uiState.pendingRotation = ((uiState.pendingRotation ?? -1) + 1) % 4;
       return;
     }
 
@@ -140,8 +155,7 @@ export class MatrixUI {
     }
     const slot    = Math.min(uiState.selectedSlot, inv.length - 1);
     const conduit = inv[slot];
-    const rotation = (this.pendingRotation ?? conduit.rotation) as 0 | 1 | 2 | 3;
-    this.pendingRotation = null;
+    const rotation = (uiState.pendingRotation ?? conduit.rotation) as 0 | 1 | 2 | 3;
 
     const msg: InsertConduitMessage = {
       type:           'INSERT_CONDUIT',
