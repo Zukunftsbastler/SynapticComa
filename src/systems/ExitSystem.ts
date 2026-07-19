@@ -17,6 +17,8 @@ import {
   Avatar, Position, Exit, Movable, Renderable,
   P1ExitedEvent, LevelCompleteEvent,
 } from '@/components';
+import { FxKind } from '@/components/Fx';
+import { spawnFx } from '@/entities/FxFactory';
 import { avatarQuery, exitQuery } from '@/queries';
 import type { GameStateData } from '@/state/GameState';
 
@@ -49,6 +51,7 @@ export function ExitSystem(world: IWorld, state: GameStateData): void {
 
         const evtEid = addEntity(world);
         addComponent(world, P1ExitedEvent, evtEid);
+        spawnFx(world, FxKind.EXIT_DISSOLVE, eq, er, ez, 90);
 
         console.debug('[ExitSystem] P1 exited — P1ExitedEvent emitted.');
 
@@ -56,6 +59,7 @@ export function ExitSystem(world: IWorld, state: GameStateData): void {
         // P2 exits — level complete.
         const evtEid = addEntity(world);
         addComponent(world, LevelCompleteEvent, evtEid);
+        spawnFx(world, FxKind.LEVEL_COMPLETE, eq, er, ez, 90);
 
         console.debug('[ExitSystem] P2 exited — LevelCompleteEvent emitted.');
       }

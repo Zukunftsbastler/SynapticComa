@@ -1,7 +1,7 @@
 {
   "id": "level_10",
   "name": "Tight Budget",
-  "initialAP": 6,
+  "initialAP": 7,
   "apUnlockNodes": [
     {
       "id": "unlock_01",
@@ -95,6 +95,76 @@
       "q": 0,
       "r": 0,
       "z": 0
+    },
+    {
+      "type": "wall",
+      "id": "gate_wall_0_0_-2",
+      "q": 0,
+      "r": -2,
+      "z": 0
+    },
+    {
+      "type": "wall",
+      "id": "gate_wall_0_0_-3",
+      "q": 0,
+      "r": -3,
+      "z": 0
+    },
+    {
+      "type": "wall",
+      "id": "gate_wall_0_-2_-1",
+      "q": -2,
+      "r": -1,
+      "z": 0
+    },
+    {
+      "type": "wall",
+      "id": "gate_wall_0_-2_0",
+      "q": -2,
+      "r": 0,
+      "z": 0
+    },
+    {
+      "type": "wall",
+      "id": "gate_wall_0_-1_0",
+      "q": -1,
+      "r": 0,
+      "z": 0
+    },
+    {
+      "type": "wall",
+      "id": "gate_wall_1_2_-2",
+      "q": 2,
+      "r": -2,
+      "z": 1
+    },
+    {
+      "type": "wall",
+      "id": "gate_wall_1_2_-3",
+      "q": 2,
+      "r": -3,
+      "z": 1
+    },
+    {
+      "type": "wall",
+      "id": "gate_wall_1_1_-3",
+      "q": 1,
+      "r": -3,
+      "z": 1
+    },
+    {
+      "type": "wall",
+      "id": "gate_wall_1_0_-2",
+      "q": 0,
+      "r": -2,
+      "z": 1
+    },
+    {
+      "type": "wall",
+      "id": "gate_wall_1_1_-1",
+      "q": 1,
+      "r": -1,
+      "z": 1
     }
   ],
   "matrix": {

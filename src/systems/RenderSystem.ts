@@ -3,7 +3,10 @@ import { hasComponent } from 'bitecs';
 import {
   Position, Renderable, Dimension, Avatar, APUnlock, Static, Collectible, Movable,
 } from '@/components';
-import { renderableQuery, avatarQuery, staticQuery } from '@/queries';
+import { Fx } from '@/components';
+import { FxKind } from '@/components/Fx';
+import { renderableQuery, avatarQuery, staticQuery, fxQuery } from '@/queries';
+import { animateTo } from '@/rendering/AnimationState';
 import { renderCommandBuffer } from '@/rendering/RenderCommandBuffer';
 import { renderMatrix } from '@/rendering/MatrixRenderer';
 import type { PixiDriver } from '@/rendering/PixiDriver';
@@ -116,18 +119,22 @@ export function RenderSystem(world: IWorld, driver: PixiDriver, localPlayerId: 0
     const playerId = Avatar.playerId[eid];
     const color    = playerId === 0 ? COLOR_AVATAR_P1 : COLOR_AVATAR_P2;
 
+    // Smooth movement: tween toward the logical position (Decision 8 —
+    // animation never writes back into ECS state).
+    const anim = animateTo(eid, screen.x, screen.y);
+
     // Controlled wisp gets a bright ring so the active piece is unmistakable.
     if (playerId === GameState.viewPlayerId) {
       renderCommandBuffer.push({
-        cmd: 'drawCircle', x: screen.x, y: screen.y,
+        cmd: 'drawCircle', x: anim.x, y: anim.y,
         radius: HEX_SIZE * 0.58, fillColor: 0xFFFFFF, alpha: 0.35,
       });
     }
 
     renderCommandBuffer.push({
       cmd:       'drawCircle',
-      x:         screen.x,
-      y:         screen.y,
+      x:         anim.x,
+      y:         anim.y,
       radius:    HEX_SIZE * 0.45,
       fillColor: color,
       alpha:     1,
@@ -136,6 +143,60 @@ export function RenderSystem(world: IWorld, driver: PixiDriver, localPlayerId: 0
     // Movement key hints: letters on the controlled wisp's neighbor tiles.
     if (playerId === GameState.viewPlayerId && hasComponent(world, Movable, eid)) {
       drawKeyHints(world, driver, playerId as 0 | 1, dimLayer, q, r);
+    }
+  }
+
+  // ── Pass 4: visual effects (Fx entities — shockwaves, dissolves, pulses) ──
+  const fx = fxQuery(world);
+  for (let i = 0; i < fx.length; i++) {
+    const eid = fx[i];
+    const dimLayer = Dimension.layer[eid];
+    if (!GameState.revealBothDims && dimLayer !== localPlayerId) continue;
+
+    const screen = dimLayer === 0
+      ? driver.hexToScreenA(Position.q[eid], Position.r[eid])
+      : driver.hexToScreenB(Position.q[eid], Position.r[eid]);
+    const p = Fx.age[eid] / Fx.duration[eid]; // 0 → 1
+
+    switch (Fx.kind[eid] as FxKind) {
+      case FxKind.UNLOCK_SURGE: {
+        // Gold shockwave: three staggered rings + a wide soft flash.
+        for (const lag of [0, 0.15, 0.3]) {
+          const lp = Math.max(0, Math.min(1, (p - lag) / (1 - lag)));
+          if (lp <= 0 || lp >= 1) continue;
+          renderCommandBuffer.push({
+            cmd: 'drawCircle', x: screen.x, y: screen.y,
+            radius: HEX_SIZE * (0.3 + 2.6 * lp),
+            fillColor: 0xFFD84A, alpha: (1 - lp) * 0.55,
+          });
+        }
+        renderCommandBuffer.push({
+          cmd: 'drawCircle', x: screen.x, y: screen.y,
+          radius: HEX_SIZE * 5 * p, fillColor: 0xFFF2B0, alpha: (1 - p) * 0.18,
+        });
+        break;
+      }
+      case FxKind.EXIT_DISSOLVE: {
+        // Green dissolve: expanding ring while the center fades out.
+        renderCommandBuffer.push({
+          cmd: 'drawCircle', x: screen.x, y: screen.y,
+          radius: HEX_SIZE * (0.45 + 1.8 * p),
+          fillColor: 0x50FF80, alpha: (1 - p) * 0.5,
+        });
+        renderCommandBuffer.push({
+          cmd: 'drawCircle', x: screen.x, y: screen.y,
+          radius: HEX_SIZE * 0.45 * (1 - p),
+          fillColor: 0xC8FFD8, alpha: (1 - p) * 0.8,
+        });
+        break;
+      }
+      case FxKind.LEVEL_COMPLETE: {
+        renderCommandBuffer.push({
+          cmd: 'drawCircle', x: screen.x, y: screen.y,
+          radius: HEX_SIZE * 6 * p, fillColor: 0xFFFFFF, alpha: (1 - p) * 0.35,
+        });
+        break;
+      }
     }
   }
 

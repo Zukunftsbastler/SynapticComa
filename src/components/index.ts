@@ -17,6 +17,7 @@ export { PhaseBarrier }    from './PhaseBarrier';
 export { Exit }            from './Exit';
 export { APPool }          from './APPool';
 export { APUnlock }        from './APUnlock';
+export { Fx }              from './Fx';
 export {
   BoardFlipEvent,
   LevelCompleteEvent,

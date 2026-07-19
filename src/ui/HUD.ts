@@ -24,6 +24,7 @@ const ABILITY_LABELS: Partial<Record<AbilityType, string>> = {
 export class HUD {
   private el:         HTMLElement;
   private apRow:      HTMLElement;
+  private levelEl:    HTMLElement;
   private deadEndEl:  HTMLElement;
   private abilityEl:  HTMLElement;
 
@@ -38,6 +39,12 @@ export class HUD {
     this.apRow = document.createElement('div');
     this.apRow.style.cssText = 'display:flex;gap:6px;align-items:center;';
 
+    const center = document.createElement('div');
+    center.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:4px;';
+
+    this.levelEl = document.createElement('div');
+    this.levelEl.style.cssText = 'color:#7a6040;font-size:0.8rem;letter-spacing:0.15em;';
+
     this.deadEndEl = document.createElement('div');
     this.deadEndEl.style.cssText = [
       'color:#8a2020;font-size:0.85rem;letter-spacing:0.15em;',
@@ -46,11 +53,14 @@ export class HUD {
     ].join('');
     this.deadEndEl.textContent = '⊘ DEAD END';
 
+    center.appendChild(this.levelEl);
+    center.appendChild(this.deadEndEl);
+
     this.abilityEl = document.createElement('div');
     this.abilityEl.style.cssText = 'display:flex;gap:6px;align-items:center;';
 
     this.el.appendChild(this.apRow);
-    this.el.appendChild(this.deadEndEl);
+    this.el.appendChild(center);
     this.el.appendChild(this.abilityEl);
     container.appendChild(this.el);
   }
@@ -58,8 +68,16 @@ export class HUD {
   /** Call each render frame to sync display with current GameState. */
   update(): void {
     this.renderAP();
+    this.renderLevel();
     this.renderDeadEnd();
     this.renderAbilities();
+  }
+
+  private renderLevel(): void {
+    const id = GameState.currentLevel.replace('level_', 'LEVEL ');
+    this.levelEl.textContent = GameState.currentLevel
+      ? `${id} — ${GameState.currentLevelName.toUpperCase()}`
+      : '';
   }
 
   private renderAP(): void {

@@ -113,10 +113,46 @@ export function renderMatrix(
         const color = active ? C_ABILITY_ON : C_ABILITY_OFF;
         buf.push({ cmd: 'drawRect', x: cx, y: cy, width: CELL, height: CELL, fillColor: color, alpha: 1 });
         buf.push({ cmd: 'drawCircle', x: cx + CELL / 2, y: cy + CELL / 2, radius: CELL * 0.3, fillColor: active ? C_PIPE_LIT : 0x0D1A0D, alpha: 1 });
+        // Ability glyph so nodes are identifiable (legend explains the codes).
+        if (nodeEid !== undefined) {
+          const glyph = ABILITY_GLYPHS[MatrixNode.abilityType[nodeEid]];
+          if (glyph) {
+            buf.push({
+              cmd: 'drawText', x: cx + CELL / 2, y: cy + CELL / 2,
+              text: glyph.text, color: active ? 0x0A200A : glyph.color, size: 15, alpha: 1,
+            });
+          }
+        }
       }
     }
   }
+
+  // ── Insert arrows (top/bottom of conduit columns 2 & 4) ────────────────────
+  // These match MatrixUI's click hit zones exactly — an invisible affordance
+  // is no affordance.
+  for (const colIdx of [1, 3]) {
+    const cx = originX + colIdx * (CELL + GAP) + CELL / 2;
+    buf.push({
+      cmd: 'drawText', x: cx, y: originY - 12,
+      text: '▼', color: 0xC9A227, size: 15, alpha: 0.9,
+    });
+    buf.push({
+      cmd: 'drawText', x: cx, y: originY + MATRIX_ROWS * (CELL + GAP) + 9,
+      text: '▲', color: 0xC9A227, size: 15, alpha: 0.9,
+    });
+  }
 }
+
+// Glyph per AbilityType (1=JUMP, 2=PUSH, 3=UNLOCK_RED, 4=UNLOCK_BLUE,
+// 5=PHASE_SHIFT, 6=FIRE_IMMUNITY).
+const ABILITY_GLYPHS: Record<number, { text: string; color: number }> = {
+  1: { text: '⇈', color: 0x9AD0FF },
+  2: { text: '▶', color: 0xC8C8C8 },
+  3: { text: 'R', color: 0xFF5A6A },
+  4: { text: 'B', color: 0x5A9AFF },
+  5: { text: '◈', color: 0xB090FF },
+  6: { text: '♨', color: 0xFF9A40 },
+};
 
 // Draws the etched pipe grooves over a conduit plate cell.
 // faceMask bits: 0=E, 1=S, 2=W, 3=N.

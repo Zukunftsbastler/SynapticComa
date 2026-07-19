@@ -14,5 +14,6 @@
 | [007 — Level Solver & Validation](SPRINT_007-Level-Solver-and-Validation.md) | 2026-07-19 | AND/OR solver with adversarial draws; `validate:levels` gate; data-driven AP retuning (unlocks now mandatory mid-campaign); doc/code divergences flagged |
 | [008 — Playability Hotfixes](SPRINT_008-Playability-Hotfixes.md) | 2026-07-19 | First-playtest fixes: floor tiles, board edges, entity color code, Monitor status strip, deterministic room codes |
 | [009 — Controls & Feedback](SPRINT_009-Controls-and-Feedback.md) | 2026-07-19 | On-board key hints, click-to-move, both boards visible in local mode, provable early Dead-End detection; P2's missing U/O keys |
+| [010 — Movement, Gates & Juice](SPRINT_010-Movement-Gates-and-Juice.md) | 2026-07-19 | Jump semantics fixed (playtest ruling), gate walls make the matrix mandatory on L2–10 (noMatrix proofs), graphical legend, ability glyphs + insert arrows, movement tween, ECS FX system |
 
 **Next planned:** The Monitor (concept triggers, highlight framing, scripted "Calibration" intro) · Neuro-Resonance (`Conduit.base`, ResonanceSystem, solver extension) · Generator (Deep Coma endless mode, Daily Synapse).

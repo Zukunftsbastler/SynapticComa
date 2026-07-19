@@ -16,9 +16,11 @@ import { AbilitySystem } from '@/systems/AbilitySystem';
 import { CollisionSystem } from '@/systems/CollisionSystem';
 import { PushSystem } from '@/systems/PushSystem';
 import { ThresholdSystem } from '@/systems/ThresholdSystem';
+import { FxSystem } from '@/systems/FxSystem';
 import { LevelTransitionSystem } from '@/systems/LevelTransitionSystem';
 import { ExitSystem } from '@/systems/ExitSystem';
 import { NetworkSystem } from '@/network/NetworkSystem';
+import { tickTweens } from '@/rendering/TweenManager';
 import type { PixiDriver } from '@/rendering/PixiDriver';
 import { GameState } from '@/state/GameState';
 
@@ -64,6 +66,7 @@ function runSystems(w: IWorld): void {
   MatrixInsertSystem(w, GameState);
   MatrixRotateSystem(w, GameState);
   ScrapPoolSystem(w, GameState);
+  FxSystem(w);
   LevelTransitionSystem(w, GameState);
   NetworkSystem(w, GameState);
 }
@@ -87,6 +90,7 @@ function tick(timestamp: number): void {
     accumulator -= FIXED_TIMESTEP;
   }
 
+  tickTweens(delta); // advance movement/UI tweens in real time
   renderFrame(world);
   requestAnimationFrame(tick);
 }

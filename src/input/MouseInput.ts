@@ -34,13 +34,25 @@ export function initMouseInput(driver: PixiDriver): void {
 
     const dq = q - Position.q[eid];
     const dr = r - Position.r[eid];
-    if (hexDistance(0, 0, dq, dr) !== 1) return; // adjacent tiles only
+    const dist = hexDistance(0, 0, dq, dr);
+
+    // Adjacent tile = step. Straight-line distance-2 tile = explicit jump
+    // (only meaningful while JUMP is routed; MovementSystem validates).
+    let unitDq: number, unitDr: number, jump: boolean;
+    if (dist === 1) {
+      unitDq = dq; unitDr = dr; jump = false;
+    } else if (dist === 2 && dq % 2 === 0 && dr % 2 === 0) {
+      unitDq = dq / 2; unitDr = dr / 2; jump = true;
+    } else {
+      return;
+    }
 
     const msg: MoveAvatarMessage = {
       type:     'MOVE_AVATAR',
       entityId: avatarId,
-      dq,
-      dr,
+      dq:       unitDq,
+      dr:       unitDr,
+      jump,
       seq:      GameState.outSeq++,
       senderId: GameState.viewPlayerId,
       tick:     0,

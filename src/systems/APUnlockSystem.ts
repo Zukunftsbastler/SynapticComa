@@ -15,6 +15,8 @@
 
 import type { IWorld } from 'bitecs';
 import { Position, Avatar, APUnlock } from '@/components';
+import { FxKind } from '@/components/Fx';
+import { spawnFx } from '@/entities/FxFactory';
 import { apUnlockQuery, avatarQuery } from '@/queries';
 import type { GameStateData } from '@/state/GameState';
 import type { ApUnlockMessage } from '@/network/messages';
@@ -36,12 +38,18 @@ function isAvatarAt(
   return false;
 }
 
-// Marks every APUnlock entity with the given id as triggered.
+// Marks every APUnlock entity with the given id as triggered and plays the
+// surge effect on each node (both dimensions — the cross-dimensional flash is
+// the point, art_and_ui.md §4).
 function markTriggered(world: IWorld, unlockId: number): void {
   const nodes = apUnlockQuery(world);
   for (let i = 0; i < nodes.length; i++) {
     const eid = nodes[i];
-    if (APUnlock.id[eid] === unlockId) APUnlock.triggered[eid] = 1;
+    if (APUnlock.id[eid] === unlockId) {
+      APUnlock.triggered[eid] = 1;
+      spawnFx(world, FxKind.UNLOCK_SURGE,
+        Position.q[eid], Position.r[eid], Position.z[eid], 75);
+    }
   }
 }
 
@@ -93,11 +101,10 @@ export function APUnlockSystem(world: IWorld, state: GameStateData): void {
     );
     if (!p1OnNode || !p2OnNode) continue;
 
-    // ── Trigger: grant AP, consume the pair, broadcast ─────────────────────
+    // ── Trigger: grant AP, consume the pair (+ surge FX), broadcast ────────
     state.apPool += APUnlock.value[eid];
     if (state.apPool > state.apMax) state.apMax = state.apPool; // pool can exceed initial AP
-    APUnlock.triggered[eid]        = 1;
-    APUnlock.triggered[partnerEid] = 1;
+    markTriggered(world, unlockId);
 
     const msg: ApUnlockMessage = {
       type:     'AP_UNLOCK',

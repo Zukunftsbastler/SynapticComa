@@ -91,16 +91,24 @@ export function MovementSystem(world: IWorld, state: GameStateData): void {
 
     const tz = Position.z[eid];
 
-    // ── JUMP: 2-hex straight-line move ─────────────────────────────────────
-    if (abilityFlags.jumpActive) {
-      const midQ = Position.q[eid] + input.dq;
-      const midR = Position.r[eid] + input.dr;
-      const tq   = midQ + input.dq;
-      const tr   = midR + input.dr;
+    // ── Movement semantics (SPRINT_010, mechanics.md §5.1) ─────────────────
+    // The 1-hex step is always the default. The 2-hex JUMP fires only when
+    //   (a) the player explicitly requested it (mouse click on a distance-2
+    //       tile → input.jump), or
+    //   (b) the 1-hex step is blocked and the jump can bypass the obstacle.
+    // The intermediate hex is bypassed ENTIRELY — walls, doors, chasms and
+    // barriers in it are irrelevant; only the landing hex is checked.
+    const step1Q = Position.q[eid] + input.dq;
+    const step1R = Position.r[eid] + input.dr;
+    const step1Passable = isHexPassable(world, step1Q, step1R, tz);
 
-      // Intermediate hex must be clear (or a PhaseBarrier when phase-shift is on).
-      // Landing hex must be passable. Both checks use isHexPassable.
-      if (isHexPassable(world, midQ, midR, tz) && isHexPassable(world, tq, tr, tz)) {
+    const wantsJump = abilityFlags.jumpActive &&
+      (input.jump === true || !step1Passable);
+
+    if (wantsJump) {
+      const tq = Position.q[eid] + 2 * input.dq;
+      const tr = Position.r[eid] + 2 * input.dr;
+      if (isHexPassable(world, tq, tr, tz)) {
         Position.q[eid]       = tq;
         Position.r[eid]       = tr;
         Renderable.dirty[eid] = 1;
@@ -113,12 +121,14 @@ export function MovementSystem(world: IWorld, state: GameStateData): void {
         state.outboundMessages.push(update);
         continue;
       }
-      // If jump path is blocked, fall through to normal 1-hex logic.
+      if (input.jump === true) continue; // explicit jump blocked — no fallback
+      // implicit jump blocked too — fall through (1-hex is blocked as well;
+      // the push check below may still apply)
     }
 
     // ── Normal 1-hex move ───────────────────────────────────────────────────
-    const tq = Position.q[eid] + input.dq;
-    const tr = Position.r[eid] + input.dr;
+    const tq = step1Q;
+    const tr = step1R;
 
     // Push interaction: pushable on target hex + PUSH ability active.
     if (abilityFlags.pushActive) {

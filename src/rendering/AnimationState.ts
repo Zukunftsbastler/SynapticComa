@@ -9,12 +9,17 @@
 // instead of ECS Position coordinates, preventing visual stuttering on
 // in-progress moves.
 
+import { tween, clearTweens } from './TweenManager';
+
 export interface AnimatedPos {
   x: number;
   y: number;
+  // Index signature keeps AnimatedPos assignable to TweenManager's TweenTarget.
+  [key: string]: number;
 }
 
 const positions = new Map<number, AnimatedPos>();
+const targets   = new Map<number, { x: number; y: number }>();
 
 /** Get or create an animated position record for an entity. */
 export function getAnimatedPos(eid: number, fallbackX: number, fallbackY: number): AnimatedPos {
@@ -24,6 +29,26 @@ export function getAnimatedPos(eid: number, fallbackX: number, fallbackY: number
   return positions.get(eid)!;
 }
 
+/**
+ * Declares the entity's current logical screen position. First sighting snaps;
+ * any later change starts a short ease tween. Returns the position to draw at.
+ */
+export function animateTo(eid: number, x: number, y: number, durationMs = 140): AnimatedPos {
+  const pos  = getAnimatedPos(eid, x, y);
+  const prev = targets.get(eid);
+  if (!prev) {
+    targets.set(eid, { x, y });
+    pos.x = x; pos.y = y;
+  } else if (prev.x !== x || prev.y !== y) {
+    targets.set(eid, { x, y });
+    tween(pos, 'x', x, durationMs);
+    tween(pos, 'y', y, durationMs);
+  }
+  return pos;
+}
+
 export function clearAnimationState(): void {
   positions.clear();
+  targets.clear();
+  clearTweens();
 }

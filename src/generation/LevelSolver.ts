@@ -216,7 +216,14 @@ function cloneState(s: SState): SState {
 
 // ── The solver ───────────────────────────────────────────────────────────────
 
-export function solveLevel(def: LevelDef, nodeLimit = 2_000_000): SolverResult {
+export interface SolveOptions {
+  /** Disable INSERT/ROTATE/DRAW — proves whether the matrix is *required*. */
+  noMatrix?: boolean;
+}
+
+export function solveLevel(
+  def: LevelDef, nodeLimit = 2_000_000, opts: SolveOptions = {},
+): SolverResult {
   const level = buildStaticLevel(def);
   const start = buildStartState(def);
 
@@ -270,30 +277,40 @@ export function solveLevel(def: LevelDef, nodeLimit = 2_000_000): SolverResult {
     const abilities = poweredAbilities(level, s.matrix);
 
     // ── MOVE actions (cost 1) ────────────────────────────────────────────
+    // SPRINT_010 semantics: the 1-hex step always exists when its target is
+    // passable; with JUMP routed, the 2-hex jump is an *additional* option
+    // whose intermediate hex is bypassed entirely (mechanics.md §5.1).
     for (const who of [0, 1] as const) {
       const pos = who === 0 ? s.p1 : s.p2;
       if (pos === null) continue;
       const z = who;
       for (const [dq, dr] of HEX_DIRECTIONS) {
-        let tq = pos.q + dq, tr = pos.r + dr, jumped = false;
+        const targets: { tq: number; tr: number; jumped: boolean }[] = [];
+        const t1q = pos.q + dq, t1r = pos.r + dr;
+        if (!isBlocked(level, abilities, s, z, t1q, t1r, true)) {
+          targets.push({ tq: t1q, tr: t1r, jumped: false });
+        }
         if (abilities.has(AbilityType.JUMP)) {
-          // Mirror MovementSystem: a clear 2-hex jump replaces the 1-hex step.
-          const mq = pos.q + dq, mr = pos.r + dr;
-          const lq = mq + dq, lr = mr + dr;
-          if (!isBlocked(level, abilities, s, z, mq, mr, false) &&
-              !isBlocked(level, abilities, s, z, lq, lr, true)) {
-            tq = lq; tr = lr; jumped = true;
+          const t2q = pos.q + 2 * dq, t2r = pos.r + 2 * dr;
+          if (!isBlocked(level, abilities, s, z, t2q, t2r, true)) {
+            targets.push({ tq: t2q, tr: t2r, jumped: true });
           }
         }
-        if (!jumped && isBlocked(level, abilities, s, z, tq, tr, true)) continue;
-
-        const next = cloneState(s);
-        applyArrival(level, next, who, tq, tr);
-        const witness = dfs(next, budget - 1, [
-          ...path, { kind: 'MOVE', detail: `P${who + 1}→(${tq},${tr})${jumped ? ' jump' : ''}` },
-        ]);
-        if (witness) return witness;
+        for (const { tq, tr, jumped } of targets) {
+          const next = cloneState(s);
+          applyArrival(level, next, who, tq, tr);
+          const witness = dfs(next, budget - 1, [
+            ...path, { kind: 'MOVE', detail: `P${who + 1}→(${tq},${tr})${jumped ? ' jump' : ''}` },
+          ]);
+          if (witness) return witness;
+        }
       }
+    }
+
+    if (opts.noMatrix) {
+      // Matrix actions disabled — used to prove the matrix is required.
+      if (knownFail === undefined || budget > knownFail) failCache.set(key, budget);
+      return null;
     }
 
     // ── INSERT actions (cost 2) ──────────────────────────────────────────

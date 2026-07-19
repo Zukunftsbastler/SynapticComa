@@ -15,6 +15,7 @@ import type { IWorld } from 'bitecs';
 import { addEntity, addComponent } from 'bitecs';
 import { APPool, Position, Renderable, Dimension } from '@/components';
 import { hexesInRadius } from '@/rendering/HexMath';
+import { clearAnimationState } from '@/rendering/AnimationState';
 import { SpriteId } from '@/registry/SpriteRegistry';
 import { entityRegistry } from '@/registry/EntityRegistry';
 import { clearCollectionRegistry } from '@/systems/CollectionSystem';
@@ -148,14 +149,17 @@ export async function loadLevel(currentWorld: IWorld, levelId: string): Promise<
   // 1. Destroy old world — releases all SoA TypedArrays.
   deleteWorld(currentWorld);
 
-  // 2. Reset all singletons.
+  // 2. Reset all singletons. Animation state must go too — bitECS recycles
+  // entity ids across worlds, and stale tween targets would teleport sprites.
   entityRegistry.clear();
   clearCollectionRegistry();
+  clearAnimationState();
   resetGameState({
     localPlayerId:    GameState.localPlayerId, // preserve networking identity
     viewPlayerId:     GameState.viewPlayerId,  // preserve local-mode view toggle
     revealBothDims:   GameState.revealBothDims,
     currentLevel:     levelId,
+    currentLevelName: def.name,
     thresholdEnabled: def.thresholdEnabled,
     phase:            'PLAYING',
   });

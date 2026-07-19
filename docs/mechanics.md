@@ -129,6 +129,8 @@ Abilities are active only while an unbroken path exists on the DNA Matrix. Sever
 ### 5.1 Jump (Icon: Rising Neuron Arc)
 **Tier 1.** When active, the avatar may spend 1 AP to move up to **2 hexes in a straight axial line**, bypassing any obstacle or chasm in the intermediate hex. The avatar must land on an empty, safe hex. Jump does not allow landing on hazard hexes.
 
+**Input semantics (decided in SPRINT_010 after playtest):** the 1-hex step is always the default action; it is never replaced by the jump. The 2-hex jump fires only when the player explicitly requests it (clicking a straight-line tile 2 hexes away) or when the 1-hex step in that direction is blocked and the jump can bypass the obstacle. The intermediate hex is bypassed entirely — its content (wall, door, chasm, barrier) is irrelevant; only the landing hex is validated.
+
 ### 5.2 Push (Icon: Hex with Arrow)
 **Tier 1.** When active, the avatar may spend 1 AP to **push one adjacent Pushable entity** exactly 1 hex in the chosen direction, provided the target hex behind the entity is empty. The **avatar does not move** — the action is a pure push from the avatar's current position. The avatar remains in place; only the pushed entity moves.
 

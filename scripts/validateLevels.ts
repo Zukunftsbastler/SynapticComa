@@ -33,12 +33,17 @@ for (const file of files) {
     continue;
   }
 
+  // Is the DNA Matrix mechanically required, or can the level be walked?
+  const noMatrix = solveLevel(def, 2_000_000, { noMatrix: true });
+  const matrixRequired = !noMatrix.solvable;
+
   const d = scoreDifficulty(result, def.initialAP, unlockTotal)!;
   rows.push(
     `${def.id.padEnd(10)} ✓ optimal=${String(result.optimalCost).padStart(2)} AP  ` +
     `slack=${String(d.apSlack).padStart(2)}  tight=${d.tightness.toFixed(2)}  ` +
     `D=${d.score.toFixed(2).padStart(5)}  ` +
     `moves=${result.solutionPath.length} coord=${result.coordinationSteps} draws=${result.drawSteps}  ` +
+    `matrix=${matrixRequired ? 'REQ' : 'opt'}  ` +
     `nodes=${result.nodesExpanded} ${ms}ms  [${def.name}]`,
   );
 }

@@ -10,6 +10,7 @@ import { GameState } from '@/state/GameState';
 import { world } from '@/gameLoop';
 import { apUnlockQuery } from '@/queries';
 import { APUnlock } from '@/components';
+import { inventory } from '@/state/InventoryState';
 
 const P1_KEYS = 'W/A/S/D/Q/E';
 const P2_KEYS = 'I/J/K/L/U/O';
@@ -74,7 +75,12 @@ export class MonitorStrip {
       parts.push('GOLD NODE: BOTH WISPS ON IT SIMULTANEOUSLY = +AP');
     }
 
-    parts.push('MATRIX: CLICK COLUMN END = INSERT PLATE (2 AP) · CLICK PLATE = ROTATE (1 AP)');
+    const inv = GameState.viewPlayerId === 0 ? inventory.player0 : inventory.player1;
+    if (inv.length > 0) {
+      parts.push(`YOU HOLD ${inv.length} PLATE${inv.length > 1 ? 'S' : ''}: [TAB] SELECT · [R] PRE-ROTATE · CLICK ▼/▲ ON THE MATRIX TO INSERT (2 AP)`);
+    } else {
+      parts.push('MATRIX: CLICK ▼/▲ = INSERT PLATE (2 AP) · CLICK PLATE = ROTATE (1 AP)');
+    }
 
     if (!this.networked) {
       parts.push('[1]/[2] SWITCH WISP');

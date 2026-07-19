@@ -14,8 +14,10 @@ export interface BaseMessage {
 export interface MoveAvatarMessage extends BaseMessage {
   type:     'MOVE_AVATAR';
   entityId: string;
-  dq:       number;
+  dq:       number;   // unit direction delta
   dr:       number;
+  /** Explicit 2-hex jump request (mouse click on a distance-2 tile). */
+  jump?:    boolean;
 }
 
 export interface InsertConduitMessage extends BaseMessage {
