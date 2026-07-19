@@ -1,7 +1,7 @@
 {
   "id": "level_02",
   "name": "Locked Door",
-  "initialAP": 9,
+  "initialAP": 8,
   "apUnlockNodes": [
     {
       "id": "unlock_01",
@@ -112,7 +112,7 @@
         "id": "node_c3r0",
         "column": 3,
         "row": 0,
-        "abilityType": 1
+        "abilityType": 3
       },
       {
         "id": "node_c3r1",
@@ -124,7 +124,7 @@
         "id": "node_c3r2",
         "column": 3,
         "row": 2,
-        "abilityType": 3
+        "abilityType": 1
       }
     ],
     "conduits": []

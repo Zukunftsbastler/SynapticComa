@@ -80,6 +80,15 @@ export type SolverResult =
       solutionPath: SolverAction[];   // one witness (worst-case draw branch)
       coordinationSteps: number;      // unlock pairs the witness triggers
       drawSteps: number;              // blind draws the witness relies on
+      /**
+       * Interaction intensity: the minimal number of control switches between
+       * the two players across any AP-optimal solution. Matrix actions can be
+       * performed by either player, so only MOVE actors force switches.
+       * `minSwitchesExact` is false when the second search phase hit its node
+       * budget and the value is the witness upper bound instead.
+       */
+      minSwitches: number;
+      minSwitchesExact: boolean;
       nodesExpanded: number;
     }
   | { solvable: false; reason: 'exhausted' | 'node-limit'; nodesExpanded: number };
@@ -219,12 +228,21 @@ function cloneState(s: SState): SState {
 export interface SolveOptions {
   /** Disable INSERT/ROTATE/DRAW — proves whether the matrix is *required*. */
   noMatrix?: boolean;
+  /** Treat all nodes of this AbilityType as dead — proves the ability is *required*. */
+  disabledAbility?: AbilityType;
+  /** Skip the second search phase that computes minimal player switches. */
+  skipSwitchMetric?: boolean;
 }
 
 export function solveLevel(
   def: LevelDef, nodeLimit = 2_000_000, opts: SolveOptions = {},
 ): SolverResult {
   const level = buildStaticLevel(def);
+  if (opts.disabledAbility !== undefined) {
+    level.abilityCells = level.abilityCells.filter(
+      c => c.abilityType !== opts.disabledAbility,
+    );
+  }
   const start = buildStartState(def);
 
   let nodesExpanded = 0;
@@ -252,16 +270,33 @@ export function solveLevel(
     return Math.ceil(d1 / 2) + Math.ceil(d2 / 2);
   };
 
-  // Depth-first proof: can `s` be won spending ≤ budget more AP?
+  // Second-phase constraint: cap on control switches between players.
+  // Only MOVE actions have a fixed actor; matrix/draw actions can be done by
+  // whoever currently holds control, so they never force a switch.
+  let switchLimit = Infinity;
+  const switchFailCache = new Map<string, number>();
+
+  // Depth-first proof: can `s` be won spending ≤ budget more AP, with at most
+  // `switches` control switches left, `lastMover` holding control?
   // Returns the witness path or null. Draw = AND node (all outcomes must hold).
-  function dfs(s: SState, budget: number, path: SolverAction[]): SolverAction[] | null {
+  function dfs(
+    s: SState, budget: number, path: SolverAction[],
+    switches = Infinity, lastMover: -1 | 0 | 1 = -1,
+  ): SolverAction[] | null {
     if (s.p1 === null &&
         s.p2.q === level.exits[1].q && s.p2.r === level.exits[1].r) {
       return path;
     }
     if (h(s) > budget) return null;
-    const key = stateKey(s);
-    const knownFail = failCache.get(key);
+    // Failure caches: the plain cache for unconstrained search, a separate
+    // cache keyed by (lastMover, remaining switches) for the switch-metric
+    // phase — the same board state can be winnable for one mover and lost
+    // for the other.
+    const key = switchLimit === Infinity
+      ? stateKey(s)
+      : `${stateKey(s)};${lastMover};${switches}`;
+    const cache = switchLimit === Infinity ? failCache : switchFailCache;
+    const knownFail = cache.get(key);
     if (knownFail !== undefined && knownFail >= budget) return null;
     if (++nodesExpanded > nodeLimit) throw new Error('node-limit');
 
@@ -270,7 +305,7 @@ export function solveLevel(
     // the pair triggers — exactly APUnlockSystem's behavior.
     const apAvail = def.initialAP + unlockCredit(s.unlockMask) - (currentLimit - budget);
     if (apAvail <= 0) {
-      if (knownFail === undefined || budget > knownFail) failCache.set(key, budget);
+      if (knownFail === undefined || budget > knownFail) cache.set(key, budget);
       return null;
     }
 
@@ -296,12 +331,17 @@ export function solveLevel(
             targets.push({ tq: t2q, tr: t2r, jumped: true });
           }
         }
+        // Switch accounting: a MOVE by the non-controlling player consumes
+        // one switch from the budget (matrix actions never do).
+        const needsSwitch = lastMover !== -1 && who !== lastMover;
+        if (needsSwitch && switches < 1) continue;
+        const childSwitches = needsSwitch ? switches - 1 : switches;
         for (const { tq, tr, jumped } of targets) {
           const next = cloneState(s);
           applyArrival(level, next, who, tq, tr);
           const witness = dfs(next, budget - 1, [
             ...path, { kind: 'MOVE', detail: `P${who + 1}→(${tq},${tr})${jumped ? ' jump' : ''}` },
-          ]);
+          ], childSwitches, who);
           if (witness) return witness;
         }
       }
@@ -309,7 +349,7 @@ export function solveLevel(
 
     if (opts.noMatrix) {
       // Matrix actions disabled — used to prove the matrix is required.
-      if (knownFail === undefined || budget > knownFail) failCache.set(key, budget);
+      if (knownFail === undefined || budget > knownFail) cache.set(key, budget);
       return null;
     }
 
@@ -326,7 +366,7 @@ export function solveLevel(
               const witness = dfs(next, budget - 2, [
                 ...path,
                 { kind: 'INSERT', detail: `${ConduitShape[shape]} r${rot} col${colIdx === 0 ? 2 : 4} ${fromTop ? 'top' : 'bottom'}` },
-              ]);
+              ], switches, lastMover);
               if (witness) return witness;
             }
           }
@@ -344,7 +384,7 @@ export function solveLevel(
         c.rotation = (c.rotation + 1) % 4;
         const witness = dfs(next, budget - 1, [
           ...path, { kind: 'ROTATE', detail: `col${colIdx === 0 ? 2 : 4} row${row}` },
-        ]);
+        ], switches, lastMover);
         if (witness) return witness;
       }
     }
@@ -361,7 +401,7 @@ export function solveLevel(
         next.inventory[shape]++;
         const witness = dfs(next, budget - 1, [
           ...path, { kind: 'DRAW', detail: `worst-case ${ConduitShape[shape]}` },
-        ]);
+        ], switches, lastMover);
         if (!witness) { allBranchesHold = false; break; }
         if (!worstWitness || witness.length > worstWitness.length) worstWitness = witness;
       }
@@ -369,11 +409,23 @@ export function solveLevel(
     }
 
     // Record failure at this budget.
-    if (knownFail === undefined || budget > knownFail) failCache.set(key, budget);
+    if (knownFail === undefined || budget > knownFail) cache.set(key, budget);
     return null;
   }
 
-  // Iterative deepening over total cost — first success is the optimum.
+  // Counts control switches in a witness (successive MOVE actors).
+  function witnessSwitches(path: SolverAction[]): number {
+    let last = -1, n = 0;
+    for (const a of path) {
+      if (a.kind !== 'MOVE') continue;
+      const who = a.detail.startsWith('P1') ? 0 : 1;
+      if (last !== -1 && who !== last) n++;
+      last = who;
+    }
+    return n;
+  }
+
+  // ── Phase 1: iterative deepening over AP — first success is the optimum ──
   const lower = h(start);
   try {
     for (let limit = lower; limit <= level.budget; limit++) {
@@ -382,12 +434,42 @@ export function solveLevel(
       if (witness) {
         const coordinationSteps = countUnlocks(level, witness, def);
         const drawSteps = witness.filter(a => a.kind === 'DRAW').length;
+
+        // ── Phase 2: minimal player switches within the FULL budget ──────
+        // (Interaction intensity: how much hand-off the level truly demands,
+        // regardless of AP efficiency.) Deepen over the switch budget.
+        let minSwitches = witnessSwitches(witness);
+        let minSwitchesExact = false;
+        if (!opts.skipSwitchMetric && minSwitches > 0) {
+          const phase2NodeCap = nodesExpanded + 400_000;
+          try {
+            currentLimit = level.budget;
+            for (let sw = 0; sw < minSwitches; sw++) {
+              switchLimit = sw;
+              switchFailCache.clear();
+              const w2 = dfs(start, level.budget, [], sw, -1);
+              if (nodesExpanded > phase2NodeCap) throw new Error('node-limit');
+              if (w2) { minSwitches = sw; break; }
+            }
+            minSwitchesExact = true;
+          } catch (e) {
+            if ((e as Error).message !== 'node-limit') throw e;
+            // Budget exhausted — keep the witness upper bound, mark inexact.
+          } finally {
+            switchLimit = Infinity;
+          }
+        } else if (minSwitches === 0) {
+          minSwitchesExact = true;
+        }
+
         return {
           solvable: true,
           optimalCost: limit,
           solutionPath: witness,
           coordinationSteps,
           drawSteps,
+          minSwitches,
+          minSwitchesExact,
           nodesExpanded,
         };
       }

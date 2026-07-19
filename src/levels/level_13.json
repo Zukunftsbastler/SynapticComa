@@ -1,7 +1,7 @@
 {
   "id": "level_13",
   "name": "Critical Rotation",
-  "initialAP": 7,
+  "initialAP": 9,
   "apUnlockNodes": [
     {
       "id": "unlock_01",
@@ -63,6 +63,92 @@
       "q": 0,
       "r": -1,
       "z": 0
+    },
+    {
+      "type": "hazard",
+      "id": "hazard_door_a",
+      "hazardType": 1,
+      "q": 0,
+      "r": -1,
+      "z": 0
+    },
+    {
+      "type": "hazard",
+      "id": "hazard_door_b",
+      "hazardType": 2,
+      "q": 0,
+      "r": -1,
+      "z": 1
+    },
+    {
+      "type": "wall",
+      "id": "gate_wall_0_1_-2",
+      "q": 1,
+      "r": -2,
+      "z": 0
+    },
+    {
+      "type": "wall",
+      "id": "gate_wall_0_1_-3",
+      "q": 1,
+      "r": -3,
+      "z": 0
+    },
+    {
+      "type": "wall",
+      "id": "gate_wall_0_0_-3",
+      "q": 0,
+      "r": -3,
+      "z": 0
+    },
+    {
+      "type": "wall",
+      "id": "gate_wall_0_-1_-2",
+      "q": -1,
+      "r": -2,
+      "z": 0
+    },
+    {
+      "type": "wall",
+      "id": "gate_wall_0_-1_-1",
+      "q": -1,
+      "r": -1,
+      "z": 0
+    },
+    {
+      "type": "wall",
+      "id": "gate_wall_1_1_-2",
+      "q": 1,
+      "r": -2,
+      "z": 1
+    },
+    {
+      "type": "wall",
+      "id": "gate_wall_1_1_-3",
+      "q": 1,
+      "r": -3,
+      "z": 1
+    },
+    {
+      "type": "wall",
+      "id": "gate_wall_1_0_-3",
+      "q": 0,
+      "r": -3,
+      "z": 1
+    },
+    {
+      "type": "wall",
+      "id": "gate_wall_1_-1_-2",
+      "q": -1,
+      "r": -2,
+      "z": 1
+    },
+    {
+      "type": "wall",
+      "id": "gate_wall_1_-1_-1",
+      "q": -1,
+      "r": -1,
+      "z": 1
     }
   ],
   "matrix": {
@@ -72,6 +158,12 @@
         "column": 3,
         "row": 0,
         "abilityType": 3
+      },
+      {
+        "id": "node_c3r2",
+        "column": 3,
+        "row": 2,
+        "abilityType": 4
       }
     ],
     "conduits": [
@@ -80,20 +172,20 @@
         "column": 2,
         "row": 0,
         "shape": 0,
-        "rotation": 0
+        "rotation": 1
       },
       {
         "id": "matrix_col2_row1",
         "column": 2,
         "row": 1,
-        "shape": 0,
+        "shape": 1,
         "rotation": 0
       },
       {
         "id": "matrix_col2_row2",
         "column": 2,
         "row": 2,
-        "shape": 1,
+        "shape": 0,
         "rotation": 1
       }
     ]
