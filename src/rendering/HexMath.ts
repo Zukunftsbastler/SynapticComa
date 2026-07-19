@@ -19,6 +19,20 @@ export function hexCorners(cx: number, cy: number, S: number): [number, number][
 
 // The 6 axial neighbor directions for a flat-top hex grid.
 // Order: E, NE, NW, W, SW, SE
+// Pixel → axial (inverse of axialToPixel) with cube rounding, for hit-testing
+// mouse/touch input against the flat-top grid.
+export function pixelToAxial(px: number, py: number, S: number): { q: number; r: number } {
+  const qf = (2 / 3) * px / S;
+  const rf = (-1 / 3 * px + Math.sqrt(3) / 3 * py) / S;
+  // Cube rounding.
+  const sf = -qf - rf;
+  let q = Math.round(qf), r = Math.round(rf), s = Math.round(sf);
+  const dq = Math.abs(q - qf), dr = Math.abs(r - rf), ds = Math.abs(s - sf);
+  if (dq > dr && dq > ds)      q = -r - s;
+  else if (dr > ds)            r = -q - s;
+  return { q, r };
+}
+
 /** Axial hex distance between two cells. */
 export function hexDistance(aq: number, ar: number, bq: number, br: number): number {
   const dq = aq - bq, dr = ar - br;

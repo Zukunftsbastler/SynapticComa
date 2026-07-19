@@ -23,6 +23,7 @@ import { GameState } from '@/state/GameState';
 import { loadProgress, ProgressionState } from '@/state/ProgressionState';
 import { LEVEL_ORDER } from '@/levels/levelIndex';
 import { initKeyboardInput } from '@/input/KeyboardInput';
+import { initMouseInput } from '@/input/MouseInput';
 import { peerManager } from '@/network/PeerJSManager';
 import type { LevelLoadMessage } from '@/network/messages';
 import { LobbyUI } from '@/ui/LobbyUI';
@@ -97,7 +98,11 @@ function watchGamePhase(): void {
 
 function startSession(result: LobbyResult): void {
   networked = result.networked;
-  GameState.viewPlayerId = result.networked ? result.role : 0;
+  GameState.viewPlayerId   = result.networked ? result.role : 0;
+  // Local single-machine play: show both dimensions side by side so the
+  // player sees what the other wisp's board looks like (debug layout,
+  // digital_implementation.md §3). Networked play keeps the strict mask.
+  GameState.revealBothDims = !result.networked;
 
   // ── Persistent UI (polls GameState each frame; survives level reloads) ────
   const hud       = new HUD(document.body);
@@ -119,6 +124,7 @@ function startSession(result: LobbyResult): void {
 
   // ── Input ────────────────────────────────────────────────────────────────
   initKeyboardInput(() => `avatar_p${GameState.viewPlayerId + 1}`);
+  initMouseInput(driver);
 
   window.addEventListener('keydown', (e) => {
     // Local mode: 1/2 toggles which wisp this machine views and controls.

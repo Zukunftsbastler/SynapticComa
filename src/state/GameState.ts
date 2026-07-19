@@ -26,6 +26,10 @@ export interface GameStateData {
   deadEnd:          boolean;
   // Board radius of the current level — movement never leaves this boundary.
   gridRadius:       number;
+  // Local single-machine mode: render BOTH dimensions side by side
+  // (digital_implementation.md §3, debug layout). Networked play keeps the
+  // strict one-dimension visibility mask.
+  revealBothDims:   boolean;
   thresholdState:   { p1Ready: boolean; p2Ready: boolean };
   thresholdEnabled: boolean;
   phase:            'SETUP' | 'PLAYING' | 'THRESHOLD' | 'LEVEL_COMPLETE';
@@ -52,6 +56,7 @@ function makeInitialState(): GameStateData {
     currentLevel:     '',
     deadEnd:          false,
     gridRadius:       3,
+    revealBothDims:   false,
     thresholdState:   { p1Ready: false, p2Ready: false },
     thresholdEnabled: false,
     phase:            'SETUP',

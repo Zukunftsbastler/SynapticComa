@@ -154,6 +154,7 @@ export async function loadLevel(currentWorld: IWorld, levelId: string): Promise<
   resetGameState({
     localPlayerId:    GameState.localPlayerId, // preserve networking identity
     viewPlayerId:     GameState.viewPlayerId,  // preserve local-mode view toggle
+    revealBothDims:   GameState.revealBothDims,
     currentLevel:     levelId,
     thresholdEnabled: def.thresholdEnabled,
     phase:            'PLAYING',

@@ -119,23 +119,125 @@ export function canAvatarReachExit(
   return false;
 }
 
-/** True while any untriggered Shared Unlock pair exists. */
-function unlocksRemain(world: IWorld): boolean {
-  const nodes = apUnlockQuery(world);
-  for (let i = 0; i < nodes.length; i++) {
-    if (APUnlock.triggered[nodes[i]] === 0) return true;
+/**
+ * Budget-bounded BFS to an arbitrary hex (Shared Unlock reachability checks).
+ * Same blocking rules as the exit variant, without exit special-casing.
+ */
+export function canAvatarReachHex(
+  world: IWorld, state: GameStateData, playerId: 0 | 1,
+  targetQ: number, targetR: number, budget: number,
+): boolean {
+  let avatarEid = -1;
+  const avatars = avatarQuery(world);
+  for (let i = 0; i < avatars.length; i++) {
+    if (Avatar.playerId[avatars[i]] === playerId) { avatarEid = avatars[i]; break; }
+  }
+  if (avatarEid === -1) return false;
+
+  const z = Position.z[avatarEid];
+  const blocked = blockedSet(world, avatarEid, z);
+
+  const startKey = `${Position.q[avatarEid]},${Position.r[avatarEid]}`;
+  if (startKey === `${targetQ},${targetR}`) return true;
+  const visited = new Set<string>([startKey]);
+  let frontier: [number, number][] = [[Position.q[avatarEid], Position.r[avatarEid]]];
+
+  for (let depth = 0; depth < budget && frontier.length > 0; depth++) {
+    const next: [number, number][] = [];
+    for (const [q, r] of frontier) {
+      for (const [dq, dr] of HEX_DIRECTIONS) {
+        const nq = q + dq, nr = r + dr;
+        if (hexDistance(0, 0, nq, nr) > state.gridRadius) continue;
+        const key = `${nq},${nr}`;
+        if (visited.has(key) || blocked.has(key)) continue;
+        if (nq === targetQ && nr === targetR) return true;
+        visited.add(key);
+        next.push([nq, nr]);
+      }
+    }
+    frontier = next;
   }
   return false;
 }
 
-/** Evaluates the Dead End condition for the current tick. */
+// AP a Shared Unlock could still contribute: only pairs whose BOTH hexes are
+// individually reachable within the entire current pool count. (If either
+// player cannot reach its node even spending every remaining AP alone, the
+// pair can never trigger — AP is shared, so combined spending is stricter.)
+function usableUnlockCredit(world: IWorld, state: GameStateData): number {
+  const nodes = apUnlockQuery(world);
+  // Group pair halves by id.
+  const pairs = new Map<number, { a?: number; b?: number; value: number }>();
+  for (let i = 0; i < nodes.length; i++) {
+    const eid = nodes[i];
+    if (APUnlock.triggered[eid] === 1) continue;
+    const id = APUnlock.id[eid];
+    const entry = pairs.get(id) ?? { value: APUnlock.value[eid] };
+    if (Position.z[eid] === 0) entry.a = eid; else entry.b = eid;
+    pairs.set(id, entry);
+  }
+
+  let credit = 0;
+  for (const pair of pairs.values()) {
+    if (pair.a === undefined || pair.b === undefined) continue;
+    const p1Can = !state.p1HasExited && canAvatarReachHex(
+      world, state, 0, Position.q[pair.a], Position.r[pair.a], state.apPool);
+    const p2Can = canAvatarReachHex(
+      world, state, 1, Position.q[pair.b], Position.r[pair.b], state.apPool);
+    if (p1Can && p2Can) credit += pair.value;
+  }
+  return credit;
+}
+
+// Admissible lower bound on the AP still required to win: each move covers at
+// most 2 hexes (jump), walls/hazards can only make paths longer, and matrix
+// actions only add cost. Never overestimates.
+function remainingCostLowerBound(world: IWorld, state: GameStateData): number {
+  const avatars = avatarQuery(world);
+  const exits   = exitQuery(world);
+  let lb = 0;
+  for (const playerId of [0, 1] as const) {
+    if (playerId === 0 && state.p1HasExited) continue;
+    let aeid = -1;
+    for (let i = 0; i < avatars.length; i++) {
+      if (Avatar.playerId[avatars[i]] === playerId) { aeid = avatars[i]; break; }
+    }
+    if (aeid === -1) continue;
+    for (let i = 0; i < exits.length; i++) {
+      const eeid = exits[i];
+      if (Exit.playerId[eeid] === playerId) {
+        const d = hexDistance(
+          Position.q[aeid], Position.r[aeid], Position.q[eeid], Position.r[eeid]);
+        lb += Math.ceil(d / 2);
+        break;
+      }
+    }
+  }
+  return lb;
+}
+
+/**
+ * Evaluates the Dead End condition. Two tiers:
+ *  1. Early proof: even crediting every unlock still reachable, the pool
+ *     cannot cover an admissible lower bound of the remaining cost — the
+ *     level is provably lost, regardless of play.
+ *  2. AP = 0: nothing can move; unless an untriggered pair is about to fire
+ *     (both wisps already standing on it), only standing on an exit counts.
+ */
 export function isDeadEnd(world: IWorld, state: GameStateData): boolean {
   if (state.phase !== 'PLAYING') return false;
+
+  const credit = usableUnlockCredit(world, state);
+  if (state.apPool + credit < remainingCostLowerBound(world, state)) {
+    return true; // provably unwinnable — surface it before the pool drains
+  }
   if (state.apPool > 0) return false;
-  if (unlocksRemain(world)) return false;
+
+  // AP = 0: a pair with both wisps in place triggers next tick — not dead yet.
+  if (credit > 0) return false;
 
   const p1CanExit = state.p1HasExited
-    || canAvatarReachExit(world, state, 0, state.apPool);
-  const p2CanExit = canAvatarReachExit(world, state, 1, state.apPool);
+    || canAvatarReachExit(world, state, 0, 0);
+  const p2CanExit = canAvatarReachExit(world, state, 1, 0);
   return !p1CanExit && !p2CanExit;
 }

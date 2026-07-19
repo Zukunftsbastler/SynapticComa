@@ -1,13 +1,15 @@
 import type { IWorld } from 'bitecs';
 import { hasComponent } from 'bitecs';
 import {
-  Position, Renderable, Dimension, Avatar, APUnlock, Static, Collectible,
+  Position, Renderable, Dimension, Avatar, APUnlock, Static, Collectible, Movable,
 } from '@/components';
-import { renderableQuery, avatarQuery } from '@/queries';
+import { renderableQuery, avatarQuery, staticQuery } from '@/queries';
 import { renderCommandBuffer } from '@/rendering/RenderCommandBuffer';
 import { renderMatrix } from '@/rendering/MatrixRenderer';
 import type { PixiDriver } from '@/rendering/PixiDriver';
 import { SpriteId } from '@/registry/SpriteRegistry';
+import { GameState } from '@/state/GameState';
+import { HEX_DIRECTIONS, hexDistance } from '@/rendering/HexMath';
 import { HEX_SIZE } from '@/constants';
 
 // Art palette — Medical Macabre Diorama (docs/art_and_ui.md)
@@ -44,7 +46,7 @@ export function RenderSystem(world: IWorld, driver: PixiDriver, localPlayerId: 0
     const eid = renderables[i];
     if (Renderable.visible[eid] === 0) continue;
     const dimLayer = Dimension.layer[eid];
-    if (dimLayer !== localPlayerId) continue;
+    if (!GameState.revealBothDims && dimLayer !== localPlayerId) continue;
     const sid = Renderable.spriteId[eid] as SpriteId;
     if (sid !== SpriteId.HEX_ID_FLOOR && sid !== SpriteId.HEX_SUPEREGO_FLOOR) continue;
 
@@ -60,7 +62,7 @@ export function RenderSystem(world: IWorld, driver: PixiDriver, localPlayerId: 0
     const eid = renderables[i];
     if (Renderable.visible[eid] === 0) continue;
     const dimLayer = Dimension.layer[eid];
-    if (dimLayer !== localPlayerId) continue;
+    if (!GameState.revealBothDims && dimLayer !== localPlayerId) continue;
     if (hasComponent(world, Avatar, eid)) continue; // avatars drawn in pass 3
     const sid = Renderable.spriteId[eid] as SpriteId;
     if (sid === SpriteId.HEX_ID_FLOOR || sid === SpriteId.HEX_SUPEREGO_FLOOR) continue;
@@ -103,7 +105,7 @@ export function RenderSystem(world: IWorld, driver: PixiDriver, localPlayerId: 0
     if (Renderable.visible[eid] === 0) continue;
 
     const dimLayer = Dimension.layer[eid];
-    if (dimLayer !== localPlayerId) continue;
+    if (!GameState.revealBothDims && dimLayer !== localPlayerId) continue;
 
     const q = Position.q[eid];
     const r = Position.r[eid];
@@ -111,7 +113,16 @@ export function RenderSystem(world: IWorld, driver: PixiDriver, localPlayerId: 0
       ? driver.hexToScreenA(q, r)
       : driver.hexToScreenB(q, r);
 
-    const color = Avatar.playerId[eid] === 0 ? COLOR_AVATAR_P1 : COLOR_AVATAR_P2;
+    const playerId = Avatar.playerId[eid];
+    const color    = playerId === 0 ? COLOR_AVATAR_P1 : COLOR_AVATAR_P2;
+
+    // Controlled wisp gets a bright ring so the active piece is unmistakable.
+    if (playerId === GameState.viewPlayerId) {
+      renderCommandBuffer.push({
+        cmd: 'drawCircle', x: screen.x, y: screen.y,
+        radius: HEX_SIZE * 0.58, fillColor: 0xFFFFFF, alpha: 0.35,
+      });
+    }
 
     renderCommandBuffer.push({
       cmd:       'drawCircle',
@@ -121,6 +132,11 @@ export function RenderSystem(world: IWorld, driver: PixiDriver, localPlayerId: 0
       fillColor: color,
       alpha:     1,
     });
+
+    // Movement key hints: letters on the controlled wisp's neighbor tiles.
+    if (playerId === GameState.viewPlayerId && hasComponent(world, Movable, eid)) {
+      drawKeyHints(world, driver, playerId as 0 | 1, dimLayer, q, r);
+    }
   }
 
   // ── DNA Matrix ─────────────────────────────────────────────────────────────
@@ -131,4 +147,52 @@ export function RenderSystem(world: IWorld, driver: PixiDriver, localPlayerId: 0
   // Flush commands to PixiDriver
   const cmds = renderCommandBuffer.drain();
   driver.executeBuffer(cmds);
+}
+
+// ── Movement key hints ───────────────────────────────────────────────────────
+// The key letter of each direction is drawn on the corresponding neighbor tile
+// of the controlled wisp, so the keyboard↔board mapping is always visible.
+// Blocked tiles show the letter dimmed; off-board neighbors show nothing.
+// (Answering the playtest question directly: the mapping mirrors the keyboard
+// block — Q↖ W↑ E↗ / A↙ S↓ D↘, and U/I/O + J/K/L for P2. Confusion about it
+// is NOT a design element.)
+
+const KEY_FOR_DIRECTION: Record<0 | 1, Record<string, string>> = {
+  0: { '-1,0': 'Q', '0,-1': 'W', '1,-1': 'E', '-1,1': 'A', '0,1': 'S', '1,0': 'D' },
+  1: { '-1,0': 'U', '0,-1': 'I', '1,-1': 'O', '-1,1': 'J', '0,1': 'K', '1,0': 'L' },
+};
+
+function drawKeyHints(
+  world: IWorld, driver: PixiDriver, playerId: 0 | 1,
+  dimLayer: number, q: number, r: number,
+): void {
+  const statics = staticQuery(world);
+
+  for (const [dq, dr] of HEX_DIRECTIONS) {
+    const nq = q + dq, nr = r + dr;
+    if (hexDistance(0, 0, nq, nr) > GameState.gridRadius) continue; // off-board
+
+    let blocked = false;
+    for (let i = 0; i < statics.length; i++) {
+      const seid = statics[i];
+      if (Position.q[seid] === nq && Position.r[seid] === nr && Position.z[seid] === dimLayer) {
+        blocked = true;
+        break;
+      }
+    }
+
+    const screen = dimLayer === 0
+      ? driver.hexToScreenA(nq, nr)
+      : driver.hexToScreenB(nq, nr);
+
+    renderCommandBuffer.push({
+      cmd:   'drawText',
+      x:     screen.x,
+      y:     screen.y,
+      text:  KEY_FOR_DIRECTION[playerId][`${dq},${dr}`] ?? '',
+      color: blocked ? 0x555555 : 0xE8DCB8,
+      size:  13,
+      alpha: blocked ? 0.5 : 0.85,
+    });
+  }
 }

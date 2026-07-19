@@ -19,11 +19,16 @@ const HEX_KEY_MAP: Record<string, [number, number]> = {
   d: [ 1,  0],
   w: [ 0, -1],
   s: [ 0,  1],
-  // P2 uses IJKL (same layout, same logic — both players share the key map
-  // and are distinguished by their avatar's entityId, set by the caller).
+  // P2 uses U/I/O + J/K/L — the same spatial block as Q/W/E + A/S/D:
+  //   U ↖   I ↑   O ↗
+  //   J ↙   K ↓   L ↘
+  // Both players share the key map and are distinguished by their avatar's
+  // entityId, set by the caller.
+  u: [-1,  0],
   i: [ 0, -1],
-  k: [ 0,  1],
+  o: [ 1, -1],
   j: [-1,  1],
+  k: [ 0,  1],
   l: [ 1,  0],
 };
 

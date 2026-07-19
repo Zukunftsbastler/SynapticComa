@@ -37,6 +37,16 @@ export type DrawSpriteCommand = {
   visible:  boolean;
 };
 
+export type DrawTextCommand = {
+  cmd:   'drawText';
+  x:     number;  // pixel center x
+  y:     number;  // pixel center y
+  text:  string;
+  color: number;
+  size:  number;  // font size in px
+  alpha: number;
+};
+
 export type ClearCommand = { cmd: 'clear' };
 
 export type RenderCommand =
@@ -44,6 +54,7 @@ export type RenderCommand =
   | DrawCircleCommand
   | DrawRectCommand
   | DrawSpriteCommand
+  | DrawTextCommand
   | ClearCommand;
 
 export class RenderCommandBuffer {

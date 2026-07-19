@@ -55,19 +55,19 @@ export class MonitorStrip {
       return 'SIGNAL LOST. RECALIBRATING…';
     }
     if (gs.deadEnd) {
-      return 'DEAD END — NO PROGRESS POSSIBLE. PRESS [ENTER] FOR A FREE RESTART (NO RETRY CONSUMED).';
+      return 'DEAD END — THIS LEVEL CAN NO LONGER BE WON WITH THE REMAINING AP. PRESS [ENTER] FOR A FREE RESTART (NO RETRY CONSUMED).';
     }
 
     const parts: string[] = [];
 
     if (!gs.p1HasExited) {
       if (gs.viewPlayerId === 0) {
-        parts.push(`GUIDE P1 (VIOLET) TO THE GREEN NEXUS EXIT · MOVE: ${P1_KEYS} · 1 AP/STEP`);
+        parts.push(`GUIDE P1 (VIOLET) TO THE GREEN NEXUS EXIT · KEYS ${P1_KEYS} (SHOWN ON TILES) OR CLICK A NEIGHBOR TILE · 1 AP/STEP`);
       } else {
-        parts.push(`GUIDE P2 (CYAN) · MOVE: ${P2_KEYS} · P1 MUST REACH ITS EXIT FIRST`);
+        parts.push(`GUIDE P2 (CYAN) · KEYS ${P2_KEYS} (SHOWN ON TILES) OR CLICK · P1 MUST REACH ITS EXIT FIRST`);
       }
     } else {
-      parts.push(`P1 HAS MERGED WITH THE NEXUS. GUIDE P2 (CYAN) TO THE NOW-OPEN EXIT · MOVE: ${P2_KEYS}`);
+      parts.push(`P1 HAS MERGED WITH THE NEXUS. GUIDE P2 (CYAN) TO THE NOW-OPEN EXIT · KEYS ${P2_KEYS} OR CLICK`);
     }
 
     if (this.hasUntriggeredUnlock()) {

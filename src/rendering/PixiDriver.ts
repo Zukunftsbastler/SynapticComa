@@ -1,4 +1,4 @@
-import { Application, Graphics, Container } from 'pixi.js';
+import { Application, Graphics, Container, Text } from 'pixi.js';
 import type { RenderCommand } from './RenderCommandBuffer';
 import { axialToPixel, hexCorners } from './HexMath';
 import { HEX_SIZE } from '@/constants';
@@ -10,6 +10,10 @@ import { HEX_SIZE } from '@/constants';
 export class PixiDriver {
   private app: Application;
   private gfx: Graphics;
+  // Pooled PIXI.Text objects for drawText commands (labels, key hints).
+  // Reused every frame; surplus instances are hidden, never destroyed.
+  private textPool: Text[] = [];
+  private textLayer: Container;
   // Container offsets for each dimension's hex grid.
   private dimAOrigin: { x: number; y: number };
   private dimBOrigin: { x: number; y: number };
@@ -26,14 +30,28 @@ export class PixiDriver {
     this.matrixOrigin = { x: 620, y: 200 };   // top-left of matrix panel
 
     this.gfx = new Graphics();
+    this.textLayer = new Container();
     const stage = new Container();
     stage.addChild(this.gfx);
+    stage.addChild(this.textLayer); // text always above shapes
     this.app.stage.addChild(stage);
+  }
+
+  private acquireText(index: number): Text {
+    let t = this.textPool[index];
+    if (!t) {
+      t = new Text({ text: '', style: { fontFamily: 'monospace', fontSize: 12, fill: 0xFFFFFF } });
+      t.anchor.set(0.5);
+      this.textPool[index] = t;
+      this.textLayer.addChild(t);
+    }
+    return t;
   }
 
   // Called once per frame by the game loop after RenderSystem has written its commands.
   executeBuffer(commands: RenderCommand[]): void {
     this.gfx.clear();
+    let textIndex = 0;
 
     for (const cmd of commands) {
       switch (cmd.cmd) {
@@ -83,7 +101,23 @@ export class PixiDriver {
             this.gfx.endFill();
           }
           break;
+
+        case 'drawText': {
+          const t = this.acquireText(textIndex++);
+          t.text = cmd.text;
+          t.style.fontSize = cmd.size;
+          t.style.fill = cmd.color;
+          t.position.set(cmd.x, cmd.y);
+          t.alpha = cmd.alpha;
+          t.visible = true;
+          break;
+        }
       }
+    }
+
+    // Hide surplus pooled texts from previous frames.
+    for (let i = textIndex; i < this.textPool.length; i++) {
+      this.textPool[i].visible = false;
     }
   }
 
