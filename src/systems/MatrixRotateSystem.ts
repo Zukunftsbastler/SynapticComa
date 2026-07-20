@@ -9,7 +9,7 @@
 import type { IWorld } from 'bitecs';
 import { Conduit, MatrixNode } from '@/components';
 import { conduitQuery } from '@/queries';
-import { computeFaceMask } from '@/utils/ConduitFaceMask';
+import { computeFaceMask, isRotatableInPlace } from '@/utils/ConduitFaceMask';
 import { scrapPool } from '@/state/ScrapPoolState';
 import { markActivity } from '@/state/GameState';
 import type { GameStateData } from '@/state/GameState';
@@ -30,6 +30,10 @@ export function MatrixRotateSystem(world: IWorld, state: GameStateData): void {
 
     const target = findMatrixConduit(world, input.column, input.row);
     if (target === -1) continue;
+
+    // Master Set plates are static once placed (mechanics.md §4.4) —
+    // rejected before any AP is deducted.
+    if (!isRotatableInPlace(Conduit.shape[target] as ConduitShape)) continue;
 
     const newRotation = (Conduit.rotation[target] + 1) % 4;
     Conduit.rotation[target] = newRotation;

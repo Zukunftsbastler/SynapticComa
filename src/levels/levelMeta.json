@@ -148,5 +148,55 @@
     "coordinationSteps": 1,
     "drawSteps": 3,
     "matrixRequired": true
+  },
+  "level_16": {
+    "optimalCost": 12,
+    "apSlack": 2,
+    "difficulty": 5.7,
+    "minSwitches": 2,
+    "minSwitchesExact": true,
+    "coordinationSteps": 1,
+    "drawSteps": 0,
+    "matrixRequired": true
+  },
+  "level_17": {
+    "optimalCost": 14,
+    "apSlack": 2,
+    "difficulty": 5.92,
+    "minSwitches": 3,
+    "minSwitchesExact": true,
+    "coordinationSteps": 1,
+    "drawSteps": 0,
+    "matrixRequired": true
+  },
+  "level_18": {
+    "optimalCost": 14,
+    "apSlack": 2,
+    "difficulty": 6,
+    "minSwitches": 2,
+    "minSwitchesExact": true,
+    "coordinationSteps": 1,
+    "drawSteps": 0,
+    "matrixRequired": true
+  },
+  "level_19": {
+    "optimalCost": 13,
+    "apSlack": 2,
+    "difficulty": 7.42,
+    "minSwitches": 5,
+    "minSwitchesExact": false,
+    "coordinationSteps": 1,
+    "drawSteps": 1,
+    "matrixRequired": true
+  },
+  "level_20": {
+    "optimalCost": 15,
+    "apSlack": 3,
+    "difficulty": 7.45,
+    "minSwitches": 3,
+    "minSwitchesExact": true,
+    "coordinationSteps": 2,
+    "drawSteps": 1,
+    "matrixRequired": true
   }
 }

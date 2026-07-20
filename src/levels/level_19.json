@@ -1,0 +1,191 @@
+{
+  "id": "level_19",
+  "name": "Dead Column",
+  "initialAP": 11,
+  "apUnlockNodes": [
+    {
+      "id": "unlock_01",
+      "value": 4,
+      "hexA": {
+        "q": 0,
+        "r": 1
+      },
+      "hexB": {
+        "q": 0,
+        "r": 1
+      }
+    }
+  ],
+  "thresholdEnabled": false,
+  "initialInventory": {
+    "player0": [
+      {
+        "entityId": "inv_p1_curved",
+        "shape": 1,
+        "rotation": 0
+      }
+    ],
+    "player1": []
+  },
+  "scrapPool": [],
+  "entities": [
+    {
+      "type": "avatar",
+      "id": "avatar_p1",
+      "playerId": 0,
+      "q": 0,
+      "r": 2,
+      "z": 0
+    },
+    {
+      "type": "avatar",
+      "id": "avatar_p2",
+      "playerId": 1,
+      "q": 0,
+      "r": 2,
+      "z": 1
+    },
+    {
+      "type": "exit",
+      "id": "exit_p1",
+      "playerId": 0,
+      "q": 0,
+      "r": -2,
+      "z": 0
+    },
+    {
+      "type": "exit",
+      "id": "exit_p2",
+      "playerId": 1,
+      "q": 0,
+      "r": -2,
+      "z": 1,
+      "initiallyLocked": true
+    },
+    {
+      "type": "hazard",
+      "id": "door_red_a",
+      "hazardType": 1,
+      "q": 0,
+      "r": -1,
+      "z": 0
+    },
+    {
+      "type": "hazard",
+      "id": "door_blue_b",
+      "hazardType": 2,
+      "q": 0,
+      "r": -1,
+      "z": 1
+    },
+    {
+      "type": "wall",
+      "id": "wall_e_0_1_-2",
+      "q": 1,
+      "r": -2,
+      "z": 0
+    },
+    {
+      "type": "wall",
+      "id": "wall_e_0_1_-3",
+      "q": 1,
+      "r": -3,
+      "z": 0
+    },
+    {
+      "type": "wall",
+      "id": "wall_e_0_0_-3",
+      "q": 0,
+      "r": -3,
+      "z": 0
+    },
+    {
+      "type": "wall",
+      "id": "wall_e_0_-1_-2",
+      "q": -1,
+      "r": -2,
+      "z": 0
+    },
+    {
+      "type": "wall",
+      "id": "wall_e_0_-1_-1",
+      "q": -1,
+      "r": -1,
+      "z": 0
+    },
+    {
+      "type": "wall",
+      "id": "wall_e_1_1_-2",
+      "q": 1,
+      "r": -2,
+      "z": 1
+    },
+    {
+      "type": "wall",
+      "id": "wall_e_1_1_-3",
+      "q": 1,
+      "r": -3,
+      "z": 1
+    },
+    {
+      "type": "wall",
+      "id": "wall_e_1_0_-3",
+      "q": 0,
+      "r": -3,
+      "z": 1
+    },
+    {
+      "type": "wall",
+      "id": "wall_e_1_-1_-2",
+      "q": -1,
+      "r": -2,
+      "z": 1
+    },
+    {
+      "type": "wall",
+      "id": "wall_e_1_-1_-1",
+      "q": -1,
+      "r": -1,
+      "z": 1
+    }
+  ],
+  "matrix": {
+    "nodes": [
+      {
+        "id": "node_c3r0",
+        "column": 3,
+        "row": 0,
+        "abilityType": 3
+      },
+      {
+        "id": "node_c5r0",
+        "column": 5,
+        "row": 0,
+        "abilityType": 4
+      }
+    ],
+    "conduits": [
+      {
+        "id": "pre_c2r0",
+        "column": 2,
+        "row": 0,
+        "shape": 0,
+        "rotation": 1
+      },
+      {
+        "id": "pre_c2r1",
+        "column": 2,
+        "row": 1,
+        "shape": 2,
+        "rotation": 0
+      },
+      {
+        "id": "pre_c2r2",
+        "column": 2,
+        "row": 2,
+        "shape": 1,
+        "rotation": 0
+      }
+    ]
+  }
+}

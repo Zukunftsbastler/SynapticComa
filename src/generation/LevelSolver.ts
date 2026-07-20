@@ -28,7 +28,7 @@
 //     the board-flip effect is still a stub in the engine).
 
 import type { LevelDef } from '@/levels/LevelSchema';
-import { computeFaceMask, facesConnect } from '@/utils/ConduitFaceMask';
+import { computeFaceMask, facesConnect, isRotatableInPlace } from '@/utils/ConduitFaceMask';
 import { HEX_DIRECTIONS } from '@/rendering/HexMath';
 import { AbilityType, HazardType, ConduitShape } from '@/types';
 import { MATRIX_ROWS } from '@/constants';
@@ -395,7 +395,9 @@ export function solveLevel(
     for (const colIdx of rotateCols) {
       for (let row = 0; row < MATRIX_ROWS; row++) {
         const cell = s.matrix[colIdx][row];
-        if (!cell || effectiveRotations(cell.shape) === 1) continue;
+        // Master Set plates (Cross, Splitter) are static once placed
+        // (mechanics.md §4.4) — mirrors MatrixRotateSystem's rejection.
+        if (!cell || !isRotatableInPlace(cell.shape)) continue;
         const next = cloneState(s);
         const c = next.matrix[colIdx][row]!;
         c.rotation = (c.rotation + 1) % 4;

@@ -31,6 +31,13 @@ export function computeFaceMask(shape: ConduitShape, rotation: number): number {
   return rotateMask(BASE_MASKS[shape], rotation);
 }
 
+// Master Set plates (Cross, Splitter) are static: orientation may be chosen
+// before insertion, but they can NEVER be rotated in place (mechanics.md §4.4).
+// Enforced by MatrixRotateSystem and mirrored by the solver.
+export function isRotatableInPlace(shape: ConduitShape): boolean {
+  return shape !== ConduitShape.CROSS && shape !== ConduitShape.SPLITTER;
+}
+
 // Direction indices: 0=East, 1=South, 2=West, 3=North.
 // For two adjacent conduits A (left) and B (right) where B is to the East of A:
 //   direction=0 → A must have East open (bit0), B must have West open (bit2).

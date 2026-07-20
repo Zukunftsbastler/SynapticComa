@@ -65,14 +65,20 @@ To survive the Threshold, players must prepare the DNA Matrix *before* jumping.
 | 13 | Critical Rotation | Rotate is the critical move post-flip |
 | 14 | Threshold at Low AP | Offset starts; tight AP across board flip |
 | 15 | Master Set Teaser | Cross (+) conduit in Scrap Pool is the only solution |
+| 16 | Airlock | Shared mutation as a trap: the second insert kills RED and enables BLUE at once — anyone still behind their red door is locked out (re-lock commitment) |
+| 17 | Signal Chain | Three-stage dependency: RED → plate hidden ON the red door → push-chain enables BLUE → plate ON the blue door → tier-2 Fire Immunity → fire gates |
+| 18 | Phased Rendezvous | Inverted economy: the Shared Unlock nodes sit UNDER phase barriers — the AP relief must be earned by routing tier-2 Phase Shift on a tight budget; lasers as lethal walls |
+| 19 | Dead Column | Column 2 starts full but dead; rotation is the decoy — the solution is ejection-as-transport through a deterministic single-plate Scrap Pool; Unlock Blue sits in tier 2 |
+| 20 | Synapse Toggle | Static Splitter spine: bottom insert = RED mode (sacrifices JUMP), top insert with the drawn-back plate = JUMP mode; the sequential-exit rule forces the toggle-back; both Shared Unlocks mathematically required |
 
-### MVP Scope (Levels 1–15)
+### MVP Scope (Levels 1–20)
 * **Levels 1–5 (The Basics):** Teach movement, the sequential exit win condition, basic Matrix routing, and the strict communication rules. Each level introduces exactly one new mechanic in isolation with obvious conduit placement.
 * **Levels 6–10 (The Shift):** Introduce the 2 AP Insert cost, forcing AP budget discipline. Introduce red herrings, decoy locks, and the Scrap Pool as a resource. First tight AP budgets.
 * **Level 11 (Threshold Introduction):** The first level with the Threshold mechanic. The pre-flip boards contain asymmetric warning icons. Tutorialization: Player 1's board has a prominent fire hazard icon near their Threshold hex; Player 2 holds the Fire Immunity conduit plates. Players must communicate and route the ability before agreeing to flip.
 * **Levels 12–15 (The Threshold — Advanced):** Multi-step Threshold puzzles. The Matrix state carries over; players must route abilities that are useful *after* the flip, not just before it. Introduce the Rotate action as a precision tool.
+* **Levels 16–20 (Unconventional Combinations):** Known mechanics recombined against expectation — abilities that must be *sacrificed* and re-earned (mode toggling), plates hidden on door hexes, unlock nodes behind the very ability they would fund, pre-filled dead columns where ejection is the transport mechanism, and jump-proof geometry that turns the jump's bypass rule into a design constraint. Interaction demand rises: level 20 is the first with two mathematically required Shared Unlocks.
 
-### Post-MVP (Deferred — Levels 16–40)
+### Post-MVP (Deferred — Levels 21–40)
 * **Levels 16–30 (Spatial Complexity):** Larger hex grids. Navigation to conduits requires long-horizon AP planning across multiple Shared Unlocks. Master Set conduit shapes (Cross, Splitter) introduced.
 * **Levels 31–40+ (The Deep Subconscious):** Multiple Threshold flips per level. Asymmetric foresight clues become subtle and indirect. End-game puzzles designed for experienced cooperative pairs.
 

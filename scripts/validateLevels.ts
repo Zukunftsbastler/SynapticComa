@@ -43,7 +43,9 @@ const ABILITY_SHORT: Record<number, string> = {
 // The switch-metric phase gets a raised node budget here: this script runs
 // offline, and an exact minSwitches is worth minutes — the value ships to the
 // UI via levelMeta.json. Levels that still exhaust it keep the witness bound.
-const NODE_LIMIT          = 10_000_000;
+// L19 "Dead Column" (pre-filled conduit column) is the current search-space
+// heavyweight; 15M keeps headroom over its proof.
+const NODE_LIMIT          = 15_000_000;
 const SWITCH_PHASE_BUDGET = 2_000_000;
 
 const srcDir    = join(dirname(fileURLToPath(import.meta.url)), '../src');
