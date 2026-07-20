@@ -20,16 +20,6 @@
     "matrixRequired": true
   },
   "level_03": {
-    "optimalCost": 9,
-    "apSlack": 6,
-    "difficulty": 4.52,
-    "minSwitches": 1,
-    "minSwitchesExact": true,
-    "coordinationSteps": 0,
-    "drawSteps": 1,
-    "matrixRequired": true
-  },
-  "level_04": {
     "optimalCost": 7,
     "apSlack": 6,
     "difficulty": 2.23,
@@ -37,6 +27,16 @@
     "minSwitchesExact": true,
     "coordinationSteps": 0,
     "drawSteps": 0,
+    "matrixRequired": true
+  },
+  "level_04": {
+    "optimalCost": 9,
+    "apSlack": 6,
+    "difficulty": 4.52,
+    "minSwitches": 1,
+    "minSwitchesExact": true,
+    "coordinationSteps": 0,
+    "drawSteps": 1,
     "matrixRequired": true
   },
   "level_05": {

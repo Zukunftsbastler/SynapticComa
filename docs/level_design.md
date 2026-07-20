@@ -52,8 +52,8 @@ To survive the Threshold, players must prepare the DNA Matrix *before* jumping.
 |---|------|------------------------|
 | 1 | Tutorial: Movement | Basic hex movement, sequential exit (extended by the guided tutorial script, see `tutorial_design.md`) |
 | 2 | Locked Door | Matrix insertion, UNLOCK_RED |
-| 3 | Scrap Pool | Blind draw as risk/reward decision from a persistent AP pool |
-| 4 | Column Shift | Insert order matters — shifting breaks paths |
+| 3 | Column Shift | Insert order matters — shifting breaks paths; JUMP bypasses the chasm (clean, undisguised) |
+| 4 | Scrap Pool | Blind draw as risk/reward; the locked door and its UNLOCK_RED node are a decoy — JUMP (already learned in level 3) bypasses the still-locked door entirely |
 | 5 | Shared Routing | Both conduit columns, T-junction coordination |
 | 6 | Insert Sequence | Two locks, insert ordering; **Neuro-Resonance introduced** (`mechanics.md §4.5`) |
 | 7 | T-Junction Coordination | col4 routing + Tier 2 abilities |
@@ -72,7 +72,7 @@ To survive the Threshold, players must prepare the DNA Matrix *before* jumping.
 | 20 | Synapse Toggle | Static Splitter spine: bottom insert = RED mode (sacrifices JUMP), top insert with the drawn-back plate = JUMP mode; the sequential-exit rule forces the toggle-back; both Shared Unlocks mathematically required |
 
 ### MVP Scope (Levels 1–20)
-* **Levels 1–5 (The Basics):** Teach movement, the sequential exit win condition, basic Matrix routing, and the strict communication rules. Each level introduces exactly one new mechanic in isolation with obvious conduit placement.
+* **Levels 1–5 (The Basics):** Teach movement, the sequential exit win condition, basic Matrix routing, and the strict communication rules. Each level introduces exactly one new mechanic in isolation with obvious conduit placement. Exception: level 4 gives JUMP a single early decoy (a locked door that looks like it needs UNLOCK_RED but doesn't) — deliberately placed *after* level 3's clean, undisguised JUMP lesson, so it reads as "trust what you just learned" rather than as the first taste of the mechanic. Full red-herring design (`level_design.md §1`) proper starts at level 6.
 * **Levels 6–10 (The Shift):** Introduce the 2 AP Insert cost, forcing AP budget discipline. Introduce red herrings, decoy locks, and the Scrap Pool as a resource. First tight AP budgets.
 * **Level 11 (Threshold Introduction):** The first level with the Threshold mechanic. The pre-flip boards contain asymmetric warning icons. Tutorialization: Player 1's board has a prominent fire hazard icon near their Threshold hex; Player 2 holds the Fire Immunity conduit plates. Players must communicate and route the ability before agreeing to flip.
 * **Levels 12–15 (The Threshold — Advanced):** Multi-step Threshold puzzles. The Matrix state carries over; players must route abilities that are useful *after* the flip, not just before it. Introduce the Rotate action as a precision tool.

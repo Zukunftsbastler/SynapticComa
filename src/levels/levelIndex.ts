@@ -3,8 +3,8 @@
 export const LEVEL_NAMES: Record<string, string> = {
   level_01: 'Tutorial: Movement',
   level_02: 'Locked Door',
-  level_03: 'Scrap Pool',
-  level_04: 'Column Shift',
+  level_03: 'Column Shift',
+  level_04: 'Scrap Pool',
   level_05: 'Shared Routing',
   level_06: 'Insert Sequence',
   level_07: 'T-Junction Coordination',
