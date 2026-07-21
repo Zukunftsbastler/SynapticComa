@@ -16,6 +16,7 @@ The design documents in [`docs/`](docs/) are the **single source of truth** — 
 | Sprint-by-sprint build plan | [`docs/implementation_plan.md`](docs/implementation_plan.md) |
 | Level design & campaign | [`docs/level_design.md`](docs/level_design.md) |
 | Campaign audit & future mechanic proposals | [`docs/mechanic_roadmap.md`](docs/mechanic_roadmap.md) |
+| Project-wide roadmap: next steps | [`docs/roadmap.md`](docs/roadmap.md) |
 | Procedural generation, solver, difficulty model | [`docs/generative_levels.md`](docs/generative_levels.md) |
 | Tutorial layer ("The Monitor") | [`docs/tutorial_design.md`](docs/tutorial_design.md) |
 | Story & dimensions | [`docs/narrative.md`](docs/narrative.md) |
