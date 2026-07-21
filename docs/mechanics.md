@@ -149,8 +149,15 @@ Abilities are active only while an unbroken path exists on the DNA Matrix. Sever
 ### 5.5 Fire Immunity (Icon: Flame with Shield)
 **Tier 2.** When active, Fire Hazard entities on the avatar's Hex Grid do not destroy the avatar on contact.
 
-### 5.6 Ability Scope Rule
-All abilities granted by the Matrix apply **only to the avatar whose player source is connected to the ability node**. If both player sources route to the same ability node, both avatars gain that ability simultaneously.
+### 5.6 Ability Scope Rule — Role Asymmetry (decisions_needed.md D14, option C)
+
+**Status (SPRINT_024):** this section long diverged from the shipped code (flagged since SPRINT_007: the engine was globally-scoped — any avatar benefited from any powered ability — while this section described per-player scoping tied to "source connection," a concept the matrix never actually modeled, since column-1 source rows carry no player identity). D14 resolved the divergence by building the scoping mechanism for real, differently from how this section used to describe it:
+
+**Default (unrestricted):** an ability node with no explicit restriction benefits **both** avatars once powered, regardless of who routed it — this is the behavior every level before SPRINT_024 relies on, and it never changes for them.
+
+**Restricted nodes:** a level MAY mark a specific ability node (column 3 or 5) as benefiting only Player 1 (the Id) or only Player 2 (the Superego) — rendered with a small violet/cyan corner tab on that node. Routing itself is unaffected: either player may still insert or rotate toward a restricted node exactly as with any other. The restriction is evaluated only at the moment the ability's *effect* would apply (movement, door-unlock, fire-resistance) — a Tier-1/Tier-2 distinction, not a routing distinction.
+
+**Design intent:** a restricted node routinely means the plate that would power *your* ability sits in your *partner's* inventory, and vice versa — routing for someone else stops being incidental and becomes the point (first demonstrated in level 24, "Crossed Wires"). This is deliberately a lighter-weight mechanism than the original D14 proposals (it doesn't touch who may Insert/Collect, and it never invalidates an existing level's proof, since every pre-existing node defaults to unrestricted) — see `docs/roadmap.md` §2 / `decisions_needed.md` D14 for the fuller design history and why the heavier options (A, B) were set aside.
 
 ---
 

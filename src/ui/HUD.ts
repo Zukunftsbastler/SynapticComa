@@ -153,10 +153,13 @@ export class HUD {
   }
 
   private renderAbilities(): void {
+    // Per-player since D14/SPRINT_024 — shows what's active for the VIEWED
+    // avatar specifically (a restricted node may not benefit the partner).
+    const flags = abilityFlags[GameState.viewPlayerId];
     const active: string[] = [];
-    if (abilityFlags.jumpActive)       active.push(ABILITY_LABELS[AbilityType.JUMP]       ?? '');
-    if (abilityFlags.pushActive)       active.push(ABILITY_LABELS[AbilityType.PUSH]       ?? '');
-    if (abilityFlags.phaseShiftActive) active.push(ABILITY_LABELS[AbilityType.PHASE_SHIFT] ?? '');
+    if (flags.jumpActive)       active.push(ABILITY_LABELS[AbilityType.JUMP]       ?? '');
+    if (flags.pushActive)       active.push(ABILITY_LABELS[AbilityType.PUSH]       ?? '');
+    if (flags.phaseShiftActive) active.push(ABILITY_LABELS[AbilityType.PHASE_SHIFT] ?? '');
     this.abilityEl.innerHTML = active
       .map(label =>
         `<span style="background:#1e1008;color:#50d050;border:1px solid #2a5020;` +

@@ -15,6 +15,7 @@ export enum ConceptId {
   FIRE_IMMUNITY = 'FIRE_IMMUNITY',
   PUSH          = 'PUSH',
   FOCUS_VAULT   = 'FOCUS_VAULT',
+  ROLE_ASYMMETRY = 'ROLE_ASYMMETRY',
 }
 
 const seen = new Set<string>();

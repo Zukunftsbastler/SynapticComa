@@ -24,7 +24,7 @@ Components are pure data. They dictate what an entity is and what state it is cu
 | `Movable` | `canMove: ui8` | Avatar or block can be moved by input |
 | `Pushable` | `canBePushed: ui8` | Entity can be shoved by the Push ability. Paired with `Static` on Impulse Blocks (`mechanic_roadmap.md` #2, first level: 22 "Clot") — `Static` makes it solid until shoved; `Pushable` lets `PushSystem` relocate it |
 | `Conduit` | `shape: ui8, rotation: ui8, faceMask: ui8` | Pipe shape, orientation, computed connectivity bitmask. *(No `base` field yet — Neuro-Resonance, `mechanics.md §4.5`, is specified but unimplemented; see `mechanic_roadmap.md` F1.)* |
-| `MatrixNode` | `column: ui8, row: ui8, abilityType: ui8, active: ui8` | DNA Matrix cell data |
+| `MatrixNode` | `column: ui8, row: ui8, abilityType: ui8, active: ui8, restrictedTo: ui8` | DNA Matrix cell data. `restrictedTo` (ability nodes only, D14/SPRINT_024): 0/1 = benefits only that player, 2 = unrestricted (default) |
 | `Avatar` | `playerId: ui8` | Marks a wisp entity; stores which player controls it |
 | `Hazard` | `hazardType: ui8` | Type of obstacle (chasm, locked door, fire, laser, phase barrier) |
 | `Lethal` | `hazardType: ui8` | Entity kills avatars on contact without matching `Resistance` |
@@ -73,7 +73,7 @@ RenderSystem → NetworkSystem
 | `MatrixRotateSystem` | Rotates a single already-placed conduit 90° clockwise (1 AP); recomputes `faceMask` |
 | `ScrapPoolSystem` | Handles blind draw from Scrap Pool into player inventory (1 AP) |
 | `MatrixRoutingSystem` | BFS from source nodes; marks which ability nodes are powered. *(`ResonanceSystem` — ordered base-pair evaluation, `mechanics.md §4.5` — is specified but not yet implemented; see `mechanic_roadmap.md` F1.)* |
-| `AbilitySystem` | Continuous evaluation; adds/removes `Resistances`, `Movable` etc. on avatars |
+| `AbilitySystem` | Continuous evaluation; adds/removes `Resistances`, `Movable` etc. on avatars. Per-player since D14/SPRINT_024 (`abilityFlags` keyed `0`/`1`) — a `restrictedTo`-marked node only sets its effect for the assigned player; unrestricted nodes (the default) still set it for both, unchanged from before |
 | `CollisionSystem` | Checks avatar vs `Lethal` entities; applies `Health` damage; creates `AvatarDestroyedEvent` |
 | `ExitSystem` | Detects sequential exit: P1 on exit → spectator mode + `P1ExitedEvent`; P2 on exit → `LevelCompleteEvent` |
 | `LevelTransitionSystem` | Queries all event entities; executes effects; destroys event entities at end of tick |

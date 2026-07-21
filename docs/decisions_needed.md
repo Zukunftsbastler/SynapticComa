@@ -19,12 +19,15 @@
 > | D11 | **Decided.** `initialAP` + `apUnlockNodes` replace `apPerRound`; conduits gain a `base` field. Schema in `digital_implementation.md §5.4`. |
 > | D12 | **Option B** — the physical version is a reference design, not a shipped product. Generative levels and the Monitor overlay are digital-only; `architecture.md` keeps physical notes as explanatory analogies. |
 > | D13 | Panels after levels 1, 3, 5, 8, 11 and 15 (arc: onset → reactivation → confrontation → emergence). Andreas leads panel concepts. |
+> | D14 | **Option C, scoped down** (SPRINT_024, 2026-07-21) — see the D14 section below for the full resolution note and why this departs from the normal three-way sign-off. |
 >
 > The original questions are preserved below for context and for Chris's review.
 
 ---
 
-## D14 — Role Asymmetry: Should the Id and the Superego Have Different Verbs? *(NEW, 2026-07-19 — open)*
+## D14 — Role Asymmetry: Should the Id and the Superego Have Different Verbs? *(Resolved 2026-07-21, SPRINT_024 — see note)*
+
+> **Resolution note:** Till asked for this to be implemented as one of five roadmap-priority sprints, was told (per this document's own three-way consensus rule) that D14 explicitly names "all three" as owner and "reshapes the core loop," and — informed of that — chose to have Till decide alone rather than pause for Andreas/Chris, mirroring the precedent set for the level-3/4 swap (SPRINT_018). Given that authorization, the option actually shipped is **a scoped-down version of Option C**, chosen over full A/B/C after estimating implementation cost: a full Option A or B requires re-verifying and likely redesigning every one of the 23 existing levels (each was proven under the old global-ability/flat-cost assumptions); full Option C (per-source-row ownership, not per-node) requires inventing a row-ownership concept the matrix architecture has never had and rewriting the routing flood-fill itself. The shipped mechanism instead marks individual **ability nodes** (not source rows) as `restrictedTo` a single player, defaulting to unrestricted — provably backward-compatible with all 23 existing levels (re-verified via `validate:levels`, byte-identical proof numbers) because none of them set the new field. First demonstrated in level 24, "Crossed Wires." Full detail: `mechanics.md §5.6`, `SPRINTS/SPRINT_024`. **Andreas and Chris have not signed off on this** — flagged here for their review; the scoped-down shape means reversing or extending it does not require touching the existing campaign.
 
 **Trigger:** Till's playtest verdict: "the puzzle consists less of communication than of waiting — it must be clear from each role WHY one player solves certain tasks and the other the rest."
 

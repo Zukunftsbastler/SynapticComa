@@ -37,7 +37,7 @@ function blockedSet(world: IWorld, avatarEid: number, z: number): Set<string> {
     if (Position.z[eid] === z) blocked.add(`${Position.q[eid]},${Position.r[eid]}`);
   }
 
-  if (!abilityFlags.phaseShiftActive) {
+  if (!abilityFlags[z as 0 | 1].phaseShiftActive) {
     const barriers = phaseBarrierQuery(world);
     for (let i = 0; i < barriers.length; i++) {
       const eid = barriers[i];

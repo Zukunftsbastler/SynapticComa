@@ -143,6 +143,18 @@ export function renderMatrix(
               text: glyph.text, color: active ? 0x0A200A : glyph.color, size: 15, alpha: 1,
             });
           }
+          // Role Asymmetry (D14/SPRINT_024): a restricted node carries a
+          // small corner tab in the benefiting player's color — violet=Id,
+          // cyan=Superego — so the asymmetry is legible on the shared board
+          // without needing a stroke (the command buffer is fill-only).
+          const restrictedTo = MatrixNode.restrictedTo[nodeEid];
+          if (restrictedTo === 0 || restrictedTo === 1) {
+            const tabColor = restrictedTo === 0 ? 0x8B2FC9 : 0x3AAED8;
+            buf.push({
+              cmd: 'drawRect', x: cx + CELL - 10, y: cy, width: 10, height: 10,
+              fillColor: tabColor, alpha: active ? 1 : 0.55,
+            });
+          }
         }
       }
     }

@@ -78,6 +78,15 @@ export interface MatrixNodeDef {
   row: number;
   /** AbilityType enum value (0 = NONE for source nodes) */
   abilityType: number;
+  /**
+   * Role Asymmetry (decisions_needed.md D14, option C): restricts which
+   * player's avatar benefits when this ability node is powered — 0 = Id/P1
+   * only, 1 = Superego/P2 only. Omitted (the default for every node before
+   * SPRINT_024) means unrestricted — both avatars benefit, exactly as
+   * before this field existed. Meaningful only on ability nodes (col 3/5);
+   * ignored on source nodes (col 1, always auto-created, never in JSON).
+   */
+  restrictedTo?: 0 | 1;
 }
 
 export interface MatrixConduitDef {

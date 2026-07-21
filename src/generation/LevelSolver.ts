@@ -49,7 +49,11 @@ interface StaticLevel {
   exits:        [{ q: number; r: number }, { q: number; r: number }];
   collectibles: { q: number; r: number; z: number; shape: number }[];
   unlocks:      { value: number; a: { q: number; r: number }; b: { q: number; r: number } }[];
-  abilityCells: { col: 2 | 4; row: number; abilityType: number }[]; // 0-indexed cols 2/4 = matrix cols 3/5
+  // 0-indexed cols 2/4 = matrix cols 3/5. restrictedTo: 0/1 = benefits only
+  // that player (D14/SPRINT_024 role asymmetry), 2 = unrestricted (default —
+  // every level before SPRINT_024 has every cell at 2, so `poweredAbilities`
+  // resolves identically to the old single-Set behavior for all of them).
+  abilityCells: { col: 2 | 4; row: number; abilityType: number; restrictedTo: 0 | 1 | 2 }[];
   budget:       number;                        // initialAP + Σ unlock values
   gridRadius:   number;                        // board boundary (MovementSystem mirror)
 }
@@ -112,7 +116,14 @@ function effectiveRotations(shape: number): number {
 
 // ── Matrix routing (pure mirror of MatrixRoutingSystem) ──────────────────────
 
-function poweredAbilities(level: StaticLevel, matrix: Cell[][]): Set<number> {
+// Returns which abilities are active for each player. Role Asymmetry
+// (D14/SPRINT_024): an ability cell's `restrictedTo` (0/1) gates which
+// player's Set gets the entry; 2 (the default for every level before
+// SPRINT_024) adds to both, so the routing math above — untouched — still
+// fully determines the result, and `p0`/`p1` are always identical sets
+// whenever a level never sets restrictedTo, matching the old single-Set
+// behavior exactly.
+function poweredAbilities(level: StaticLevel, matrix: Cell[][]): { 0: Set<number>; 1: Set<number> } {
   // powered[colIdx][row]: colIdx 0 = conduit col A (matrix col 2),
   // 1 = tier-1 abilities (col 3), 2 = conduit col B (col 4), 3 = tier-2 (col 5).
   const powered: boolean[][] = Array.from({ length: 4 }, () =>
@@ -162,12 +173,12 @@ function poweredAbilities(level: StaticLevel, matrix: Cell[][]): Set<number> {
     if (powered[2][row] && emitsEast(matrix[1][row])) powered[3][row] = true;
   }
 
-  const active = new Set<number>();
+  const active: { 0: Set<number>; 1: Set<number> } = { 0: new Set(), 1: new Set() };
   for (const node of level.abilityCells) {
     const colIdx = node.col === 2 ? 1 : 3;
-    if (powered[colIdx][node.row] && node.abilityType !== AbilityType.NONE) {
-      active.add(node.abilityType);
-    }
+    if (!powered[colIdx][node.row] || node.abilityType === AbilityType.NONE) continue;
+    if (node.restrictedTo === 2 || node.restrictedTo === 0) active[0].add(node.abilityType);
+    if (node.restrictedTo === 2 || node.restrictedTo === 1) active[1].add(node.abilityType);
   }
   return active;
 }
@@ -187,9 +198,14 @@ function pushableIndexAt(state: SState, z: number, q: number, r: number): number
   return -1;
 }
 
+// `abilities` is per-player (Role Asymmetry, D14/SPRINT_024); a hex at
+// dimension `z` is experienced by that dimension's own player (z↔playerId,
+// the same invariant AbilitySystem/MovementSystem use), so it's indexed by
+// `z` directly — never the acting avatar's identity separately, since for
+// any hex check they're the same value by construction.
 function isBlocked(
-  level: StaticLevel, abilities: Set<number>, state: SState,
-  z: number, q: number, r: number, forLanding: boolean,
+  level: StaticLevel, abilities: { 0: Set<number>; 1: Set<number> }, state: SState,
+  z: 0 | 1, q: number, r: number, forLanding: boolean,
 ): boolean {
   if (hexDistance(0, 0, q, r) > level.gridRadius) return true; // board edge
   if (pushableIndexAt(state, z, q, r) !== -1) return true;
@@ -200,12 +216,13 @@ function isBlocked(
   }
   if (!info) return false;
   if (info.wall) return true;
-  if (info.lockedRed  && !abilities.has(AbilityType.UNLOCK_RED))  return true;
-  if (info.lockedBlue && !abilities.has(AbilityType.UNLOCK_BLUE)) return true;
-  if (info.phaseBarrier && !abilities.has(AbilityType.PHASE_SHIFT)) return true;
+  const abilitiesZ = abilities[z];
+  if (info.lockedRed  && !abilitiesZ.has(AbilityType.UNLOCK_RED))  return true;
+  if (info.lockedBlue && !abilitiesZ.has(AbilityType.UNLOCK_BLUE)) return true;
+  if (info.phaseBarrier && !abilitiesZ.has(AbilityType.PHASE_SHIFT)) return true;
   if (forLanding) {
     if (info.alwaysLethal) return true;
-    if (info.fire && !abilities.has(AbilityType.FIRE_IMMUNITY)) return true;
+    if (info.fire && !abilitiesZ.has(AbilityType.FIRE_IMMUNITY)) return true;
   }
   return false;
 }
@@ -217,16 +234,17 @@ function isBlocked(
 // than silently fixing an unrelated gap; levels must be designed so a push
 // destination never lies off-board.
 function isPushDestinationBlocked(
-  level: StaticLevel, abilities: Set<number>, state: SState,
-  z: number, q: number, r: number,
+  level: StaticLevel, abilities: { 0: Set<number>; 1: Set<number> }, state: SState,
+  z: 0 | 1, q: number, r: number,
 ): boolean {
   if (pushableIndexAt(state, z, q, r) !== -1) return true;
   const info = level.hexes.get(hexKey(z, q, r));
   if (!info) return false;
   if (info.wall) return true;
-  if (info.lockedRed  && !abilities.has(AbilityType.UNLOCK_RED))  return true;
-  if (info.lockedBlue && !abilities.has(AbilityType.UNLOCK_BLUE)) return true;
-  if (info.phaseBarrier && !abilities.has(AbilityType.PHASE_SHIFT)) return true;
+  const abilitiesZ = abilities[z];
+  if (info.lockedRed  && !abilitiesZ.has(AbilityType.UNLOCK_RED))  return true;
+  if (info.lockedBlue && !abilitiesZ.has(AbilityType.UNLOCK_BLUE)) return true;
+  if (info.phaseBarrier && !abilitiesZ.has(AbilityType.PHASE_SHIFT)) return true;
   return false;
 }
 
@@ -388,7 +406,7 @@ export function solveLevel(
         // failed push (destination blocked) is never generated — it costs
         // the same AP as a no-op and can never be part of an optimal-cost
         // proof, so omitting it only prunes the search, never the result.
-        if (abilities.has(AbilityType.PUSH)) {
+        if (abilities[z].has(AbilityType.PUSH)) {
           const pIdx = pushableIndexAt(s, z, t1q, t1r);
           if (pIdx !== -1) {
             const dstQ = t1q + dq, dstR = t1r + dr;
@@ -414,7 +432,7 @@ export function solveLevel(
         if (!isBlocked(level, abilities, s, z, t1q, t1r, true)) {
           targets.push({ tq: t1q, tr: t1r, jumped: false });
         }
-        if (abilities.has(AbilityType.JUMP)) {
+        if (abilities[z].has(AbilityType.JUMP)) {
           const t2q = pos.q + 2 * dq, t2r = pos.r + 2 * dr;
           if (!isBlocked(level, abilities, s, z, t2q, t2r, true)) {
             targets.push({ tq: t2q, tr: t2r, jumped: true });
@@ -613,7 +631,10 @@ function buildStaticLevel(def: LevelDef): StaticLevel {
 
   const abilityCells: StaticLevel['abilityCells'] = def.matrix.nodes
     .filter(n => n.column === 3 || n.column === 5)
-    .map(n => ({ col: (n.column === 3 ? 2 : 4) as 2 | 4, row: n.row, abilityType: n.abilityType }));
+    .map(n => ({
+      col: (n.column === 3 ? 2 : 4) as 2 | 4, row: n.row, abilityType: n.abilityType,
+      restrictedTo: (n.restrictedTo ?? 2) as 0 | 1 | 2,
+    }));
 
   const budget = def.initialAP + unlocks.reduce((a, u) => a + u.value, 0);
   const gridRadius = def.gridRadius ?? 3;

@@ -36,7 +36,7 @@ None of these are secrets — SPRINT logs and `decisions_needed.md` reference mo
 
 ## 2. Team Decisions Still Waiting (not mine to make)
 
-* **D14 — Role asymmetry** (`decisions_needed.md`): open since SPRINT_013, restated in SPRINT_017's notes, untouched since. This is the largest pending design fork in the project — it reshapes the core loop and needs Till, Andreas, and Chris together, per the document's own consensus rule.
+* **D14 — Role asymmetry** (`decisions_needed.md`): ~~open since SPRINT_013~~ **resolved 2026-07-21, SPRINT_024** — Till, informed that the document's own rule names all three as owner, chose to decide alone (precedent: SPRINT_018). Shipped a scoped-down Option C (per-ability-node restriction, not per-source-row) rather than any option as originally written, specifically because a full A/B/C would have required re-verifying or redesigning all 23 existing levels — the scoped version is provably backward-compatible instead. Andreas and Chris have not signed off; flagged in `decisions_needed.md` for their review.
 * **🔢 Slack-band drift, levels 7/9/13/14/15** (SPRINT_014 finding): these sit at the "brutal" fairness floor (slack 1) rather than SPRINT_007's original 3–5 target. Never revisited.
 * **🔢 Difficulty-model weight vector** (`DifficultyModel.DEFAULT_WEIGHTS`): flagged as needing Chris's review since SPRINT_007, sharpened by SPRINT_017 (D score likely underweights dependency-chain length and toggle mechanics) and now further complicated by Focus Vault (optional content the model doesn't — and by design *shouldn't* — see at all). Worth a real pass now that there's more data (23 levels) to calibrate against.
 * **Resonance and Threshold: "deferred" is not a decision.** Both are formally marked unimplemented rather than silently claimed, which was the urgent fix — but *build it* vs. *cut it from the docs permanently* is still an open call sitting unmade. Cheap to keep deferring; expensive to keep re-explaining to whoever reads the docs next.
@@ -87,6 +87,6 @@ In rough priority order, mixing urgency and low effort:
 
 1. **Guest-side network test pass** (§1) — highest silent-failure risk, and the tooling to test it headlessly already exists.
 2. **Mark every unbuilt-but-documented system explicitly** (§0) — an afternoon, prevents the next contributor from repeating the Resonance/Threshold confusion a fifth time.
-3. **Resolve D14** (§2) — the team's own consensus rule says this blocks the biggest pending design fork; it's not getting easier by waiting.
+3. ~~**Resolve D14**~~ Done (SPRINT_024) — Andreas/Chris review still outstanding.
 4. **One more cheap mechanic** (§4: Static Field or Echo Tiles) — keeps content momentum without reopening the solver-extension cost of Push.
 5. **Decide Resonance and Threshold's fate** (§2) — build or formally cut; either answer is fine, "still deciding" three sprints running is the actual problem.

@@ -27,10 +27,11 @@ export function createSourceNodes(world: IWorld): void {
 export function createAbilityNode(world: IWorld, def: MatrixNodeDef): number {
   const eid = addEntity(world);
   addComponent(world, MatrixNode, eid);
-  MatrixNode.column[eid]      = def.column;
-  MatrixNode.row[eid]         = def.row;
-  MatrixNode.abilityType[eid] = def.abilityType;
-  MatrixNode.active[eid]      = 0;
+  MatrixNode.column[eid]       = def.column;
+  MatrixNode.row[eid]          = def.row;
+  MatrixNode.abilityType[eid]  = def.abilityType;
+  MatrixNode.active[eid]       = 0;
+  MatrixNode.restrictedTo[eid] = def.restrictedTo ?? 2; // 2 = unrestricted (default)
   entityRegistry.register(def.id, eid);
   return eid;
 }

@@ -28,6 +28,19 @@ function levelHasAbility(type: AbilityType): boolean {
   return false;
 }
 
+// Does the current level's matrix contain a Role-Asymmetry-restricted
+// ability node (D14/SPRINT_024)? restrictedTo 2 = unrestricted (the default
+// for every node in every level before SPRINT_024).
+function levelHasRestrictedNode(): boolean {
+  const nodes = matrixNodeQuery(world);
+  for (let i = 0; i < nodes.length; i++) {
+    const eid = nodes[i];
+    if (MatrixNode.abilityType[eid] === 0) continue; // not an ability node
+    if (MatrixNode.restrictedTo[eid] !== 2) return true;
+  }
+  return false;
+}
+
 interface Concept {
   id:      ConceptId;
   trigger: () => boolean;
@@ -173,6 +186,23 @@ const CONCEPTS: Concept[] = [
       `Your wisp stays put; only the block moves.<br><br>` +
       `A block is solid until shoved — plan <i>where</i> it lands before you push. ` +
       `If the space behind it is blocked, the push does nothing (but still costs the AP).`,
+  },
+  {
+    id: ConceptId.ROLE_ASYMMETRY,
+    // Level-START briefing, same principle as JUMP/PHASE/FIRE/PUSH: explained
+    // the moment a restricted node exists, before it matters, so both
+    // players know to look for the colored corner tab.
+    trigger: levelHasRestrictedNode,
+    title: 'A NODE MARKED FOR ONE MIND',
+    bodyHtml:
+      `A matrix node with a <b style="color:#8B2FC9">violet</b> or ` +
+      `<b style="color:#3AAED8">cyan</b> corner tab benefits <i>only</i> that ` +
+      `fragment — Id or Superego — even though either of you may route power ` +
+      `to it.<br><br>` +
+      `Sometimes the plate that powers <i>your</i> ability sits in your ` +
+      `<b>partner's</b> hands, and the plate that powers <i>theirs</i> sits in ` +
+      `yours. Routing for someone else is not a mistake — for a marked node, ` +
+      `it's the only way either of you gets anywhere.`,
   },
   {
     id: ConceptId.FOCUS_VAULT,

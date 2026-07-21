@@ -59,7 +59,7 @@ function isHexPassable(world: IWorld, tq: number, tr: number, tz: number): boole
     ) return false;
   }
 
-  if (!abilityFlags.phaseShiftActive) {
+  if (!abilityFlags[tz as 0 | 1].phaseShiftActive) {
     const barriers = phaseBarrierQuery(world);
     for (let i = 0; i < barriers.length; i++) {
       const eid = barriers[i];
@@ -102,7 +102,7 @@ export function MovementSystem(world: IWorld, state: GameStateData): void {
     const step1R = Position.r[eid] + input.dr;
     const step1Passable = isHexPassable(world, step1Q, step1R, tz);
 
-    const wantsJump = abilityFlags.jumpActive &&
+    const wantsJump = abilityFlags[tz as 0 | 1].jumpActive &&
       (input.jump === true || !step1Passable);
 
     if (wantsJump) {
@@ -132,7 +132,7 @@ export function MovementSystem(world: IWorld, state: GameStateData): void {
     const tr = step1R;
 
     // Push interaction: pushable on target hex + PUSH ability active.
-    if (abilityFlags.pushActive) {
+    if (abilityFlags[tz as 0 | 1].pushActive) {
       const peid = pushableAt(world, tq, tr, tz);
       if (peid !== -1) {
         // Do not move avatar; queue push attempt for PushSystem.

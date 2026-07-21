@@ -26,7 +26,7 @@ function isPushDestinationClear(world: IWorld, tq: number, tr: number, tz: numbe
     const eid = statics[i];
     if (Position.q[eid] === tq && Position.r[eid] === tr && Position.z[eid] === tz) return false;
   }
-  if (!abilityFlags.phaseShiftActive) {
+  if (!abilityFlags[tz as 0 | 1].phaseShiftActive) {
     const barriers = phaseBarrierQuery(world);
     for (let i = 0; i < barriers.length; i++) {
       const eid = barriers[i];
