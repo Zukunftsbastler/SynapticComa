@@ -65,9 +65,11 @@ TypeScript (strict) · [bitECS](https://github.com/NateTheGreatt/bitECS) · [Pix
 ## Development
 
 ```bash
-npm run dev      # Vite dev server (HMR)
-npm run build    # tsc strict check + production bundle
-npm run preview  # Serve dist/ locally
+npm run dev            # Vite dev server (HMR)
+npm run build          # tsc strict check + production bundle
+npm run preview        # Serve dist/ locally
+npm run validate:levels # Solvability + fairness + interaction + witness-replay proof for all levels
+npm test               # Vitest — ECS/network-protocol unit & integration tests (src/**/*.test.ts)
 ```
 
 Common workflows (adding levels, abilities, hazards) are documented in [`docs/project_overview.md §6`](docs/project_overview.md).
