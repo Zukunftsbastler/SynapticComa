@@ -1,11 +1,11 @@
 import type { IWorld } from 'bitecs';
 import { addEntity, addComponent } from 'bitecs';
 import {
-  Position, Renderable, Dimension, Hazard, Lethal, Static, PhaseBarrier,
+  Position, Renderable, Dimension, Hazard, Lethal, Static, PhaseBarrier, Pushable,
 } from '@/components';
 import { entityRegistry } from '@/registry/EntityRegistry';
 import { SpriteId } from '@/registry/SpriteRegistry';
-import type { HazardDef, PhaseBarrierDef } from '@/levels/LevelSchema';
+import type { HazardDef, PhaseBarrierDef, PushableBlockDef } from '@/levels/LevelSchema';
 import { HazardType } from '@/types';
 
 // Sprite map per hazard type and dimension.
@@ -53,6 +53,34 @@ export function createHazard(world: IWorld, def: HazardDef): number {
   ) {
     addComponent(world, Static, eid);
   }
+
+  entityRegistry.register(def.id, eid);
+  return eid;
+}
+
+// Impulse Block (mechanic_roadmap.md #2): Static until pushed (blocks normal
+// passage), Pushable so PushSystem relocates it 1 hex when shoved. Both
+// components together are required — Static alone would be immovable
+// scenery; Pushable alone would let avatars walk straight through it whenever
+// Push isn't currently routed (MovementSystem only checks Pushable when
+// abilityFlags.pushActive; without Static, an unrouted block would be a
+// non-obstacle instead of "solid until shoved").
+export function createPushableBlock(world: IWorld, def: PushableBlockDef): number {
+  const eid = addEntity(world);
+  addComponent(world, Position,   eid);
+  addComponent(world, Renderable, eid);
+  addComponent(world, Dimension,  eid);
+  addComponent(world, Pushable,   eid);
+  addComponent(world, Static,     eid);
+
+  Position.q[eid]   = def.q;
+  Position.r[eid]   = def.r;
+  Position.z[eid]   = def.z;
+  Dimension.layer[eid]     = def.z;
+  Pushable.canBePushed[eid] = 1;
+  Renderable.spriteId[eid] = SpriteId.PUSHABLE_BLOCK;
+  Renderable.visible[eid]  = 1;
+  Renderable.dirty[eid]    = 1;
 
   entityRegistry.register(def.id, eid);
   return eid;

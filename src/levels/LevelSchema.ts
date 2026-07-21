@@ -3,7 +3,7 @@
 
 export type EntityType =
   | 'avatar' | 'exit' | 'threshold' | 'hazard'
-  | 'phase_barrier' | 'collectible' | 'wall';
+  | 'phase_barrier' | 'collectible' | 'wall' | 'pushable_block';
 
 export interface AvatarDef {
   type: 'avatar';
@@ -56,9 +56,21 @@ export interface WallDef {
   q: number; r: number; z: number;
 }
 
+/**
+ * Impulse Block (mechanic_roadmap.md #2): a movable, otherwise-solid entity.
+ * Blocks passage like a wall until shoved by the Push ability, which relocates
+ * it one hex in the push direction (PushSystem — unchanged, already correct;
+ * this schema entry is what was missing to ever place one in a level).
+ */
+export interface PushableBlockDef {
+  type: 'pushable_block';
+  id: string;
+  q: number; r: number; z: number;
+}
+
 export type EntityDef =
   | AvatarDef | ExitDef | ThresholdDef | HazardDef
-  | PhaseBarrierDef | CollectibleDef | WallDef;
+  | PhaseBarrierDef | CollectibleDef | WallDef | PushableBlockDef;
 
 export interface MatrixNodeDef {
   id: string;
@@ -99,6 +111,22 @@ export interface ApUnlockNodeDef {
   hexB: { q: number; r: number };
 }
 
+/**
+ * A Focus Vault pair (mechanic_roadmap.md #8): one hex per dimension, linked
+ * by `id`, mirroring ApUnlockNodeDef's pairing exactly. Both avatars
+ * occupying their node in the same tick SPENDS `cost` AP (never grants) and
+ * spawns the described plate at `vault`, visible/collectible from that
+ * moment on. Always optional — a level's required solution must never
+ * depend on triggering one.
+ */
+export interface FocusVaultNodeDef {
+  id: string;
+  cost: number;
+  hexA: { q: number; r: number };
+  hexB: { q: number; r: number };
+  vault: { q: number; r: number; z: 0 | 1; shape: number; rotation: number };
+}
+
 export interface LevelDef {
   id: string;
   name: string;
@@ -109,6 +137,8 @@ export interface LevelDef {
    */
   initialAP: number;
   apUnlockNodes: ApUnlockNodeDef[];
+  /** Optional — omitted entirely by levels that don't use the mechanic. */
+  focusVaultNodes?: FocusVaultNodeDef[];
   /** Hex-grid radius per dimension (default 3). Movement is bounded to it. */
   gridRadius?: number;
   thresholdEnabled: boolean;

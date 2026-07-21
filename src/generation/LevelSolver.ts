@@ -66,10 +66,11 @@ interface SState {
   scrap: number[];       // count per ConduitShape (multiset; draws are blind)
   collectedMask: number;
   unlockMask: number;
+  pushables: { q: number; r: number; z: 0 | 1 }[]; // Impulse Blocks (mechanic_roadmap.md #2)
 }
 
 export interface SolverAction {
-  kind: 'MOVE' | 'INSERT' | 'ROTATE' | 'DRAW';
+  kind: 'MOVE' | 'PUSH' | 'INSERT' | 'ROTATE' | 'DRAW';
   detail: string;
 }
 
@@ -173,11 +174,25 @@ function poweredAbilities(level: StaticLevel, matrix: Cell[][]): Set<number> {
 
 // ── Passability under a given ability set ────────────────────────────────────
 
+// Index of the pushable occupying (z,q,r) in the live state, or -1.
+// A pushable is Static in the real ECS (HazardFactory.createPushableBlock) —
+// it blocks every passability check exactly like a wall, EXCEPT the one
+// direction a push is actively resolving, which the MOVE loop below
+// intercepts before ever calling isBlocked for that hex.
+function pushableIndexAt(state: SState, z: number, q: number, r: number): number {
+  for (let i = 0; i < state.pushables.length; i++) {
+    const p = state.pushables[i];
+    if (p.z === z && p.q === q && p.r === r) return i;
+  }
+  return -1;
+}
+
 function isBlocked(
   level: StaticLevel, abilities: Set<number>, state: SState,
   z: number, q: number, r: number, forLanding: boolean,
 ): boolean {
   if (hexDistance(0, 0, q, r) > level.gridRadius) return true; // board edge
+  if (pushableIndexAt(state, z, q, r) !== -1) return true;
   const info = level.hexes.get(hexKey(z, q, r));
   // P2's exit is Static until P1 has exited (sequential exit rule).
   if (z === 1 && q === level.exits[1].q && r === level.exits[1].r && state.p1 !== null) {
@@ -195,6 +210,26 @@ function isBlocked(
   return false;
 }
 
+// Mirrors PushSystem.isPushDestinationClear exactly: Static (walls, locked
+// doors, other pushables) and PhaseBarrier (unless phase-shifted) block a
+// push destination. Deliberately has NO board-edge check, because the real
+// PushSystem has none either — the solver mirrors the shipped code rather
+// than silently fixing an unrelated gap; levels must be designed so a push
+// destination never lies off-board.
+function isPushDestinationBlocked(
+  level: StaticLevel, abilities: Set<number>, state: SState,
+  z: number, q: number, r: number,
+): boolean {
+  if (pushableIndexAt(state, z, q, r) !== -1) return true;
+  const info = level.hexes.get(hexKey(z, q, r));
+  if (!info) return false;
+  if (info.wall) return true;
+  if (info.lockedRed  && !abilities.has(AbilityType.UNLOCK_RED))  return true;
+  if (info.lockedBlue && !abilities.has(AbilityType.UNLOCK_BLUE)) return true;
+  if (info.phaseBarrier && !abilities.has(AbilityType.PHASE_SHIFT)) return true;
+  return false;
+}
+
 // ── State serialization (exact, collision-free memo keys) ────────────────────
 
 function stateKey(s: SState): string {
@@ -208,6 +243,7 @@ function stateKey(s: SState): string {
     s.scrap.join(''),
     s.collectedMask,
     s.unlockMask,
+    s.pushables.map(p => `${p.z}:${p.q},${p.r}`).join(','),
   ].join(';');
 }
 
@@ -220,6 +256,7 @@ function cloneState(s: SState): SState {
     scrap: [...s.scrap],
     collectedMask: s.collectedMask,
     unlockMask: s.unlockMask,
+    pushables: s.pushables.map(p => ({ ...p })),
   };
 }
 
@@ -336,8 +373,44 @@ export function solveLevel(
       if (pos === null) continue;
       const z = who;
       for (const [dq, dr] of HEX_DIRECTIONS) {
-        const targets: { tq: number; tr: number; jumped: boolean }[] = [];
         const t1q = pos.q + dq, t1r = pos.r + dr;
+
+        // Switch accounting: a MOVE by the non-controlling player consumes
+        // one switch from the budget (matrix actions never do).
+        const needsSwitch = lastMover !== -1 && who !== lastMover;
+        if (needsSwitch && switches < 1) continue;
+        const childSwitches = needsSwitch ? switches - 1 : switches;
+
+        // ── Push (mechanic_roadmap.md #2) ──────────────────────────────────
+        // Mirrors MovementSystem exactly: PUSH active + a pushable sits on
+        // the adjacent hex ⇒ the avatar does NOT move, the pushable shifts
+        // one further hex if that destination is clear (PushSystem.ts). A
+        // failed push (destination blocked) is never generated — it costs
+        // the same AP as a no-op and can never be part of an optimal-cost
+        // proof, so omitting it only prunes the search, never the result.
+        if (abilities.has(AbilityType.PUSH)) {
+          const pIdx = pushableIndexAt(s, z, t1q, t1r);
+          if (pIdx !== -1) {
+            const dstQ = t1q + dq, dstR = t1r + dr;
+            if (!isPushDestinationBlocked(level, abilities, s, z, dstQ, dstR)) {
+              const next = cloneState(s);
+              next.pushables[pIdx] = { q: dstQ, r: dstR, z };
+              const witness = dfs(next, budget - 1, [
+                ...path, { kind: 'PUSH', detail: `P${who + 1} Δ(${dq},${dr}) block(${t1q},${t1r})→(${dstQ},${dstR})` },
+              ], childSwitches, who);
+              if (witness) return witness;
+            }
+          }
+        }
+
+        // ── Normal step / jump ──────────────────────────────────────────────
+        // SPRINT_010 semantics: the 1-hex step always exists when its target is
+        // passable; with JUMP routed, the 2-hex jump is an *additional* option
+        // whose intermediate hex is bypassed entirely (mechanics.md §5.1).
+        // isBlocked now also excludes pushable-occupied hexes (a push, not a
+        // walk, is the only way onto one), so this naturally never overlaps
+        // with the push branch above.
+        const targets: { tq: number; tr: number; jumped: boolean }[] = [];
         if (!isBlocked(level, abilities, s, z, t1q, t1r, true)) {
           targets.push({ tq: t1q, tr: t1r, jumped: false });
         }
@@ -347,11 +420,6 @@ export function solveLevel(
             targets.push({ tq: t2q, tr: t2r, jumped: true });
           }
         }
-        // Switch accounting: a MOVE by the non-controlling player consumes
-        // one switch from the budget (matrix actions never do).
-        const needsSwitch = lastMover !== -1 && who !== lastMover;
-        if (needsSwitch && switches < 1) continue;
-        const childSwitches = needsSwitch ? switches - 1 : switches;
         for (const { tq, tr, jumped } of targets) {
           const next = cloneState(s);
           applyArrival(level, next, who, tq, tr);
@@ -570,7 +638,15 @@ function buildStartState(def: LevelDef): SState {
   const scrap = new Array(5).fill(0);
   for (const s of def.scrapPool) scrap[s.shape]++;
 
-  return { p1: p[0], p2: { ...p[1] }, matrix, inventory, scrap, collectedMask: 0, unlockMask: 0 };
+  const pushables: SState['pushables'] = [];
+  for (const e of def.entities) {
+    if (e.type === 'pushable_block') pushables.push({ q: e.q, r: e.r, z: e.z as 0 | 1 });
+  }
+
+  return {
+    p1: p[0], p2: { ...p[1] }, matrix, inventory, scrap,
+    collectedMask: 0, unlockMask: 0, pushables,
+  };
 }
 
 // Applies collection, unlock triggers, and P1's exit when an avatar arrives.

@@ -55,6 +55,18 @@ export interface ApUnlockMessage {
   newAP:    number;
 }
 
+// Host → Guest only — a Focus Vault pair fired (mechanic_roadmap.md #8).
+// Unlike AP_UNLOCK this SPENDS AP; the Guest also materializes the spawned
+// plate in its own mirror world (FocusVaultSystem consumes this).
+export interface FocusVaultMessage {
+  type:     'FOCUS_VAULT';
+  vaultId:  number;
+  newAP:    number;
+  entityId: string;
+  q: number; r: number; z: 0 | 1;
+  shape: number; rotation: number;
+}
+
 // Host → Guest only
 export interface StateUpdateMessage {
   type:     'STATE_UPDATE';
@@ -133,6 +145,7 @@ export type GameMessage =
   | DrawScrapMessage
   | ThresholdReadyMessage
   | ApUnlockMessage
+  | FocusVaultMessage
   | StateUpdateMessage
   | MatrixStateUpdateMessage
   | InventoryUpdateMessage

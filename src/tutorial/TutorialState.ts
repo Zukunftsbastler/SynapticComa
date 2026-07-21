@@ -5,11 +5,16 @@
 const STORAGE_KEY = 'synaptic_coma_tutorial';
 
 export enum ConceptId {
-  ROLES       = 'ROLES',
-  UNLOCK_NODE = 'UNLOCK_NODE',
-  INSERT      = 'INSERT',
-  JUMP        = 'JUMP',
-  SCRAP_DRAW  = 'SCRAP_DRAW',
+  ROLES         = 'ROLES',
+  UNLOCK_NODE   = 'UNLOCK_NODE',
+  INSERT        = 'INSERT',
+  JUMP          = 'JUMP',
+  SCRAP_DRAW    = 'SCRAP_DRAW',
+  ROTATE        = 'ROTATE',
+  PHASE_SHIFT   = 'PHASE_SHIFT',
+  FIRE_IMMUNITY = 'FIRE_IMMUNITY',
+  PUSH          = 'PUSH',
+  FOCUS_VAULT   = 'FOCUS_VAULT',
 }
 
 const seen = new Set<string>();

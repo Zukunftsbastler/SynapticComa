@@ -28,8 +28,8 @@ import { GameState } from '@/state/GameState';
 import { inventory } from '@/state/InventoryState';
 import { scrapPool } from '@/state/ScrapPoolState';
 import { entityRegistry } from '@/registry/EntityRegistry';
-import { Position, APUnlock } from '@/components';
-import { apUnlockQuery } from '@/queries';
+import { Position, APUnlock, Dimension } from '@/components';
+import { apUnlockQuery, pushableQuery } from '@/queries';
 import { hexDistance } from '@/rendering/HexMath';
 import { ConduitShape } from '@/types';
 import type { SolverAction } from './LevelSolver';
@@ -42,8 +42,18 @@ export type ReplayResult =
   | { ok: false; step: number; action: SolverAction; reason: string };
 
 const ACTION_COST: Record<SolverAction['kind'], number> = {
-  MOVE: 1, INSERT: 2, ROTATE: 1, DRAW: 1,
+  MOVE: 1, PUSH: 1, INSERT: 2, ROTATE: 1, DRAW: 1,
 };
+
+// Finds the Pushable entity at (z,q,r), or -1. Push has no dedicated network
+// message (see PUSH branch below) — this is how the replay verifies the
+// block actually moved, the same way a human player would only see it happen.
+function pushableEidAt(world: IWorld, z: number, q: number, r: number): number {
+  for (const eid of pushableQuery(world)) {
+    if (Dimension.layer[eid] === z && Position.q[eid] === q && Position.r[eid] === r) return eid;
+  }
+  return -1;
+}
 
 function shapeByName(name: string): number {
   const v = ConduitShape[name as keyof typeof ConduitShape];
@@ -107,6 +117,35 @@ export async function replayWitness(
         if (Position.q[eid] !== tq || Position.r[eid] !== tr) {
           return fail(`move rejected by MovementSystem (still at ${Position.q[eid]},${Position.r[eid]})`);
         }
+      } else if (action.kind === 'PUSH') {
+        // No dedicated network message: a push IS a MOVE_AVATAR toward a
+        // pushable, interpreted by live game state at receipt time exactly
+        // like a real player's directional input (MovementSystem/PushSystem).
+        const m = /^P([12]) Δ\((-?\d+),(-?\d+)\) block\((-?\d+),(-?\d+)\)→\((-?\d+),(-?\d+)\)$/
+          .exec(action.detail);
+        if (!m) return fail('unparseable PUSH detail');
+        const who = Number(m[1]) as 1 | 2;
+        const dq = Number(m[2]), dr = Number(m[3]);
+        const dstQ = Number(m[6]), dstR = Number(m[7]);
+        const z = who - 1;
+        const avatarId = `avatar_p${who}`;
+        if (!entityRegistry.has(avatarId)) return fail('avatar not in registry');
+        const eid = entityRegistry.get(avatarId);
+        const avatarQBefore = Position.q[eid], avatarRBefore = Position.r[eid];
+
+        const msg: MoveAvatarMessage = {
+          type: 'MOVE_AVATAR', entityId: avatarId, dq, dr, jump: false,
+          seq: GameState.outSeq++, senderId: (who - 1) as 0 | 1, tick: 0,
+        };
+        GameState.pendingInputs.push(msg);
+        tick();
+
+        if (Position.q[eid] !== avatarQBefore || Position.r[eid] !== avatarRBefore) {
+          return fail(`push moved the avatar instead of the block (now at ${Position.q[eid]},${Position.r[eid]})`);
+        }
+        if (pushableEidAt(world, z, dstQ, dstR) === -1) {
+          return fail(`no pushable at expected destination (${dstQ},${dstR})`);
+        }
       } else if (action.kind === 'INSERT') {
         const m = /^(\w+) r(\d) col([24]) (top|bottom)$/.exec(action.detail);
         if (!m) return fail('unparseable INSERT detail');
@@ -140,7 +179,7 @@ export async function replayWitness(
         };
         GameState.pendingInputs.push(msg);
         tick();
-      } else { // DRAW
+      } else if (action.kind === 'DRAW') {
         const m = /^worst-case (\w+)$/.exec(action.detail);
         if (!m) return fail('unparseable DRAW detail');
         const shape = shapeByName(m[1]);
@@ -156,6 +195,8 @@ export async function replayWitness(
         GameState.pendingInputs.push(msg);
         tick();
         Math.random = realRandom;
+      } else {
+        return fail(`unknown action kind`);
       }
 
       // Uniform cost assertion: a rejected input leaves the pool untouched.

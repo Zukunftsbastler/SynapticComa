@@ -1,6 +1,8 @@
 # Campaign Audit & Mechanic Roadmap
 
-**Purpose:** Two things, in one document because they inform each other: (1) a systematic audit of the shipped 20-level campaign's difficulty progression and the sensibility of its mechanic-introduction order, and (2) a forward-looking concept for ten new mechanics that could extend the game — narratively grounded, architecturally compatible, and each justified individually. **This document is a concept only.** Nothing here is implemented; Part 1's findings are diagnostic (a few describe pre-existing documentation drift that this document corrects in place — see the note at F2), and Part 2 is a proposal for the team to select from, not a build plan.
+**Purpose:** Two things, in one document because they inform each other: (1) a systematic audit of the campaign's difficulty progression and the sensibility of its mechanic-introduction order, and (2) a forward-looking concept for ten new mechanics that could extend the game — narratively grounded, architecturally compatible, and each justified individually.
+
+> **Status update (SPRINT_019, same day):** Till selected Part 1's recommendations plus the two lowest-risk Part 2 proposals for immediate implementation. **Recommendations 2–3 are done** (level 11 redesigned, level 18 "Ghost Step" added for Phase Shift, five new tutorial popups). **Recommendation 1 (Resonance) is formally deferred**, not built (see `mechanics.md §4.5`'s status note). **Mechanics #2 (Impulse Blocks) and #8 (Focus Vault) are implemented** — level 22 "Clot" and level 23 "Second Thoughts" respectively; see their entries below for what shipped vs. what was originally proposed. The other 8 mechanics remain concept-only, unranked, for future team selection. Part 1's audit below describes the campaign **as it stood before this update**; see `level_design.md`'s campaign table for the current 23-level state.
 
 **Method:** Every level JSON (`src/levels/level_01.json` … `level_20.json`) was read in full; findings are cross-checked against the solver's proof output (`levelMeta.json`, produced by `npm run validate:levels`), against `docs/level_design.md`, `docs/mechanics.md`, `docs/tutorial_design.md`, `docs/narrative.md`, and against the actual system/component source (not just the docs) wherever a doc claim needed verification.
 
@@ -81,7 +83,10 @@ Each is chosen to be **maximally different from the others** in what part of the
 
 ---
 
-### 2. Impulse Blocks
+### 2. Impulse Blocks — ✅ IMPLEMENTED (SPRINT_019, level 22 "Clot")
+
+*As built: matches the proposal below closely, with one deliberate scope cut — "bridge a chasm" was dropped in favor of the simpler, fully-supported "shove out of the way" Sokoban move, since bridging needs bespoke semantics PushSystem doesn't have yet (a block landing on a chasm hex is currently just another solid obstacle, not a crossable one). The solver was extended with a full push model (`LevelSolver.ts`: `pushables` state, `isPushDestinationBlocked`) so PUSH can be — and in level 22, is — a genuinely required action, not just decorative. `WitnessReplay.ts` gained a matching `PUSH` case.*
+
 **What:** A new `Pushable` hex-grid entity (the component and `PushSystem` already exist and are fully dormant — see F3) rendered as a "Repressed Impulse" clot (Id board) or a "Logic Block" (Superego board). Can be shoved into chasms to bridge them, onto pressure-triggered hazard switches to disable them, or against a wall to block a hazard's line of effect.
 **Why exciting:** It's the cheapest mechanic on this list to ship (zero new components/systems, just JSON authoring + one new `EntityType` variant) and it turns PUSH from a completely unused ability into a spatial-reasoning puzzle category the game has never had — pushing something changes the *board*, not just the *avatar*.
 **Compatibility:** Combos naturally with JUMP (jump over a chasm you haven't bridged yet, or jump onto a block mid-slide) and with Fire Immunity/lasers (a block can be pushed to smother a fire hazard or interrupt a laser's line). Also gives the long-idle PUSH matrix nodes already scattered across levels 2/4/6 a reason to exist.
@@ -135,7 +140,10 @@ Each is chosen to be **maximally different from the others** in what part of the
 
 ---
 
-### 8. Focus Vault
+### 8. Focus Vault — ✅ IMPLEMENTED (SPRINT_019, level 23 "Second Thoughts")
+
+*As built: matches the proposal exactly. New `FocusNode` component mirrors `APUnlock`'s pairing; `FocusVaultSystem` mirrors `APUnlockSystem`'s trigger detection, inverted to spend AP; the bonus plate is spawned dynamically via `createCollectible` at trigger time (never pre-placed, so it can't be collected before the vault opens). The solver has zero awareness of the mechanic, exactly as designed — no `LevelSolver.ts` changes were needed.*
+
 **What:** A new node type reachable only via a joint "Focus" action: both avatars must stand on their respective Focus hexes *and* both spend 1 AP in the same tick (mirroring the Shared Unlock trigger pattern in `APUnlockSystem`, but consuming AP rather than granting it). Success opens a one-time Vault elsewhere on the board containing a bonus conduit — often a Master Set plate or a pre-solved shortcut.
 **Why exciting:** Every current cooperative moment (Shared Unlock, sequential exit) is *mandatory* — required to finish the level. Focus Vault is the game's first genuinely *optional* cooperative act: a joint sacrifice (spending scarce AP together, for nothing but a maybe-useful bonus) that rewards trust and curiosity rather than necessity. It's also naturally replayable content for "The Deep Coma" endless mode and "Daily Synapse" (`generative_levels.md §6.2`), where an optional bonus room adds variance without threatening the solver's solvability guarantee (the base solution never depends on it).
 **Compatibility:** A clean reward delivery vehicle for anything else on this list that's scarce (a Resilience plate, an Echo Tile unlock, a Master Set shape) — it's less a mechanic that combos with others and more a *distribution mechanism* for them.
@@ -177,4 +185,4 @@ Each is chosen to be **maximally different from the others** in what part of the
 | 9 | Static Field | Communication itself | Pulse Gates, Short Circuit | The mind's own silence, literalized |
 | 10 | Convergence Nodes | Ability combinatorics | All abilities pairwise | Two minds' power completing one thought |
 
-**Cross-cutting recommendation:** items **2 (Impulse Blocks)** and **8 (Focus Vault)** are the safest first picks — both are additive-only (no existing level's solvability proof changes), both are cheap relative to the others (Impulse Blocks reuses fully-built dormant code; Focus Vault reuses the `APUnlockSystem` trigger pattern), and neither requires Part 1's F1 (Resonance) to be resolved first. Everything else on this list is a genuine "pick for the team," not a ranked queue — presented deliberately unranked beyond that one practical note, since the actual choice is a design-taste call for Till, Andreas, and Chris together.
+**Cross-cutting recommendation (resolved SPRINT_019):** items **2 (Impulse Blocks)** and **8 (Focus Vault)** were the safest first picks — both additive-only (no existing level's solvability proof changed), both cheap relative to the others, and neither required F1 (Resonance) resolved first. Both are now implemented (see their entries above). The remaining eight are still a genuine "pick for the team," not a ranked queue — a design-taste call for Till, Andreas, and Chris together.

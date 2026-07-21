@@ -22,8 +22,8 @@ Components are pure data. They dictate what an entity is and what state it is cu
 | `Renderable` | `spriteId: ui16, visible: ui8, layer: ui8, dirty: ui8` | PixiJS rendering data |
 | `Dimension` | `layer: ui8` | Which dimension (0=Id, 1=Superego) owns this entity |
 | `Movable` | `canMove: ui8` | Avatar or block can be moved by input |
-| `Pushable` | `canBePushed: ui8` | Entity can be shoved by the Push ability |
-| `Conduit` | `shape: ui8, rotation: ui8, faceMask: ui8, base: ui8` | Pipe shape, orientation, computed connectivity bitmask, and neurotransmitter base (0=EX, 1=IN, 2=MOD, 3=STAB — see `mechanics.md §4.5`) |
+| `Pushable` | `canBePushed: ui8` | Entity can be shoved by the Push ability. Paired with `Static` on Impulse Blocks (`mechanic_roadmap.md` #2, first level: 22 "Clot") — `Static` makes it solid until shoved; `Pushable` lets `PushSystem` relocate it |
+| `Conduit` | `shape: ui8, rotation: ui8, faceMask: ui8` | Pipe shape, orientation, computed connectivity bitmask. *(No `base` field yet — Neuro-Resonance, `mechanics.md §4.5`, is specified but unimplemented; see `mechanic_roadmap.md` F1.)* |
 | `MatrixNode` | `column: ui8, row: ui8, abilityType: ui8, active: ui8` | DNA Matrix cell data |
 | `Avatar` | `playerId: ui8` | Marks a wisp entity; stores which player controls it |
 | `Hazard` | `hazardType: ui8` | Type of obstacle (chasm, locked door, fire, laser, phase barrier) |
@@ -32,6 +32,7 @@ Components are pure data. They dictate what an entity is and what state it is cu
 | `Resistances` | `fire: ui8, laser: ui8` | Boolean flags (0/1) blocking matching `Lethal` damage types |
 | `Threshold` | `triggered: ui8` | Marks a Threshold hex; fires `BOARD_FLIP` when both avatars stand on their respective threshold hexes AND both confirm ready |
 | `APUnlock` | `id: ui8, value: ui8, triggered: ui8` | Marks a Shared Unlock node; grants AP to both players when triggered; one-time activation |
+| `FocusNode` | `id: ui8, cost: ui8, triggered: ui8` | Marks a Focus Vault node (`mechanic_roadmap.md` #8, first level: 23 "Second Thoughts"); mirrors `APUnlock`'s pairing but SPENDS `cost` AP and spawns a bonus plate — always optional, never load-bearing for a solution |
 | `TutorialTrigger` | `conceptId: ui8, radius: ui8` | Optional; marks an entity as a first-encounter tutorial trigger (see `tutorial_design.md §4.1`) |
 | `Collectible` | *(tag)* | Marks a conduit as collectible; renders as `???` icon until collected |
 | `Static` | *(tag)* | Entity blocks movement; used for walls, locked doors |
@@ -46,10 +47,14 @@ Components are pure data. They dictate what an entity is and what state it is cu
 
 ## 4. Systems (The "Logic & Rules")
 Systems contain all the logic. They iterate through entities that possess specific components and execute changes.
-* **Digital Implementation:** The game loop functions executed in strict order every tick:
+* **Digital Implementation:** The game loop functions executed in strict order every tick. `src/systems/pipeline.ts` is the single source of truth (shared verbatim between the live game and the headless witness-replay proof, `generation/WitnessReplay.ts`) — this diagram mirrors it as of SPRINT_019; `NetworkSystem` is appended separately by `gameLoop.ts` since it pulls in the browser-only PeerJS transport:
 
 ```
-InputSystem → APSystem → MovementSystem → CollectionSystem → PushSystem → ThresholdSystem → APUnlockSystem → MatrixInsertSystem → MatrixRotateSystem → ScrapPoolSystem → ResonanceSystem → MatrixRoutingSystem → AbilitySystem → CollisionSystem → ExitSystem → LevelTransitionSystem → RenderSystem → TutorialTriggerSystem → NetworkSystem
+InputSystem → GuestSyncSystem → APSystem → MatrixRoutingSystem → AbilitySystem →
+MovementSystem → PushSystem → CollectionSystem → CollisionSystem → ExitSystem →
+ThresholdSystem → APUnlockSystem → FocusVaultSystem → MatrixInsertSystem →
+MatrixRotateSystem → ScrapPoolSystem → FxSystem → LevelTransitionSystem →
+RenderSystem → NetworkSystem
 ```
 
 **System Responsibilities:**
@@ -63,11 +68,11 @@ InputSystem → APSystem → MovementSystem → CollectionSystem → PushSystem 
 | `PushSystem` | Handles Push ability: moves `Pushable` entities 1 hex without moving the avatar |
 | `ThresholdSystem` | Detects both avatars on threshold hexes AND both ready flags; creates `BoardFlipEvent` |
 | APUnlockSystem | Detects when both avatars occupy their respective Shared Unlock nodes in the same tick; increments APPool.current by APUnlock.value; sets APUnlock.triggered = 1; creates no event entity — the AP change is the signal |
+| `FocusVaultSystem` | Same pair-occupancy detection as `APUnlockSystem`, inverted: DEDUCTS `FocusNode.cost` from the pool (skipped if unaffordable) and spawns the vault's plate via `createCollectible`; always optional (`mechanic_roadmap.md` #8) |
 | `MatrixInsertSystem` | Column-slide insert: ejects plate to Scrap Pool, shifts column, inserts new plate (2 AP) |
 | `MatrixRotateSystem` | Rotates a single already-placed conduit 90° clockwise (1 AP); recomputes `faceMask` |
 | `ScrapPoolSystem` | Handles blind draw from Scrap Pool into player inventory (1 AP) |
-| `ResonanceSystem` | Evaluates ordered base pairs in conduit columns after any matrix mutation; fires Discharge/Dampening/Clarity/Anchor effects once per pair formation (`mechanics.md §4.5`) |
-| `MatrixRoutingSystem` | BFS from source nodes; marks which ability nodes are powered |
+| `MatrixRoutingSystem` | BFS from source nodes; marks which ability nodes are powered. *(`ResonanceSystem` — ordered base-pair evaluation, `mechanics.md §4.5` — is specified but not yet implemented; see `mechanic_roadmap.md` F1.)* |
 | `AbilitySystem` | Continuous evaluation; adds/removes `Resistances`, `Movable` etc. on avatars |
 | `CollisionSystem` | Checks avatar vs `Lethal` entities; applies `Health` damage; creates `AvatarDestroyedEvent` |
 | `ExitSystem` | Detects sequential exit: P1 on exit → spectator mode + `P1ExitedEvent`; P2 on exit → `LevelCompleteEvent` |

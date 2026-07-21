@@ -25,7 +25,9 @@ The ultimate goal is to navigate both avatars to their designated Nexus Hexes (e
 | Draw from the Scrap Pool (blind) | DNA Matrix | 1 | `ScrapPoolSystem` |
 | Rotate Source/Ability nodes | DNA Matrix | N/A — impossible, static | — |
 | Trigger Shared Unlock (both players on node) | Either | +AP gained | `APUnlockSystem` |
-| Neuro-Resonance (automatic on base pairing, see §4.5) | DNA Matrix | 0 — passive; may grant AP or discounts | `ResonanceSystem` |
+| Open a Focus Vault (both players on node, see §5.7) | Hex Grid | −AP spent (optional, never required) | `FocusVaultSystem` |
+| Push an Impulse Block (see §5.2) | Hex Grid | 1 | `PushSystem` |
+| Neuro-Resonance (specified, not yet implemented — see §4.5) | DNA Matrix | 0 — passive; may grant AP or discounts | *(none yet)* |
 
 **Key rule:** AP is a finite resource that shrinks with use and only grows through cooperation. Shared Unlock nodes are the sole mechanism for gaining AP. When AP reaches 0, the game does not reset — it pauses in a Dead End state and allows a manual restart. There is no round, no turn, and no Pass action.
 
@@ -87,7 +89,9 @@ When a conduit is ejected from a matrix column, it is placed **face-down** in a 
 | Cross (+) | Four openings, all directions | `0b1111` | Powerful wildcard; rare in levels |
 | Splitter (Y) | Three openings, asymmetric | `0b1110` (S+W+N) | Acts as a non-standard T-junction |
 
-### 4.5 Neuro-Resonance: Ordered Base Pairing (introduced Level 6+)
+### 4.5 Neuro-Resonance: Ordered Base Pairing (specified, not yet implemented)
+
+> **Status (SPRINT_019 audit):** this section is a complete design specification — no code implements it yet. `Conduit` has no `base` field, level JSON has no way to set one, and there is no `ResonanceSystem`. Formally deferred rather than silently half-true; see `mechanic_roadmap.md` F1. Build or drop before any campaign row claims it again.
 
 Every Conduit Plate carries, in addition to its pipe shape, a **neurotransmitter glyph** (its "base") etched into one corner. There are four bases, each with a distinct language-agnostic icon and color:
 
@@ -134,6 +138,8 @@ Abilities are active only while an unbroken path exists on the DNA Matrix. Sever
 ### 5.2 Push (Icon: Hex with Arrow)
 **Tier 1.** When active, the avatar may spend 1 AP to **push one adjacent Pushable entity** exactly 1 hex in the chosen direction, provided the target hex behind the entity is empty. The **avatar does not move** — the action is a pure push from the avatar's current position. The avatar remains in place; only the pushed entity moves.
 
+**Impulse Blocks** (`mechanic_roadmap.md` #2, first used level 22 "Clot"): the level entity this ability acts on. Rendered as a Repressed Clot (Id board) or Logic Block (Superego board) — a hex that is **solid until shoved**: it blocks passage exactly like a wall (it carries `Static`) whenever Push isn't currently routed, or in any direction other than the one being pushed. A push with a blocked destination (another Static entity, or a Pushable already occupying it) fails silently — the 1 AP is still spent.
+
 ### 5.3 Phase Shift (Icon: Ghost / Dotted Silhouette)
 **Tier 2.** When active, all **Phase Barrier** hazard entities on the avatar's Hex Grid become traversable. The avatar may move through Phase Barriers for the standard 1 AP movement cost. Phase Shift is a persistent passive state — it remains active as long as the routing path on the Matrix is unbroken. Only the local player's avatar is affected (no cross-dimensional Phase Shift).
 
@@ -169,3 +175,17 @@ The game has a **lethal failure state**:
 * On the **second failure**: the "Neural Collapse" screen appears and the players are returned to the Level Select screen. All mid-level progress is discarded.
 
 **Dead End State:** A Dead End is triggered when `APPool.current === 0`, no Shared Unlock nodes remain untriggered, and neither avatar can reach their exit. This is distinct from a soft-lock: in a soft-lock, a solution exists but is unreachable through play; in a Dead End, no solution is reachable with current resources. The system detects the Dead End automatically and displays a language-agnostic "Dead End" indicator, allowing players to manually restart the level without consuming their single retry.
+
+---
+
+## 8. Focus Vault: Optional Cooperative Reward (mechanic_roadmap.md #8)
+
+A Focus Vault is a pair of hex nodes — one per dimension, linked like a Shared Unlock — first used in level 23 ("Second Thoughts"). It **inverts** the Shared Unlock: standing together on both nodes **spends** the pair's cost from the shared pool (rather than granting AP) and, in exchange, spawns a bonus Conduit Plate at a Vault hex elsewhere on the board — visible and collectible from that moment on, exactly like any other floor plate.
+
+**Rules:**
+* Firing requires the pool to actually afford the cost; an unaffordable pair simply does not trigger (no partial spend, no debt).
+* One-time per pair, like a Shared Unlock.
+* **Always optional.** No level's required solution may depend on triggering a Focus Vault — the solver has no model of it at all, by design (`mechanic_roadmap.md` #8): an entity nothing in the required path ever touches cannot affect a solvability proof.
+* The spawned plate is a genuine `Collectible` — it can carry any shape, including Master Set shapes, as a curiosity reward.
+
+**Design intent:** every other cooperative act in the game is mandatory. A Focus Vault is the one deliberate, unforced act of trust — spending a scarce shared resource for no reason but curiosity. Narratively, it's the two fragments choosing, together, to dig into a memory neither needs to survive the level.

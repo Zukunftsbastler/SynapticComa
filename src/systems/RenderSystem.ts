@@ -2,6 +2,7 @@ import type { IWorld } from 'bitecs';
 import { hasComponent } from 'bitecs';
 import {
   Position, Renderable, Dimension, Avatar, APUnlock, Static, Collectible, Movable,
+  FocusNode,
 } from '@/components';
 import { Fx } from '@/components';
 import { FxKind } from '@/components/Fx';
@@ -37,6 +38,8 @@ const ENTITY_COLORS: Partial<Record<SpriteId, number>> = {
   [SpriteId.HAZARD_LOCKED_BLUE]:   0x24478B, // vault blue door
   [SpriteId.HAZARD_PHASE_BARRIER]: 0x3A6A78, // ghostly teal
   [SpriteId.WALL_HEX]:             0x3A3A42, // solid slate wall
+  [SpriteId.PUSHABLE_BLOCK]:       0x5A4A32, // impulse block — mobile clot/logic-block
+  [SpriteId.FOCUS_NODE]:           0x8A5AC9, // focus vault node — violet, distinct from unlock gold
 };
 
 export function RenderSystem(world: IWorld, driver: PixiDriver, localPlayerId: 0 | 1): void {
@@ -81,6 +84,9 @@ export function RenderSystem(world: IWorld, driver: PixiDriver, localPlayerId: 0
     }
     if (hasComponent(world, APUnlock, eid) && APUnlock.triggered[eid] === 1) {
       color = 0x4A3E1A; // consumed unlock — burnt-out gold
+    }
+    if (hasComponent(world, FocusNode, eid) && FocusNode.triggered[eid] === 1) {
+      color = 0x2E2440; // spent focus node — dimmed violet
     }
 
     if (color !== undefined) {

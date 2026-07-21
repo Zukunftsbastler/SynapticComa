@@ -12,8 +12,8 @@ import { GameState } from '@/state/GameState';
 import { world } from '@/gameLoop';
 import { inventory } from '@/state/InventoryState';
 import { scrapPool } from '@/state/ScrapPoolState';
-import { apUnlockQuery, matrixNodeQuery } from '@/queries';
-import { APUnlock, MatrixNode } from '@/components';
+import { apUnlockQuery, matrixNodeQuery, conduitQuery, focusNodeQuery } from '@/queries';
+import { APUnlock, MatrixNode, FocusNode } from '@/components';
 import { AbilityType } from '@/types';
 import { ConceptId, hasSeen, markSeen } from './TutorialState';
 
@@ -90,6 +90,21 @@ const CONCEPTS: Concept[] = [
       `Keyboard: [TAB] select · [R] pre-rotate (free) · click a placed plate = rotate (1 AP).`,
   },
   {
+    id: ConceptId.ROTATE,
+    // Fires once any conduit sits in the matrix — whether pre-placed by the
+    // level (the L9 "Forced Rotation" case: explain it before the player
+    // ever needs it) or freshly inserted by a player (explained right after
+    // their first insert, same "act on it immediately" principle as INSERT).
+    trigger: () => conduitQuery(world).length > 0,
+    title: 'ROTATING A PLACED PLATE',
+    bodyHtml:
+      `A plate already sitting in the matrix isn't fixed — <b>click it</b> to ` +
+      `rotate it 90° clockwise for <b>1 AP</b>. The column does not slide; ` +
+      `only that one plate's orientation changes, and routing re-runs instantly.<br><br>` +
+      `Rotating (1 AP) is often <b>cheaper than a fresh insert</b> (2 AP) when the ` +
+      `right shape is already in place — it just needs to face a different way.`,
+  },
+  {
     id: ConceptId.SCRAP_DRAW,
     // Fires when the pool holds plates while the viewing player's hands are
     // empty — the Level-3 opening position, where drawing is the only way in.
@@ -122,6 +137,63 @@ const CONCEPTS: Concept[] = [
       `<b>Hold no plates?</b> Then you cannot power ⇈ yourself — tell your ` +
       `partner where you are stuck and what a jump would solve. ` +
       `If the ⇈ path is severed mid-level, the ability dies instantly.`,
+  },
+  {
+    id: ConceptId.PHASE_SHIFT,
+    trigger: () => levelHasAbility(AbilityType.PHASE_SHIFT),
+    title: '◈ PHASE SHIFT NODE IN THE MATRIX',
+    bodyHtml:
+      `This level's matrix holds a <b>◈ PHASE SHIFT node</b> — a <b>Tier 2</b> ` +
+      `ability, in the matrix's rightmost column. Power must cross <i>both</i> ` +
+      `conduit layers to reach it: one plate in the near column, one in the far ` +
+      `column, each with an open path through.<br><br>` +
+      `While active, your wisp passes through <b>ghostly barrier hexes</b> as if ` +
+      `they weren't there, for the normal 1 AP move cost. Sever the path and the ` +
+      `barriers turn solid again — instantly, mid-step if you're unlucky.`,
+  },
+  {
+    id: ConceptId.FIRE_IMMUNITY,
+    trigger: () => levelHasAbility(AbilityType.FIRE_IMMUNITY),
+    title: '♨ FIRE IMMUNITY NODE IN THE MATRIX',
+    bodyHtml:
+      `This level's matrix holds a <b>♨ FIRE IMMUNITY node</b> (Tier 2). While ` +
+      `powered, smoldering Fire hazards no longer destroy your wisp on contact — ` +
+      `walk through for the normal 1 AP.<br><br>` +
+      `<b>Don't hold the plate for it?</b> Someone else's board has what you need — ` +
+      `describe the fire, not the fix, and let your partner find the route.`,
+  },
+  {
+    id: ConceptId.PUSH,
+    trigger: () => levelHasAbility(AbilityType.PUSH),
+    title: '▶ PUSH NODE IN THE MATRIX',
+    bodyHtml:
+      `This level's matrix holds a <b>▶ PUSH node</b>. While active, moving into ` +
+      `an adjacent <b>Impulse Block</b> doesn't step onto it — it shoves the ` +
+      `block <b>one hex further in the same direction</b>, for the normal 1 AP. ` +
+      `Your wisp stays put; only the block moves.<br><br>` +
+      `A block is solid until shoved — plan <i>where</i> it lands before you push. ` +
+      `If the space behind it is blocked, the push does nothing (but still costs the AP).`,
+  },
+  {
+    id: ConceptId.FOCUS_VAULT,
+    // Fires on proximity to an untriggered Focus node — mirrors UNLOCK_NODE's
+    // pattern exactly, but the framing must be unmistakably optional: this is
+    // never required, unlike a Shared Unlock.
+    trigger: () => {
+      const nodes = focusNodeQuery(world);
+      for (let i = 0; i < nodes.length; i++) {
+        if (FocusNode.triggered[nodes[i]] === 0) return true;
+      }
+      return false;
+    },
+    title: 'FOCUS VAULT DETECTED',
+    bodyHtml:
+      `The <b style="color:#8A5AC9">violet node</b> exists in both minds at once — ` +
+      `like a Shared Unlock, but it <b>costs</b> AP instead of granting it.<br><br>` +
+      `Stand together, and the pool pays the price to open a sealed Vault ` +
+      `elsewhere on the board — a bonus plate, nothing more.<br><br>` +
+      `<b>This is never required.</b> No level needs it solved. Open it only if ` +
+      `you can spare the AP and want to know what's behind it.`,
   },
 ];
 

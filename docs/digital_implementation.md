@@ -234,6 +234,8 @@ The `ChatManager` routes emoji messages via a dedicated PeerJS data channel (sep
 
 Levels are strict JSON files conforming to `LevelSchema.ts` — hand-crafted for the campaign, emitted by `LevelGenerator` for generated play. `LevelLoaderSystem` reads the JSON, registers string IDs in the `EntityRegistry`, and attaches the components.
 
+> **Note:** the example below is illustrative and predates several schema changes (conduits carry no `base` field — Neuro-Resonance is unimplemented, `mechanic_roadmap.md` F1 — and there is no `solverProof` field; `validate:levels` writes proof data to the separate generated `levelMeta.json` instead). `LevelSchema.ts` is the authoritative source. Two entity/array kinds added in SPRINT_019 aren't shown: `{ "type": "pushable_block", ... }` (Impulse Blocks, `mechanic_roadmap.md` #2) and the level-level `"focusVaultNodes": [...]` array (Focus Vault, #8) — see `mechanics.md §8` and the `level_22`/`level_23` JSON files for real examples of both.
+
 ```jsonc
 {
   "id": "level_01",

@@ -18,9 +18,12 @@ export const LEVEL_NAMES: Record<string, string> = {
   level_15: 'Master Set Teaser',
   level_16: 'Airlock',
   level_17: 'Signal Chain',
-  level_18: 'Phased Rendezvous',
-  level_19: 'Dead Column',
-  level_20: 'Synapse Toggle',
+  level_18: 'Ghost Step',
+  level_19: 'Phased Rendezvous',
+  level_20: 'Dead Column',
+  level_21: 'Synapse Toggle',
+  level_22: 'Clot',
+  level_23: 'Second Thoughts',
 };
 
 export const LEVEL_ORDER: string[] = [
@@ -44,4 +47,7 @@ export const LEVEL_ORDER: string[] = [
   'level_18',
   'level_19',
   'level_20',
+  'level_21',
+  'level_22',
+  'level_23',
 ];

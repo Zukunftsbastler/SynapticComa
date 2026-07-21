@@ -44,6 +44,12 @@ export const enum SpriteId {
 
   // --- Walls ---
   WALL_HEX             = 23,  // solid impassable hex
+
+  // --- Impulse Blocks (mechanic_roadmap.md #2) ---
+  PUSHABLE_BLOCK        = 24,  // movable clot/logic-block; solid until pushed
+
+  // --- Focus Vault (mechanic_roadmap.md #8) ---
+  FOCUS_NODE             = 25,  // joint-focus hex; consumed AP opens a bonus vault
 }
 
 // Maps SpriteId to the public asset path.
@@ -73,4 +79,6 @@ export const SPRITE_PATHS: Record<SpriteId, string> = {
   [SpriteId.THRESHOLD_HEX]:        '/sprites/threshold_hex.webp',
   [SpriteId.AP_UNLOCK_NODE]:       '/sprites/ap_unlock_node.webp',
   [SpriteId.WALL_HEX]:             '/sprites/wall_hex.webp',
+  [SpriteId.PUSHABLE_BLOCK]:       '/sprites/pushable_block.webp',
+  [SpriteId.FOCUS_NODE]:           '/sprites/focus_node.webp',
 };

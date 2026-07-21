@@ -24,13 +24,15 @@ import { scrapPool } from '@/state/ScrapPoolState';
 import { resetGameState } from '@/state/GameState';
 import { GameState } from '@/state/GameState';
 import { createAvatar } from '@/entities/PlayerFactory';
-import { createHazard, createPhaseBarrier } from '@/entities/HazardFactory';
+import { createHazard, createPhaseBarrier, createPushableBlock } from '@/entities/HazardFactory';
 import { createCollectible } from '@/entities/ConduitFactory';
 import { createExit, createThreshold, createWall } from '@/entities/ExitFactory';
 import {
   createSourceNodes, createAbilityNode, createMatrixConduit,
 } from '@/entities/MatrixNodeFactory';
 import { createApUnlockPair } from '@/entities/ApUnlockFactory';
+import { createFocusVaultPair } from '@/entities/FocusVaultFactory';
+import { focusVaults, clearFocusVaults } from '@/state/FocusVaultState';
 import type { LevelDef, EntityDef } from '@/levels/LevelSchema';
 import type { ConduitShape } from '@/types';
 
@@ -57,6 +59,9 @@ const LEVEL_MODULES: Record<string, () => Promise<{ default: unknown }>> = {
   level_18: () => import('@/levels/level_18.json'),
   level_19: () => import('@/levels/level_19.json'),
   level_20: () => import('@/levels/level_20.json'),
+  level_21: () => import('@/levels/level_21.json'),
+  level_22: () => import('@/levels/level_22.json'),
+  level_23: () => import('@/levels/level_23.json'),
 };
 
 function dispatchEntityFactory(world: IWorld, def: EntityDef): void {
@@ -68,6 +73,7 @@ function dispatchEntityFactory(world: IWorld, def: EntityDef): void {
     case 'phase_barrier': createPhaseBarrier(world, def);   break;
     case 'collectible':   createCollectible(world, def);    break;
     case 'wall':          createWall(world, def);           break;
+    case 'pushable_block': createPushableBlock(world, def); break;
   }
 }
 
@@ -116,6 +122,21 @@ function populateWorld(world: IWorld, def: LevelDef): void {
     createApUnlockPair(world, unlockDef, i + 1);
   });
 
+  // Focus Vault pairs (mechanic_roadmap.md #8) — optional AP-spend bonus
+  // rooms. FocusNode.id is a ui8 (0-255) exactly like APUnlock.id, so ids
+  // stay small (1-indexed per level) — no offset needed: FocusNode and
+  // APUnlock are separate component types with separate queries, so their
+  // id spaces never collide regardless of value.
+  (def.focusVaultNodes ?? []).forEach((vaultDef, i) => {
+    const numericId = i + 1;
+    createFocusVaultPair(world, vaultDef, numericId);
+    focusVaults.set(numericId, {
+      q: vaultDef.vault.q, r: vaultDef.vault.r, z: vaultDef.vault.z,
+      shape: vaultDef.vault.shape, rotation: vaultDef.vault.rotation,
+      entityId: `${vaultDef.id}_plate`,
+    });
+  });
+
   // Singleton APPool entity — persistent pool seeded from the level's initialAP.
   const apEid = addEntity(world);
   addComponent(world, APPool, apEid);
@@ -159,6 +180,7 @@ export async function loadLevel(currentWorld: IWorld, levelId: string): Promise<
   entityRegistry.clear();
   clearCollectionRegistry();
   clearAnimationState();
+  clearFocusVaults();
   resetGameState({
     localPlayerId:    GameState.localPlayerId, // preserve networking identity
     viewPlayerId:     GameState.viewPlayerId,  // preserve local-mode view toggle

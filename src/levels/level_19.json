@@ -1,17 +1,17 @@
 {
   "id": "level_19",
-  "name": "Dead Column",
-  "initialAP": 11,
+  "name": "Phased Rendezvous",
+  "initialAP": 10,
   "apUnlockNodes": [
     {
       "id": "unlock_01",
-      "value": 4,
+      "value": 6,
       "hexA": {
-        "q": 0,
+        "q": -1,
         "r": 1
       },
       "hexB": {
-        "q": 0,
+        "q": -1,
         "r": 1
       }
     }
@@ -20,12 +20,18 @@
   "initialInventory": {
     "player0": [
       {
-        "entityId": "inv_p1_curved",
-        "shape": 1,
+        "entityId": "inv_p1_straight",
+        "shape": 0,
         "rotation": 0
       }
     ],
-    "player1": []
+    "player1": [
+      {
+        "entityId": "inv_p2_straight",
+        "shape": 0,
+        "rotation": 0
+      }
+    ]
   },
   "scrapPool": [],
   "entities": [
@@ -63,18 +69,62 @@
       "initiallyLocked": true
     },
     {
-      "type": "hazard",
-      "id": "door_red_a",
-      "hazardType": 1,
+      "type": "phase_barrier",
+      "id": "pb_unlock_a",
+      "q": -1,
+      "r": 1,
+      "z": 0
+    },
+    {
+      "type": "phase_barrier",
+      "id": "pb_unlock_b",
+      "q": -1,
+      "r": 1,
+      "z": 1
+    },
+    {
+      "type": "phase_barrier",
+      "id": "pb_gate_a",
       "q": 0,
       "r": -1,
       "z": 0
     },
     {
-      "type": "hazard",
-      "id": "door_blue_b",
-      "hazardType": 2,
+      "type": "phase_barrier",
+      "id": "pb_gate_b",
       "q": 0,
+      "r": -1,
+      "z": 1
+    },
+    {
+      "type": "hazard",
+      "id": "laser_a1",
+      "hazardType": 4,
+      "q": 1,
+      "r": 1,
+      "z": 0
+    },
+    {
+      "type": "hazard",
+      "id": "laser_a2",
+      "hazardType": 4,
+      "q": 2,
+      "r": -1,
+      "z": 0
+    },
+    {
+      "type": "hazard",
+      "id": "laser_b1",
+      "hazardType": 4,
+      "q": 1,
+      "r": 1,
+      "z": 1
+    },
+    {
+      "type": "hazard",
+      "id": "laser_b2",
+      "hazardType": 4,
+      "q": 2,
       "r": -1,
       "z": 1
     },
@@ -152,40 +202,12 @@
   "matrix": {
     "nodes": [
       {
-        "id": "node_c3r0",
-        "column": 3,
-        "row": 0,
-        "abilityType": 3
-      },
-      {
         "id": "node_c5r0",
         "column": 5,
         "row": 0,
-        "abilityType": 4
+        "abilityType": 5
       }
     ],
-    "conduits": [
-      {
-        "id": "pre_c2r0",
-        "column": 2,
-        "row": 0,
-        "shape": 0,
-        "rotation": 1
-      },
-      {
-        "id": "pre_c2r1",
-        "column": 2,
-        "row": 1,
-        "shape": 2,
-        "rotation": 0
-      },
-      {
-        "id": "pre_c2r2",
-        "column": 2,
-        "row": 2,
-        "shape": 1,
-        "rotation": 0
-      }
-    ]
+    "conduits": []
   }
 }

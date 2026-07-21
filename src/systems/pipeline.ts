@@ -18,6 +18,7 @@ import { CollisionSystem } from '@/systems/CollisionSystem';
 import { ExitSystem } from '@/systems/ExitSystem';
 import { ThresholdSystem } from '@/systems/ThresholdSystem';
 import { APUnlockSystem } from '@/systems/APUnlockSystem';
+import { FocusVaultSystem } from '@/systems/FocusVaultSystem';
 import { MatrixInsertSystem } from '@/systems/MatrixInsertSystem';
 import { MatrixRotateSystem } from '@/systems/MatrixRotateSystem';
 import { ScrapPoolSystem } from '@/systems/ScrapPoolSystem';
@@ -37,6 +38,7 @@ export function runCoreSystems(w: IWorld, state: GameStateData): void {
   ExitSystem(w, state);
   ThresholdSystem(w, state);
   APUnlockSystem(w, state);
+  FocusVaultSystem(w, state);
   MatrixInsertSystem(w, state);
   MatrixRotateSystem(w, state);
   ScrapPoolSystem(w, state);
