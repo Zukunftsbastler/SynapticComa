@@ -39,7 +39,8 @@ export function ScrapPoolSystem(world: IWorld, state: GameStateData): void {
     const idx = Math.floor(Math.random() * scrapPool.plates.length);
     const plate = scrapPool.plates.splice(idx, 1)[0];
 
-    playerInventory.push({ entityId, shape: plate.shape, rotation: plate.rotation });
+    const drawnBase = plate.base ?? 0;
+    playerInventory.push({ entityId, shape: plate.shape, rotation: plate.rotation, base: drawnBase });
     state.apPool -= 1;
 
     const matrixUpdate: MatrixStateUpdateMessage = {
@@ -54,6 +55,7 @@ export function ScrapPoolSystem(world: IWorld, state: GameStateData): void {
       type:       'INVENTORY_UPDATE',
       playerId:   pid,
       drawnShape: plate.shape,
+      drawnBase,
       rotation:   plate.rotation,
       entityId,
     };

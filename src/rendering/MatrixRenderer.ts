@@ -16,6 +16,7 @@ import { computeFaceMask } from '@/utils/ConduitFaceMask';
 import type { ConduitShape } from '@/types';
 import { uiState } from '@/ui/uiState';
 import { scrapPool } from '@/state/ScrapPoolState';
+import { resonanceState } from '@/state/ResonanceState';
 import { inventory } from '@/state/InventoryState';
 import { GameState } from '@/state/GameState';
 import type { RenderCommandBuffer } from './RenderCommandBuffer';
@@ -251,13 +252,29 @@ export function renderMatrix(
         fillColor: C_CONDUIT_BODY, alpha: 1,
       });
     }
-    // Face-down marker + public count.
-    buf.push({ cmd: 'drawText', x: pile.x + pile.w / 2 - 12, y: pile.y + pile.h / 2, text: '?', color: 0x8a6a30, size: 18, alpha: hintPulse });
+    // Clarity resonance (mechanics.md §4.5): reveals the topmost plate's shape
+    // face-up to both players until the next matrix mutation.
+    const top = scrapPool.plates[scrapPool.plates.length - 1];
+    const revealed = resonanceState.clarityRevealedPlate !== null
+      && top === resonanceState.clarityRevealedPlate;
+
+    // Face-down marker (or revealed shape letter) + public count.
+    buf.push({
+      cmd: 'drawText',
+      x: pile.x + pile.w / 2 - 12, y: pile.y + pile.h / 2,
+      text: revealed ? (SHAPE_LETTERS[top.shape] ?? '?') : '?',
+      color: revealed ? 0x8FFF70 : 0x8a6a30,
+      size: 18, alpha: hintPulse,
+    });
     buf.push({ cmd: 'drawText', x: pile.x + pile.w / 2 + 14, y: pile.y + pile.h / 2, text: `×${count}`, color: 0xC9A227, size: 13, alpha: 1 });
     // Draw affordance: the same gold arrow language as the insert arrows.
     buf.push({ cmd: 'drawText', x: pile.x + pile.w / 2, y: pile.y - 12, text: '⤒', color: hint ? 0xFFD84A : 0xC9A227, size: hint ? 18 : 14, alpha: hintPulse });
   }
 }
+
+// Shape letter per ConduitShape (0=STRAIGHT, 1=CURVED, 2=T_JUNCTION, 3=CROSS,
+// 4=SPLITTER) — used only for the Clarity resonance's revealed Scrap Pool plate.
+const SHAPE_LETTERS: Record<number, string> = { 0: 'I', 1: 'C', 2: 'T', 3: 'X', 4: 'S' };
 
 // Glyph per AbilityType (1=JUMP, 2=PUSH, 3=UNLOCK_RED, 4=UNLOCK_BLUE,
 // 5=PHASE_SHIFT, 6=FIRE_IMMUNITY).

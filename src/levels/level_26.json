@@ -1,48 +1,15 @@
 {
-  "id": "level_23",
-  "name": "Second Thoughts",
-  "initialAP": 10,
-  "apUnlockNodes": [
-    {
-      "id": "unlock_01",
-      "value": 4,
-      "hexA": {
-        "q": -1,
-        "r": 1
-      },
-      "hexB": {
-        "q": -1,
-        "r": 1
-      }
-    }
-  ],
-  "focusVaultNodes": [
-    {
-      "id": "vault_01",
-      "cost": 3,
-      "hexA": {
-        "q": 1,
-        "r": 1
-      },
-      "hexB": {
-        "q": 1,
-        "r": 1
-      },
-      "vault": {
-        "q": 2,
-        "r": 0,
-        "z": 0,
-        "shape": 3,
-        "rotation": 0
-      }
-    }
-  ],
+  "id": "level_26",
+  "name": "First Spark",
+  "initialAP": 13,
+  "apUnlockNodes": [],
   "initialInventory": {
     "player0": [
       {
-        "entityId": "inv_p1_straight",
+        "entityId": "inv_p1_conduit_01",
         "shape": 0,
-        "rotation": 0
+        "rotation": 0,
+        "base": 1
       }
     ],
     "player1": []
@@ -84,7 +51,7 @@
     },
     {
       "type": "hazard",
-      "id": "door_red",
+      "id": "hazard_door",
       "hazardType": 1,
       "q": 0,
       "r": -1,
@@ -135,6 +102,15 @@
         "abilityType": 3
       }
     ],
-    "conduits": []
+    "conduits": [
+      {
+        "id": "prep_in_plate",
+        "column": 2,
+        "row": 0,
+        "shape": 0,
+        "rotation": 1,
+        "base": 2
+      }
+    ]
   }
 }

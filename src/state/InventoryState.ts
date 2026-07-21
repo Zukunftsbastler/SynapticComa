@@ -4,6 +4,8 @@ export interface CollectedConduit {
   entityId: string;   // designer-facing key (e.g. "conduit_a2") for network messages
   shape:    ConduitShape;
   rotation: number;   // 0–3
+  /** Neuro-Resonance base (mechanics.md §4.5); omitted = ConduitBase.NONE. */
+  base?:    number;
 }
 
 // Private per-player inventories. Only the owning player sees their own contents.

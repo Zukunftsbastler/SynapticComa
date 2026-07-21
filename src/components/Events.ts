@@ -4,10 +4,6 @@ import { defineComponent, Types } from 'bitecs';
 // LevelTransitionSystem destroys all event entities at the end of every tick.
 // Systems must never hold references to event entity IDs across ticks.
 
-// Emitted by ThresholdSystem when both avatars are on their threshold hexes
-// and both players have confirmed Ready.
-export const BoardFlipEvent = defineComponent({});
-
 // Emitted by ExitSystem when P2 reaches their exit after P1 has already exited.
 export const LevelCompleteEvent = defineComponent({});
 

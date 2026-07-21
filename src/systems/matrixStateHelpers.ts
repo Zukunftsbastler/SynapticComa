@@ -9,11 +9,11 @@ import { MATRIX_ROWS, MATRIX_COLS } from '@/constants';
 
 export function buildMatrixStatePayload(
   world: IWorld,
-): { shape: number; rotation: number; active: boolean }[][] {
+): { shape: number; rotation: number; active: boolean; base: number }[][] {
   // Initialise a MATRIX_ROWS × MATRIX_COLS grid of empty cells.
-  const grid: { shape: number; rotation: number; active: boolean }[][] = Array.from(
+  const grid: { shape: number; rotation: number; active: boolean; base: number }[][] = Array.from(
     { length: MATRIX_ROWS },
-    () => Array.from({ length: MATRIX_COLS }, () => ({ shape: -1, rotation: 0, active: false })),
+    () => Array.from({ length: MATRIX_COLS }, () => ({ shape: -1, rotation: 0, active: false, base: 0 })),
   );
 
   const entities = conduitQuery(world);
@@ -26,6 +26,7 @@ export function buildMatrixStatePayload(
         shape:    Conduit.shape[eid],
         rotation: Conduit.rotation[eid],
         active:   MatrixNode.active[eid] === 1,
+        base:     Conduit.base[eid],
       };
     }
   }

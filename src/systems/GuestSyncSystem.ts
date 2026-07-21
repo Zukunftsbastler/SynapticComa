@@ -105,6 +105,7 @@ function applyMatrixUpdate(world: IWorld, msg: MatrixStateUpdateMessage): void {
         row,
         shape:    cell.shape,
         rotation: cell.rotation,
+        base:     cell.base,
       });
     }
   }
@@ -124,6 +125,7 @@ function applyInventoryUpdate(state: GameStateData, msg: InventoryUpdateMessage)
     entityId: msg.entityId,
     shape:    msg.drawnShape as ConduitShape,
     rotation: msg.rotation,
+    base:     msg.drawnBase,
   });
 }
 

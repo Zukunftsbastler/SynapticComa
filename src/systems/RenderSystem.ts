@@ -30,7 +30,6 @@ const ENTITY_COLORS: Partial<Record<SpriteId, number>> = {
   [SpriteId.EXIT_NEXUS_A]:         0x1E8A3C, // nexus green (goal!)
   [SpriteId.EXIT_NEXUS_B]:         0x1E8A3C,
   [SpriteId.AP_UNLOCK_NODE]:       0xC9A227, // shared-unlock gold
-  [SpriteId.THRESHOLD_HEX]:        0xD8D8E8, // pale threshold slab
   [SpriteId.HAZARD_LETHAL_A]:      0x7A1010, // repressed fear — deep blood red
   [SpriteId.HAZARD_LETHAL_B]:      0x7A1010, // firewall laser
   [SpriteId.HAZARD_FIRE]:          0xB0521A, // smoldering orange

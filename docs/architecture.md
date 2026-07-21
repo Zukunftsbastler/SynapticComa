@@ -23,14 +23,13 @@ Components are pure data. They dictate what an entity is and what state it is cu
 | `Dimension` | `layer: ui8` | Which dimension (0=Id, 1=Superego) owns this entity |
 | `Movable` | `canMove: ui8` | Avatar or block can be moved by input |
 | `Pushable` | `canBePushed: ui8` | Entity can be shoved by the Push ability. Paired with `Static` on Impulse Blocks (`mechanic_roadmap.md` #2, first level: 22 "Clot") — `Static` makes it solid until shoved; `Pushable` lets `PushSystem` relocate it |
-| `Conduit` | `shape: ui8, rotation: ui8, faceMask: ui8` | Pipe shape, orientation, computed connectivity bitmask. *(No `base` field yet — Neuro-Resonance, `mechanics.md §4.5`, is specified but unimplemented; see `mechanic_roadmap.md` F1.)* |
+| `Conduit` | `shape: ui8, rotation: ui8, faceMask: ui8, base: ui8` | Pipe shape, orientation, computed connectivity bitmask, Neuro-Resonance base glyph (`ConduitBase`, `mechanics.md §4.5`; 0=NONE default — every plate before SPRINT_026, byte-identical behavior) |
 | `MatrixNode` | `column: ui8, row: ui8, abilityType: ui8, active: ui8, restrictedTo: ui8` | DNA Matrix cell data. `restrictedTo` (ability nodes only, D14/SPRINT_024): 0/1 = benefits only that player, 2 = unrestricted (default) |
 | `Avatar` | `playerId: ui8` | Marks a wisp entity; stores which player controls it |
 | `Hazard` | `hazardType: ui8` | Type of obstacle (chasm, locked door, fire, laser, phase barrier) |
 | `Lethal` | `hazardType: ui8` | Entity kills avatars on contact without matching `Resistance` |
 | `Health` | `max: ui8, current: ui8` | Avatar vitality. `max: 1, current: 1` — one-hit destruction |
 | `Resistances` | `fire: ui8, laser: ui8` | Boolean flags (0/1) blocking matching `Lethal` damage types |
-| `Threshold` | `triggered: ui8` | Marks a Threshold hex; fires `BOARD_FLIP` when both avatars stand on their respective threshold hexes AND both confirm ready |
 | `APUnlock` | `id: ui8, value: ui8, triggered: ui8` | Marks a Shared Unlock node; grants AP to both players when triggered; one-time activation |
 | `FocusNode` | `id: ui8, cost: ui8, triggered: ui8` | Marks a Focus Vault node (`mechanic_roadmap.md` #8, first level: 23 "Second Thoughts"); mirrors `APUnlock`'s pairing but SPENDS `cost` AP and spawns a bonus plate — always optional, never load-bearing for a solution |
 | `TutorialTrigger` | `conceptId: ui8, radius: ui8` | Optional; marks an entity as a first-encounter tutorial trigger (see `tutorial_design.md §4.1`) |
@@ -38,7 +37,7 @@ Components are pure data. They dictate what an entity is and what state it is cu
 | `Static` | *(tag)* | Entity blocks movement; used for walls, locked doors |
 | `PhaseBarrier` | *(tag)* | Passable only when `Phase Shift` ability is active for that dimension |
 | `Exit` | `playerId: ui8` | Marks a Nexus Hex; P1 exit activates P2 exit on contact |
-| `Events` | *(tags)* | Ephemeral signals: `BoardFlipEvent`, `LevelCompleteEvent`, `AvatarDestroyedEvent`, `P1ExitedEvent`. Created and destroyed within a single tick. |
+| `Events` | *(tags)* | Ephemeral signals: `LevelCompleteEvent`, `AvatarDestroyedEvent`, `P1ExitedEvent`. Created and destroyed within a single tick. |
 
 **ActionManager (Singleton Entity):** A single entity holding the global AP state is created on level load and destroyed on level end. Its components are: APPool { current: ui8, max: ui8 }. There is no RoundState component — the pool is persistent and has no round lifecycle. This entity is not rendered; it is queried by APSystem and APUnlockSystem each tick.
 * **Physical Implementation:** * **Inherent Components:** Printed icons on the tokens (e.g., a "Lock" icon represents the `Static` component).
@@ -47,14 +46,14 @@ Components are pure data. They dictate what an entity is and what state it is cu
 
 ## 4. Systems (The "Logic & Rules")
 Systems contain all the logic. They iterate through entities that possess specific components and execute changes.
-* **Digital Implementation:** The game loop functions executed in strict order every tick. `src/systems/pipeline.ts` is the single source of truth (shared verbatim between the live game and the headless witness-replay proof, `generation/WitnessReplay.ts`) — this diagram mirrors it as of SPRINT_019; `NetworkSystem` is appended separately by `gameLoop.ts` since it pulls in the browser-only PeerJS transport:
+* **Digital Implementation:** The game loop functions executed in strict order every tick. `src/systems/pipeline.ts` is the single source of truth (shared verbatim between the live game and the headless witness-replay proof, `generation/WitnessReplay.ts`) — this diagram mirrors it as of SPRINT_026; `NetworkSystem` is appended separately by `gameLoop.ts` since it pulls in the browser-only PeerJS transport. `ThresholdSystem` was removed in SPRINT_026 (formally cut — see §5.2):
 
 ```
 InputSystem → GuestSyncSystem → APSystem → MatrixRoutingSystem → AbilitySystem →
 MovementSystem → PushSystem → CollectionSystem → CollisionSystem → ExitSystem →
-ThresholdSystem → APUnlockSystem → FocusVaultSystem → MatrixInsertSystem →
-MatrixRotateSystem → ScrapPoolSystem → FxSystem → LevelTransitionSystem →
-RenderSystem → NetworkSystem
+APUnlockSystem → FocusVaultSystem → MatrixInsertSystem → MatrixRotateSystem →
+ResonanceSystem → ScrapPoolSystem → FxSystem → LevelTransitionSystem →
+EchoTileSystem → RenderSystem → NetworkSystem
 ```
 
 **System Responsibilities:**
@@ -66,13 +65,13 @@ RenderSystem → NetworkSystem
 | `MovementSystem` | Moves avatars on Hex Grid; validates passability including ability checks |
 | `CollectionSystem` | Collects `Collectible` conduits; reveals shape; adds to player inventory |
 | `PushSystem` | Handles Push ability: moves `Pushable` entities 1 hex without moving the avatar |
-| `ThresholdSystem` | Detects both avatars on threshold hexes AND both ready flags; creates `BoardFlipEvent` |
 | APUnlockSystem | Detects when both avatars occupy their respective Shared Unlock nodes in the same tick; increments APPool.current by APUnlock.value; sets APUnlock.triggered = 1; creates no event entity — the AP change is the signal |
 | `FocusVaultSystem` | Same pair-occupancy detection as `APUnlockSystem`, inverted: DEDUCTS `FocusNode.cost` from the pool (skipped if unaffordable) and spawns the vault's plate via `createCollectible`; always optional (`mechanic_roadmap.md` #8) |
 | `MatrixInsertSystem` | Column-slide insert: ejects plate to Scrap Pool, shifts column, inserts new plate (2 AP) |
 | `MatrixRotateSystem` | Rotates a single already-placed conduit 90° clockwise (1 AP); recomputes `faceMask` |
 | `ScrapPoolSystem` | Handles blind draw from Scrap Pool into player inventory (1 AP) |
-| `MatrixRoutingSystem` | BFS from source nodes; marks which ability nodes are powered. *(`ResonanceSystem` — ordered base-pair evaluation, `mechanics.md §4.5` — is specified but not yet implemented; see `mechanic_roadmap.md` F1.)* |
+| `MatrixRoutingSystem` | BFS from source nodes; marks which ability nodes are powered |
+| `ResonanceSystem` | Ordered base-pair evaluation (`mechanics.md §4.5`, SPRINT_026); runs after `MatrixInsertSystem`/`MatrixRotateSystem` each tick, keyed by exact plate-entity-id pairs so a pair can only ever fire once |
 | `AbilitySystem` | Continuous evaluation; adds/removes `Resistances`, `Movable` etc. on avatars. Per-player since D14/SPRINT_024 (`abilityFlags` keyed `0`/`1`) — a `restrictedTo`-marked node only sets its effect for the assigned player; unrestricted nodes (the default) still set it for both, unchanged from before |
 | `CollisionSystem` | Checks avatar vs `Lethal` entities; applies `Health` damage; creates `AvatarDestroyedEvent` |
 | `ExitSystem` | Detects sequential exit: P1 on exit → spectator mode + `P1ExitedEvent`; P2 on exit → `LevelCompleteEvent` |
@@ -91,10 +90,8 @@ The board has two distinct states (Dimension A and Dimension B). Architecturally
 * **Digital:** The game holds two active grid arrays. Flipping the board toggles which grid array is rendered and which set of `GlobalRule` components is currently active.
 * **Physical:** The board is double-sided or uses transparent overlays. When flipped, new icons printed on the physical board dictate the active `GlobalRule` components. For example, in Dimension A, [Water Icon] = [Block Icon]. In Dimension B, [Water Icon] = [Movement Bonus Icon].
 
-### 5.2 The Threshold (One-Way Dimensional Flip)
-The Threshold is the sole mechanism for changing the active Hex Grid layout mid-level. Both avatars must reach their respective Threshold hexes **and** both players must confirm ready before the flip triggers.
-* **Digital:** `ThresholdSystem` checks position AND `GameState.thresholdState.p1Ready && p2Ready`. On both conditions met, creates a `BoardFlipEvent` entity. `LevelTransitionSystem` loads the post-Threshold hex layout while preserving the DNA Matrix state.
-* **Physical:** Both players declare "Ready" verbally. The rule enforces that the flip cannot happen by accident — both must consent.
+### 5.2 The Threshold — cut (SPRINT_026)
+The Threshold (a one-way board-flip mid-level) was formally removed from the project in SPRINT_026, resolving the "build or drop" call flagged since SPRINT_021's roadmap. It had been a functionless stub since Sprint 8: `ThresholdSystem` correctly detected both avatars on their threshold hexes with both ready flags, but the actual effect (`LevelTransitionSystem`'s `executeBoardFlip`) was never more than a `console.debug` call, and SPRINT_013 had already stripped every threshold hex from the shipped campaign (levels 11–15 were redesigned without it — see `level_design.md §5`). Building it for real would need a new alt-hex-layout schema and multi-phase solver support — a bigger lift than fit alongside the rest of this sprint's punch list, for a mechanic with no campaign arc assigned to it in over a dozen sprints. `Threshold`, `ThresholdSystem`, `BoardFlipEvent`, `ThresholdReadyMessage`, and `GameState.thresholdEnabled`/`thresholdState` are all gone from the codebase; nothing in `src/` references the Threshold concept anymore.
 
 > **Note:** Dimensional switching (Z-axis movement between the Id and Superego) was removed from the design. There is no `TeleporterComponent` and no `TeleportSystem`. Each player's wisp exists only in their assigned dimension for the entirety of a level.
 

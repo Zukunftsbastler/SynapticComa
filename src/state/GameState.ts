@@ -31,9 +31,7 @@ export interface GameStateData {
   // (digital_implementation.md §3, debug layout). Networked play keeps the
   // strict one-dimension visibility mask.
   revealBothDims:   boolean;
-  thresholdState:   { p1Ready: boolean; p2Ready: boolean };
-  thresholdEnabled: boolean;
-  phase:            'SETUP' | 'PLAYING' | 'THRESHOLD' | 'LEVEL_COMPLETE';
+  phase:            'SETUP' | 'PLAYING' | 'LEVEL_COMPLETE';
   // Sequence number for outbound messages — incremented per send.
   outSeq:           number;
   // ECS ID of the singleton APPool entity, set during level load.
@@ -68,8 +66,6 @@ function makeInitialState(): GameStateData {
     deadEnd:          false,
     gridRadius:       3,
     revealBothDims:   false,
-    thresholdState:   { p1Ready: false, p2Ready: false },
-    thresholdEnabled: false,
     phase:            'SETUP',
     outSeq:           0,
     apPoolEid:        -1,

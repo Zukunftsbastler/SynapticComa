@@ -10,8 +10,8 @@ Four separate times now, a system has turned out to be **fully specified in `doc
 
 | System | Spec lives in | What actually exists |
 |---|---|---|
-| Neuro-Resonance | `mechanics.md §4.5` (found: `mechanic_roadmap.md` F1) | Nothing — no `Conduit.base`, no `ResonanceSystem` |
-| Threshold (post-removal) | `mechanics.md §5.2`, `architecture.md §5.2`, `narrative.md §4` | Nothing shipped — stripped from every level in SPRINT_013 |
+| ~~Neuro-Resonance~~ | `mechanics.md §4.5` (found: `mechanic_roadmap.md` F1) | **Built, SPRINT_026** — `Conduit.base`, `ResonanceSystem`, solver support; level 26 "First Spark" |
+| ~~Threshold (post-removal)~~ | `mechanics.md §5.2`, `architecture.md §5.2`, `narrative.md §4` | **Cut, SPRINT_026** — dead code (`ThresholdSystem` et al.) deleted entirely, not just left unbuilt |
 | The Monitor (tutorial) | `tutorial_design.md §3–5` — 5-file architecture, scripted Level-1 intro, dim/frame/arrow presentation | 2 of 5 files (`TutorialPopups.ts`, `TutorialState.ts`) — a simpler, working, but structurally different popup mechanism |
 | Narrative delivery | `narrative.md §5` — opening panels, between-level panels at levels 1/3/5/8/11/15 (`decisions_needed.md` D13) | Nothing — no `CutsceneMod` player, no panel system, `public/cutscenes/` is empty |
 | The Generator | `generative_levels.md §3` — full reverse-design pipeline for "The Deep Coma" endless mode + "Daily Synapse" | Nothing — `src/generation/` holds only the Solver, DifficultyModel, and WitnessReplay |
@@ -39,7 +39,7 @@ None of these are secrets — SPRINT logs and `decisions_needed.md` reference mo
 * **D14 — Role asymmetry** (`decisions_needed.md`): ~~open since SPRINT_013~~ **resolved 2026-07-21, SPRINT_024** — Till, informed that the document's own rule names all three as owner, chose to decide alone (precedent: SPRINT_018). Shipped a scoped-down Option C (per-ability-node restriction, not per-source-row) rather than any option as originally written, specifically because a full A/B/C would have required re-verifying or redesigning all 23 existing levels — the scoped version is provably backward-compatible instead. Andreas and Chris have not signed off; flagged in `decisions_needed.md` for their review.
 * **🔢 Slack-band drift, levels 7/9/13/14/15** (SPRINT_014 finding): these sit at the "brutal" fairness floor (slack 1) rather than SPRINT_007's original 3–5 target. Never revisited.
 * **🔢 Difficulty-model weight vector** (`DifficultyModel.DEFAULT_WEIGHTS`): flagged as needing Chris's review since SPRINT_007, sharpened by SPRINT_017 (D score likely underweights dependency-chain length and toggle mechanics) and now further complicated by Focus Vault (optional content the model doesn't — and by design *shouldn't* — see at all). Worth a real pass now that there's more data (23 levels) to calibrate against.
-* **Resonance and Threshold: "deferred" is not a decision.** Both are formally marked unimplemented rather than silently claimed, which was the urgent fix — but *build it* vs. *cut it from the docs permanently* is still an open call sitting unmade. Cheap to keep deferring; expensive to keep re-explaining to whoever reads the docs next.
+* ~~**Resonance and Threshold: "deferred" is not a decision.**~~ **Resolved 2026-07-21, SPRINT_026** (D15, `decisions_needed.md`) — Till decided alone, same authorization pattern as D14. Resonance built (scoped down: `Conduit.base` defaults to NONE, byte-identical for all 25 pre-existing levels); Threshold cut entirely (dead code removed, not just left unbuilt). Andreas/Chris have not signed off; flagged for their review.
 
 ---
 
@@ -75,7 +75,7 @@ None of these are secrets — SPRINT logs and `decisions_needed.md` reference mo
 Roughly in the order they unblock each other, not a strict sequence:
 
 1. **A real Tutorial "Monitor" system, or a formal descope.** Every mechanic shipped this session got a hand-written ad-hoc popup (`TutorialPopups.ts`) rather than the generic, data-driven concept registry `tutorial_design.md` describes. That's worked so far (10 concepts, still readable) but doesn't scale forever, and the scripted Level-1 "Calibration" guided intro — meant to teach the core loop before any level-specific mechanic — was never built at all. Decide: invest in the real architecture now (it *is* the more maintainable long-term shape), or formally shrink the spec to match the popup-list reality.
-2. **The Threshold arc.** Fully speced, fully stripped, unassigned to any level since SPRINT_013. `level_design.md` already suggests this belongs as "a future dedicated arc rather than a retrofit" onto the existing levels 11–15 — a good candidate for levels 24+.
+2. ~~**The Threshold arc.**~~ **Moot — cut, SPRINT_026.** Formally removed rather than built; see D15 in `decisions_needed.md`.
 3. **Narrative delivery.** D13 already decided *which* levels get panels; nothing renders them. Lower urgency than the mechanics above (doesn't block gameplay), but it's the most-decided, least-built piece in the whole project — a design question that's already been answered and is just waiting on an implementer.
 4. **The Generator ("Deep Coma" / "Daily Synapse").** The single largest unbuilt promise by volume of spec (`generative_levels.md §3` is a full reverse-design pipeline). Naturally sequenced *after* a few more of §4's mechanics ship, since the generator needs to know how to place whatever exists — but it's also the biggest standalone value unlock left (unbounded replayability vs. a fixed 23-level campaign). Worth scoping as its own multi-sprint arc once the mechanic set feels reasonably stable.
 
@@ -89,4 +89,6 @@ In rough priority order, mixing urgency and low effort:
 2. **Mark every unbuilt-but-documented system explicitly** (§0) — an afternoon, prevents the next contributor from repeating the Resonance/Threshold confusion a fifth time.
 3. ~~**Resolve D14**~~ Done (SPRINT_024) — Andreas/Chris review still outstanding.
 4. ~~**One more cheap mechanic**~~ Done (SPRINT_025, Echo Tiles) — Static Field remains a candidate, though note it currently has no observable effect in-game: `ChatUI` is a complete, working class that's simply never instantiated in `main.ts` (found while scoping this item) — worth fixing before Static Field would be visible to anyone.
-5. **Decide Resonance and Threshold's fate** (§2) — build or formally cut; either answer is fine, "still deciding" three sprints running is the actual problem.
+5. ~~**Decide Resonance and Threshold's fate**~~ Done (SPRINT_026) — Resonance built (scoped down), Threshold cut. Andreas/Chris review still outstanding (D15).
+
+All five items of this list are now done. `SPRINTS/README.md` and the next planned-work note there are the place to look for what comes after it.

@@ -28,6 +28,7 @@ import { GameState } from '@/state/GameState';
 import { inventory } from '@/state/InventoryState';
 import { scrapPool } from '@/state/ScrapPoolState';
 import { entityRegistry } from '@/registry/EntityRegistry';
+import { resonanceState } from '@/state/ResonanceState';
 import { Position, APUnlock, Dimension } from '@/components';
 import { apUnlockQuery, pushableQuery } from '@/queries';
 import { hexDistance } from '@/rendering/HexMath';
@@ -89,6 +90,14 @@ export async function replayWitness(
       const fail = (reason: string): ReplayResult => ({ ok: false, step, action, reason });
       const apBefore     = GameState.apPool;
       const creditBefore = creditedUnlockAP();
+      // Resonance (mechanics.md §4.5, SPRINT_026): Discharge is an additive
+      // credit like a Shared Unlock (netted out below); Anchor/Dampening
+      // instead change the cost of the very next INSERT/ROTATE, so they're
+      // read here — BEFORE this action can consume/reset them — to compute
+      // the correct expected cost for this specific step.
+      const dischargeCreditBefore = resonanceState.totalDischargeCredit;
+      const anchorActiveBefore    = resonanceState.anchorActive;
+      const dampeningActiveBefore = resonanceState.dampeningActive;
 
       if (action.kind === 'MOVE') {
         const m = /^P([12])→\((-?\d+),(-?\d+)\)( jump)?$/.exec(action.detail);
@@ -200,11 +209,16 @@ export async function replayWitness(
       }
 
       // Uniform cost assertion: a rejected input leaves the pool untouched.
-      // Unlock surges triggered this tick are netted out first.
-      const credit = creditedUnlockAP() - creditBefore;
+      // Unlock surges and Discharge credits triggered this tick are netted
+      // out first; Anchor/Dampening change the expected cost itself.
+      const dischargeCredit = resonanceState.totalDischargeCredit - dischargeCreditBefore;
+      const credit = (creditedUnlockAP() - creditBefore) + dischargeCredit;
       const spent  = apBefore + credit - GameState.apPool;
-      if (spent !== ACTION_COST[action.kind]) {
-        return fail(`expected ${ACTION_COST[action.kind]} AP spent, saw ${spent} (unlock credit ${credit}) — action rejected or mispriced`);
+      let expectedCost = ACTION_COST[action.kind];
+      if (action.kind === 'INSERT' && anchorActiveBefore) expectedCost = 1;
+      if (action.kind === 'ROTATE' && dampeningActiveBefore) expectedCost = 0;
+      if (spent !== expectedCost) {
+        return fail(`expected ${expectedCost} AP spent, saw ${spent} (unlock credit ${credit - dischargeCredit}, discharge credit ${dischargeCredit}) — action rejected or mispriced`);
       }
       if (GameState.phase !== 'PLAYING' && step < witness.length - 1) {
         return fail(`phase left PLAYING early (${GameState.phase})`);

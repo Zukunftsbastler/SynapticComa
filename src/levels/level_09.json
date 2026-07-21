@@ -16,7 +16,6 @@
       }
     }
   ],
-  "thresholdEnabled": false,
   "initialInventory": {
     "player0": [],
     "player1": []

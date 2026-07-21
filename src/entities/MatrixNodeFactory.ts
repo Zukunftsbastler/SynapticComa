@@ -48,6 +48,7 @@ export function createMatrixConduit(world: IWorld, def: MatrixConduitDef): numbe
   Conduit.shape[eid]    = def.shape;
   Conduit.rotation[eid] = def.rotation;
   Conduit.faceMask[eid] = computeFaceMask(def.shape as ConduitShape, def.rotation);
+  Conduit.base[eid]     = def.base ?? 0; // ConduitBase.NONE
   entityRegistry.register(def.id, eid);
   return eid;
 }

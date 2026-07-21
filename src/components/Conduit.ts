@@ -6,4 +6,5 @@ export const Conduit = defineComponent({
   shape:    Types.ui8, // ConduitShape enum: 0=STRAIGHT, 1=CURVED, 2=T_JUNCTION, 3=CROSS, 4=SPLITTER
   rotation: Types.ui8, // 0=0°, 1=90°, 2=180°, 3=270° clockwise
   faceMask: Types.ui8, // computed bitmask; updated by MatrixRotateSystem
+  base:     Types.ui8, // ConduitBase enum (mechanics.md §4.5); 0=NONE default
 });

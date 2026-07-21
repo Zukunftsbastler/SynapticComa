@@ -23,3 +23,14 @@ export enum ConduitShape {
   CROSS      = 3,
   SPLITTER   = 4,
 }
+
+// Neuro-Resonance base glyph (mechanics.md §4.5). NONE means the plate can
+// never form a resonance pair — the default for every plate that predates
+// SPRINT_026, preserving byte-identical behavior for all existing levels.
+export enum ConduitBase {
+  NONE = 0,
+  EX   = 1, // Glutamate — excitatory
+  IN   = 2, // GABA — inhibitory
+  MOD  = 3, // Dopamine — modulating
+  STAB = 4, // Serotonin — stabilizing
+}

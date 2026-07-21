@@ -1,6 +1,5 @@
 // All network message types for Synaptic Coma.
-// Guest → Host: MOVE_AVATAR, INSERT_CONDUIT, ROTATE_CONDUIT, DRAW_SCRAP,
-//               THRESHOLD_READY
+// Guest → Host: MOVE_AVATAR, INSERT_CONDUIT, ROTATE_CONDUIT, DRAW_SCRAP
 // Host → Guest: STATE_UPDATE, MATRIX_STATE_UPDATE, INVENTORY_UPDATE, AP_UNLOCK,
 //               COLLECTED, PHASE_UPDATE, LEVEL_LOAD
 // Both → Both (separate channel): CHAT
@@ -42,11 +41,6 @@ export interface DrawScrapMessage extends BaseMessage {
   apCost: 1;
 }
 
-export interface ThresholdReadyMessage extends BaseMessage {
-  type:  'THRESHOLD_READY';
-  ready: boolean;
-}
-
 // Host → Guest only — a Shared Unlock fired; Guest syncs pool and marks the
 // node pair triggered in its local world (APUnlockSystem consumes this).
 export interface ApUnlockMessage {
@@ -81,7 +75,7 @@ export interface StateUpdateMessage {
 // knowledge; contents never cross the wire — communication_rules.md §4).
 export interface MatrixStateUpdateMessage {
   type: 'MATRIX_STATE_UPDATE';
-  grid: { shape: number; rotation: number; active: boolean }[][];
+  grid: { shape: number; rotation: number; active: boolean; base: number }[][];
   scrapCount: number;
 }
 
@@ -99,7 +93,7 @@ export interface CollectedMessage {
 // failure, level complete). Keeps the Guest's GameState lifecycle in sync.
 export interface PhaseUpdateMessage {
   type:         'PHASE_UPDATE';
-  phase:        'SETUP' | 'PLAYING' | 'THRESHOLD' | 'LEVEL_COMPLETE';
+  phase:        'SETUP' | 'PLAYING' | 'LEVEL_COMPLETE';
   p1HasExited:  boolean;
   failureCount: number;
 }
@@ -120,6 +114,7 @@ export interface InventoryUpdateMessage {
   type:       'INVENTORY_UPDATE';
   playerId:   0 | 1;
   drawnShape: number;
+  drawnBase:  number;
   rotation:   number;
   entityId:   string;
 }
@@ -143,7 +138,6 @@ export type GameMessage =
   | InsertConduitMessage
   | RotateConduitMessage
   | DrawScrapMessage
-  | ThresholdReadyMessage
   | ApUnlockMessage
   | FocusVaultMessage
   | StateUpdateMessage

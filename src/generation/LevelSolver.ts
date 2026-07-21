@@ -24,13 +24,15 @@
 //   - Inventories of both players are merged into one multiset: either player
 //     may insert and AP is shared, so ownership has no mechanical effect.
 //   - Pre-insert orientation is free (0 AP) → inventory tracks shapes only.
-//   - Push and Threshold are not modeled (no pushables in any level JSON;
-//     the board-flip effect is still a stub in the engine).
+// Push (SPRINT_020) and Neuro-Resonance (SPRINT_026) are modeled for real —
+// see `pushables` on SState and the base-pairing logic near `applyColumnSlide`
+// / `evaluateResonance` below. Threshold was formally cut in SPRINT_026 (dead
+// stub since Sprint 8 — no level ever used it); nothing here models it.
 
 import type { LevelDef } from '@/levels/LevelSchema';
 import { computeFaceMask, facesConnect, isRotatableInPlace } from '@/utils/ConduitFaceMask';
 import { HEX_DIRECTIONS } from '@/rendering/HexMath';
-import { AbilityType, HazardType, ConduitShape } from '@/types';
+import { AbilityType, HazardType, ConduitShape, ConduitBase } from '@/types';
 import { MATRIX_ROWS } from '@/constants';
 
 // ── Static level data (precomputed once per solve) ───────────────────────────
@@ -60,17 +62,49 @@ interface StaticLevel {
 
 // ── Mutable search state ─────────────────────────────────────────────────────
 
-type Cell = { shape: number; rotation: number } | null;
+type Cell = { shape: number; rotation: number; base: number } | null;
+
+// Neuro-Resonance (mechanics.md §4.5, SPRINT_026): inventory/scrap are keyed
+// by (shape, base) jointly, not shape alone, since which specific plate is
+// inserted where determines whether a resonance pair forms. BASE_COUNT_MAX=5
+// covers ConduitBase 0=NONE..4=STAB. Iterating a 5×-wider array at EVERY dfs
+// node (INSERT/DRAW branches) measurably slowed the search even when every
+// extra slot is always zero, so `SState.baseCount` is 1 (old behavior, exact
+// old performance) for the 25 levels that never assign a base anywhere, and
+// only 5 for a level that actually does (only level 26 so far) — see
+// `levelUsesResonanceBase`. A plate's slot is `shape * baseCount + base`;
+// with baseCount=1, that's just `shape`, identical to the pre-SPRINT_026 array.
+const BASE_COUNT_MAX = 5;
+const invIndex = (shape: number, base: number, baseCount: number): number => shape * baseCount + base;
+
+function levelUsesResonanceBase(def: LevelDef): boolean {
+  if (def.matrix.conduits.some(c => (c.base ?? 0) !== 0)) return true;
+  if (def.initialInventory.player0.some(c => (c.base ?? 0) !== 0)) return true;
+  if (def.initialInventory.player1.some(c => (c.base ?? 0) !== 0)) return true;
+  if (def.scrapPool.some(p => (p.base ?? 0) !== 0)) return true;
+  return false;
+}
 
 interface SState {
   p1: { q: number; r: number } | null; // null = exited
   p2: { q: number; r: number };
   matrix: Cell[][];      // [2][MATRIX_ROWS] — conduit columns (matrix cols 2 & 4)
-  inventory: number[];   // count per ConduitShape (merged across players)
-  scrap: number[];       // count per ConduitShape (multiset; draws are blind)
+  inventory: number[];   // count per (shape,base) — see invIndex (merged across players)
+  scrap: number[];       // count per (shape,base) — multiset; draws are blind
+  baseCount: number;     // 1 or BASE_COUNT_MAX — see levelUsesResonanceBase above
   collectedMask: number;
   unlockMask: number;
   pushables: { q: number; r: number; z: 0 | 1 }[]; // Impulse Blocks (mechanic_roadmap.md #2)
+  // Neuro-Resonance delayed discounts (mechanics.md §4.5): Dampening makes the
+  // NEXT Rotate free; Anchor makes the NEXT Insert cost 1 instead of 2. Both
+  // are consumed by that next action. Discharge (+1 AP) needs no persistent
+  // field — it's applied as a direct one-time bonus to the recursive budget
+  // at the exact insert that forms the pair (see the INSERT branch in dfs).
+  // Clarity (reveal) and level-load-time pre-formed pairs are deliberately
+  // NOT modeled — see SPRINT_026's sprint doc for why (no shipped level uses
+  // either; Clarity has no cost/solvability effect to model in the first place).
+  dampeningActive: boolean;
+  anchorActive: boolean;
 }
 
 export interface SolverAction {
@@ -252,7 +286,7 @@ function isPushDestinationBlocked(
 
 function stateKey(s: SState): string {
   const m = s.matrix.map(col =>
-    col.map(c => (c ? `${c.shape}${c.rotation}` : '.')).join('')).join('|');
+    col.map(c => (c ? `${c.shape}${c.rotation}${c.base}` : '.')).join('')).join('|');
   return [
     s.p1 ? `${s.p1.q},${s.p1.r}` : 'X',
     `${s.p2.q},${s.p2.r}`,
@@ -262,6 +296,8 @@ function stateKey(s: SState): string {
     s.collectedMask,
     s.unlockMask,
     s.pushables.map(p => `${p.z}:${p.q},${p.r}`).join(','),
+    s.dampeningActive ? 1 : 0,
+    s.anchorActive ? 1 : 0,
   ].join(';');
 }
 
@@ -272,9 +308,12 @@ function cloneState(s: SState): SState {
     matrix: s.matrix.map(col => col.map(c => (c ? { ...c } : null))),
     inventory: [...s.inventory],
     scrap: [...s.scrap],
+    baseCount: s.baseCount,
     collectedMask: s.collectedMask,
     unlockMask: s.unlockMask,
     pushables: s.pushables.map(p => ({ ...p })),
+    dampeningActive: s.dampeningActive,
+    anchorActive: s.anchorActive,
   };
 }
 
@@ -455,17 +494,29 @@ export function solveLevel(
       return null;
     }
 
-    // ── INSERT actions (cost 2) ──────────────────────────────────────────
-    if (budget >= 2 && apAvail >= 2 && !disabledKinds.has('INSERT')) {
-      for (let shape = 0; shape < s.inventory.length; shape++) {
-        if (s.inventory[shape] === 0) continue;
+    // ── INSERT actions ────────────────────────────────────────────────────
+    // Anchor resonance (mechanics.md §4.5): if armed by a prior insert, THIS
+    // insert costs 1 instead of 2 (and consumes the flag).
+    const insertCost = s.anchorActive ? 1 : 2;
+    if (budget >= insertCost && apAvail >= insertCost && !disabledKinds.has('INSERT')) {
+      for (let idx = 0; idx < s.inventory.length; idx++) {
+        if (s.inventory[idx] === 0) continue;
+        const shape = Math.floor(idx / s.baseCount);
+        const base  = idx % s.baseCount;
         for (const colIdx of [0, 1] as const) {
           for (const fromTop of [true, false]) {
             for (let rot = 0; rot < effectiveRotations(shape); rot++) {
               const next = cloneState(s);
-              next.inventory[shape]--;
-              applyColumnSlide(next, colIdx, fromTop, { shape, rotation: rot });
-              const witness = dfs(next, budget - 2, [
+              next.inventory[idx]--;
+              if (next.anchorActive) next.anchorActive = false; // consumed by this insert
+              applyColumnSlide(next, colIdx, fromTop, { shape, rotation: rot, base });
+              // Resonance only ever forms at the entry position — the one new
+              // adjacency this specific insert creates (mechanics.md §4.5:
+              // "fires once, at the moment the pair is formed by an Insert").
+              const bonus = fromTop
+                ? evaluateInsertResonance(next, colIdx, 0, 1, true)
+                : evaluateInsertResonance(next, colIdx, MATRIX_ROWS - 1, MATRIX_ROWS - 2, false);
+              const witness = dfs(next, budget - insertCost + bonus, [
                 ...path,
                 { kind: 'INSERT', detail: `${ConduitShape[shape]} r${rot} col${colIdx === 0 ? 2 : 4} ${fromTop ? 'top' : 'bottom'}` },
               ], switches, lastMover);
@@ -476,8 +527,12 @@ export function solveLevel(
       }
     }
 
-    // ── ROTATE actions (cost 1, 90° CW per action) ───────────────────────
+    // ── ROTATE actions (90° CW per action) ───────────────────────────────
+    // Dampening resonance (mechanics.md §4.5): if armed by a prior insert,
+    // THIS rotate costs 0 (and consumes the flag). Rotation never changes a
+    // plate's base or its row, so it can never form a new resonance pair.
     const rotateCols: readonly (0 | 1)[] = disabledKinds.has('ROTATE') ? [] : [0, 1];
+    const rotateCost = s.dampeningActive ? 0 : 1;
     for (const colIdx of rotateCols) {
       for (let row = 0; row < MATRIX_ROWS; row++) {
         const cell = s.matrix[colIdx][row];
@@ -487,7 +542,8 @@ export function solveLevel(
         const next = cloneState(s);
         const c = next.matrix[colIdx][row]!;
         c.rotation = (c.rotation + 1) % 4;
-        const witness = dfs(next, budget - 1, [
+        if (next.dampeningActive) next.dampeningActive = false; // consumed by this rotate
+        const witness = dfs(next, budget - rotateCost, [
           ...path, { kind: 'ROTATE', detail: `col${colIdx === 0 ? 2 : 4} row${row}` },
         ], switches, lastMover);
         if (witness) return witness;
@@ -500,11 +556,12 @@ export function solveLevel(
     if (scrapTotal > 0 && budget >= 1) {
       let allBranchesHold = true;
       let worstWitness: SolverAction[] | null = null;
-      for (let shape = 0; shape < s.scrap.length; shape++) {
-        if (s.scrap[shape] === 0) continue;
+      for (let idx = 0; idx < s.scrap.length; idx++) {
+        if (s.scrap[idx] === 0) continue;
+        const shape = Math.floor(idx / s.baseCount);
         const next = cloneState(s);
-        next.scrap[shape]--;
-        next.inventory[shape]++;
+        next.scrap[idx]--;
+        next.inventory[idx]++;
         const witness = dfs(next, budget - 1, [
           ...path, { kind: 'DRAW', detail: `worst-case ${ConduitShape[shape]}` },
         ], switches, lastMover);
@@ -621,7 +678,7 @@ function buildStaticLevel(def: LevelDef): StaticLevel {
       }
       case 'exit':        exits[e.playerId] = { q: e.q, r: e.r }; break;
       case 'collectible': collectibles.push({ q: e.q, r: e.r, z: e.z, shape: e.shape }); break;
-      default: break; // avatar (start state), threshold (not modeled)
+      default: break; // avatar (start state); pushable_block/echo_tile handled elsewhere
     }
   }
 
@@ -651,13 +708,14 @@ function buildStartState(def: LevelDef): SState {
     new Array(MATRIX_ROWS).fill(null),
   ];
   for (const c of def.matrix.conduits) {
-    matrix[c.column === 2 ? 0 : 1][c.row] = { shape: c.shape, rotation: c.rotation };
+    matrix[c.column === 2 ? 0 : 1][c.row] = { shape: c.shape, rotation: c.rotation, base: c.base ?? 0 };
   }
-  const inventory = new Array(5).fill(0);
-  for (const c of def.initialInventory.player0) inventory[c.shape]++;
-  for (const c of def.initialInventory.player1) inventory[c.shape]++;
-  const scrap = new Array(5).fill(0);
-  for (const s of def.scrapPool) scrap[s.shape]++;
+  const baseCount = levelUsesResonanceBase(def) ? BASE_COUNT_MAX : 1;
+  const inventory = new Array(5 * baseCount).fill(0);
+  for (const c of def.initialInventory.player0) inventory[invIndex(c.shape, c.base ?? 0, baseCount)]++;
+  for (const c of def.initialInventory.player1) inventory[invIndex(c.shape, c.base ?? 0, baseCount)]++;
+  const scrap = new Array(5 * baseCount).fill(0);
+  for (const s of def.scrapPool) scrap[invIndex(s.shape, s.base ?? 0, baseCount)]++;
 
   const pushables: SState['pushables'] = [];
   for (const e of def.entities) {
@@ -665,8 +723,9 @@ function buildStartState(def: LevelDef): SState {
   }
 
   return {
-    p1: p[0], p2: { ...p[1] }, matrix, inventory, scrap,
+    p1: p[0], p2: { ...p[1] }, matrix, inventory, scrap, baseCount,
     collectedMask: 0, unlockMask: 0, pushables,
+    dampeningActive: false, anchorActive: false,
   };
 }
 
@@ -682,7 +741,9 @@ function applyArrival(
     const c = level.collectibles[i];
     if (c.z === who && c.q === q && c.r === r) {
       s.collectedMask |= 1 << i;
-      s.inventory[c.shape]++;
+      // Floor collectibles never carry a Neuro-Resonance base (LevelSchema.ts's
+      // CollectibleDef comment) — always enters inventory as ConduitBase.NONE.
+      s.inventory[invIndex(c.shape, ConduitBase.NONE, s.baseCount)]++;
     }
   }
 
@@ -705,20 +766,51 @@ function applyArrival(
 }
 
 function applyColumnSlide(
-  s: SState, colIdx: 0 | 1, fromTop: boolean, plate: { shape: number; rotation: number },
+  s: SState, colIdx: 0 | 1, fromTop: boolean,
+  plate: { shape: number; rotation: number; base: number },
 ): void {
   const col = s.matrix[colIdx];
   if (fromTop) {
     const ejected = col[MATRIX_ROWS - 1];
-    if (ejected) s.scrap[ejected.shape]++;
+    if (ejected) s.scrap[invIndex(ejected.shape, ejected.base, s.baseCount)]++;
     for (let row = MATRIX_ROWS - 1; row > 0; row--) col[row] = col[row - 1];
     col[0] = plate;
   } else {
     const ejected = col[0];
-    if (ejected) s.scrap[ejected.shape]++;
+    if (ejected) s.scrap[invIndex(ejected.shape, ejected.base, s.baseCount)]++;
     for (let row = 0; row < MATRIX_ROWS - 1; row++) col[row] = col[row + 1];
     col[MATRIX_ROWS - 1] = plate;
   }
+}
+
+/**
+ * Checks the ONE new adjacency an insert creates (mechanics.md §4.5) and
+ * applies its effect to `next` in place. `newRow` holds the just-inserted
+ * plate, `neighborRow` holds whatever now sits beside it (may be out of
+ * range or empty, in which case no pair can form). `newIsUpper` says whether
+ * the new plate is the physically-upper cell of the ordered pair (upper =
+ * smaller row index). Returns the AP bonus (0 or 1 — only Discharge grants
+ * one); Dampening/Anchor mutate `next`'s flags directly instead, since they
+ * apply to a future action, not this one. Clarity (MOD→STAB) and any
+ * already-existing pair elsewhere in the column are deliberately not
+ * evaluated here — see the SState comment and SPRINT_026's sprint doc.
+ */
+function evaluateInsertResonance(
+  next: SState, colIdx: 0 | 1, newRow: number, neighborRow: number, newIsUpper: boolean,
+): number {
+  if (neighborRow < 0 || neighborRow >= MATRIX_ROWS) return 0;
+  const newCell      = next.matrix[colIdx][newRow];
+  const neighborCell = next.matrix[colIdx][neighborRow];
+  if (!newCell || !neighborCell) return 0;
+
+  const upperBase = newIsUpper ? newCell.base : neighborCell.base;
+  const lowerBase = newIsUpper ? neighborCell.base : newCell.base;
+  if (upperBase === ConduitBase.NONE || lowerBase === ConduitBase.NONE) return 0;
+
+  if (upperBase === ConduitBase.EX && lowerBase === ConduitBase.IN) return 1; // Discharge: +1 AP
+  if (upperBase === ConduitBase.IN && lowerBase === ConduitBase.EX) { next.dampeningActive = true; return 0; }
+  if (upperBase === ConduitBase.STAB && lowerBase === ConduitBase.MOD) { next.anchorActive = true; return 0; }
+  return 0; // MOD→STAB (Clarity): information-only, no cost/solvability effect to model
 }
 
 // Re-simulates the witness to count triggered unlock pairs.

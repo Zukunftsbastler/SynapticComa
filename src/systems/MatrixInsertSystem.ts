@@ -27,6 +27,7 @@ import type { InsertConduitMessage, MatrixStateUpdateMessage } from '@/network/m
 import { MATRIX_ROWS } from '@/constants';
 import { buildMatrixStatePayload } from './matrixStateHelpers';
 import { ConduitShape } from '@/types';
+import { resonanceState } from '@/state/ResonanceState';
 
 export function MatrixInsertSystem(world: IWorld, state: GameStateData): void {
   if (state.localPlayerId !== 0) return; // Host-only
@@ -37,13 +38,16 @@ export function MatrixInsertSystem(world: IWorld, state: GameStateData): void {
   );
 
   for (const input of insertInputs) {
-    if (state.apPool < 2) continue;
+    // Anchor resonance (mechanics.md §4.5): the next Insert costs 1 AP, not 2.
+    const cost = resonanceState.anchorActive ? 1 : 2;
+    if (state.apPool < cost) continue;
 
     const pid = input.senderId;
     const playerInventory = pid === 0 ? inventory.player0 : inventory.player1;
 
     const invIdx = playerInventory.findIndex(c => c.entityId === input.sourceEntityId);
     if (invIdx === -1) continue;
+    const insertedBase = playerInventory[invIdx].base ?? 0;
 
     // Collect all conduit entities in the target column, sorted by row.
     const colEntities = conduitQuery(world)
@@ -57,6 +61,7 @@ export function MatrixInsertSystem(world: IWorld, state: GameStateData): void {
         scrapPool.plates.push({
           shape:    Conduit.shape[ejected] as ConduitShape,
           rotation: Conduit.rotation[ejected],
+          base:     Conduit.base[ejected],
         });
         removeEntity(world, ejected);
       }
@@ -66,7 +71,7 @@ export function MatrixInsertSystem(world: IWorld, state: GameStateData): void {
         MatrixNode.row[eid] = MatrixNode.row[eid] + 1;
       }
       // Insert new tile at row 0.
-      createConduitEntity(world, input.column, 0, input.shape, input.rotation);
+      createConduitEntity(world, input.column, 0, input.shape, input.rotation, insertedBase);
     } else {
       // Eject the tile at the boundary row (0) if it exists.
       const ejected = colEntities.find(eid => MatrixNode.row[eid] === 0);
@@ -74,6 +79,7 @@ export function MatrixInsertSystem(world: IWorld, state: GameStateData): void {
         scrapPool.plates.push({
           shape:    Conduit.shape[ejected] as ConduitShape,
           rotation: Conduit.rotation[ejected],
+          base:     Conduit.base[ejected],
         });
         removeEntity(world, ejected);
       }
@@ -83,11 +89,13 @@ export function MatrixInsertSystem(world: IWorld, state: GameStateData): void {
         MatrixNode.row[eid] = MatrixNode.row[eid] - 1;
       }
       // Insert new tile at the bottom row.
-      createConduitEntity(world, input.column, MATRIX_ROWS - 1, input.shape, input.rotation);
+      createConduitEntity(world, input.column, MATRIX_ROWS - 1, input.shape, input.rotation, insertedBase);
     }
 
     playerInventory.splice(invIdx, 1);
-    state.apPool -= 2;
+    state.apPool -= cost;
+    if (resonanceState.anchorActive) resonanceState.anchorActive = false;
+    resonanceState.mutatedThisTick = true;
 
     const update: MatrixStateUpdateMessage = {
       type: 'MATRIX_STATE_UPDATE',
@@ -107,6 +115,7 @@ function createConduitEntity(
   row: number,
   shape: number,
   rotation: number,
+  base: number,
 ): void {
   const eid = addEntity(world);
   addComponent(world, Conduit,    eid);
@@ -114,6 +123,7 @@ function createConduitEntity(
   Conduit.shape[eid]          = shape;
   Conduit.rotation[eid]       = rotation;
   Conduit.faceMask[eid]       = computeFaceMask(shape as ConduitShape, rotation);
+  Conduit.base[eid]           = base;
   MatrixNode.column[eid]      = column;
   MatrixNode.row[eid]         = row;
   MatrixNode.abilityType[eid] = 0;

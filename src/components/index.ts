@@ -10,7 +10,6 @@ export { Hazard }          from './Hazard';
 export { Lethal }          from './Lethal';
 export { Health }          from './Health';
 export { Resistances }     from './Resistances';
-export { Threshold }       from './Threshold';
 export { Collectible }     from './Collectible';
 export { Static }          from './Static';
 export { PhaseBarrier }    from './PhaseBarrier';
@@ -21,7 +20,6 @@ export { APUnlock }        from './APUnlock';
 export { FocusNode }       from './FocusNode';
 export { Fx }              from './Fx';
 export {
-  BoardFlipEvent,
   LevelCompleteEvent,
   AvatarDestroyedEvent,
   P1ExitedEvent,

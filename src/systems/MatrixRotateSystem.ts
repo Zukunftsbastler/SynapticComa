@@ -16,6 +16,7 @@ import type { GameStateData } from '@/state/GameState';
 import type { RotateConduitMessage, MatrixStateUpdateMessage } from '@/network/messages';
 import { buildMatrixStatePayload } from './matrixStateHelpers';
 import { ConduitShape } from '@/types';
+import { resonanceState } from '@/state/ResonanceState';
 
 export function MatrixRotateSystem(world: IWorld, state: GameStateData): void {
   if (state.localPlayerId !== 0) return; // Host-only
@@ -26,7 +27,9 @@ export function MatrixRotateSystem(world: IWorld, state: GameStateData): void {
   );
 
   for (const input of rotateInputs) {
-    if (state.apPool < 1) continue;
+    // Dampening resonance (mechanics.md §4.5): the next Rotate costs 0 AP.
+    const cost = resonanceState.dampeningActive ? 0 : 1;
+    if (state.apPool < cost) continue;
 
     const target = findMatrixConduit(world, input.column, input.row);
     if (target === -1) continue;
@@ -42,7 +45,9 @@ export function MatrixRotateSystem(world: IWorld, state: GameStateData): void {
       newRotation,
     );
 
-    state.apPool -= 1;
+    state.apPool -= cost;
+    if (resonanceState.dampeningActive) resonanceState.dampeningActive = false;
+    resonanceState.mutatedThisTick = true;
 
     const update: MatrixStateUpdateMessage = {
       type: 'MATRIX_STATE_UPDATE',

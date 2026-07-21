@@ -71,7 +71,6 @@ function boardItems(
     items.push({ swatch: hexSwatch(0x7A1010), label: 'Lethal — never enter; ⇈ jumps across' });
   }
   if (present.has(SpriteId.HAZARD_PHASE_BARRIER)) items.push({ swatch: hexSwatch(0x3A6A78), label: 'Phase barrier — open while ◈ is powered' });
-  if (present.has(SpriteId.THRESHOLD_HEX)) items.push({ swatch: hexSwatch(0xD8D8E8), label: 'Threshold — both stand + confirm: one-way flip' });
   if (present.has(SpriteId.CONDUIT_UNKNOWN)) {
     items.push({
       swatch: squareSwatch(0x2A1A2E, `<rect x="6" y="6" width="10" height="10" fill="#D8CCAA"/>`),

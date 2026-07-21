@@ -2,7 +2,7 @@
 // All level JSON files must conform to the LevelDef interface.
 
 export type EntityType =
-  | 'avatar' | 'exit' | 'threshold' | 'hazard'
+  | 'avatar' | 'exit' | 'hazard'
   | 'phase_barrier' | 'collectible' | 'wall' | 'pushable_block' | 'echo_tile';
 
 export interface AvatarDef {
@@ -19,12 +19,6 @@ export interface ExitDef {
   q: number; r: number; z: number;
   /** P2's exit starts locked (Static) until P1ExitedEvent fires. */
   initiallyLocked?: boolean;
-}
-
-export interface ThresholdDef {
-  type: 'threshold';
-  id: string;
-  q: number; r: number; z: number;
 }
 
 export interface HazardDef {
@@ -48,6 +42,14 @@ export interface CollectibleDef {
   shape: number;
   rotation: number;
   q: number; r: number; z: number;
+  /**
+   * Deliberately omitted from this def: floor collectibles never carry a
+   * Neuro-Resonance base (mechanics.md §4.5) — scoped out in SPRINT_026 to
+   * keep the collection/network pipeline (CollectedMessage, InventoryState)
+   * untouched. A plate picked up from the hex grid always enters inventory
+   * as `base: NONE`. Only plates defined directly in JSON (matrix conduits,
+   * starting inventory, Scrap Pool) can carry a base.
+   */
 }
 
 export interface WallDef {
@@ -83,7 +85,7 @@ export interface EchoTileDef {
 }
 
 export type EntityDef =
-  | AvatarDef | ExitDef | ThresholdDef | HazardDef
+  | AvatarDef | ExitDef | HazardDef
   | PhaseBarrierDef | CollectibleDef | WallDef | PushableBlockDef | EchoTileDef;
 
 export interface MatrixNodeDef {
@@ -103,23 +105,33 @@ export interface MatrixNodeDef {
   restrictedTo?: 0 | 1;
 }
 
+/**
+ * Neuro-Resonance base (mechanics.md §4.5): BaseType enum value —
+ * 0=NONE, 1=EX, 2=IN, 3=MOD, 4=STAB. Omitted (the default for every plate
+ * before SPRINT_026) means NONE — a plate with no base can never form a
+ * resonance pair, exactly reproducing pre-SPRINT_026 behavior. All 25
+ * existing levels omit this field on every plate.
+ */
 export interface MatrixConduitDef {
   id: string;
   column: 2 | 4;
   row: number;
   shape: number;
   rotation: number;
+  base?: number;
 }
 
 export interface InventoryConduitDef {
   entityId: string;
   shape: number;
   rotation: number;
+  base?: number;
 }
 
 export interface ScrapPlateDef {
   shape: number;
   rotation: number;
+  base?: number;
 }
 
 /**
@@ -164,7 +176,6 @@ export interface LevelDef {
   focusVaultNodes?: FocusVaultNodeDef[];
   /** Hex-grid radius per dimension (default 3). Movement is bounded to it. */
   gridRadius?: number;
-  thresholdEnabled: boolean;
   initialInventory: {
     player0: InventoryConduitDef[];
     player1: InventoryConduitDef[];

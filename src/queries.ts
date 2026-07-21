@@ -8,9 +8,9 @@ import {
   MatrixNode, Conduit,
   Collectible, Hazard, Lethal,
   Health, Resistances,
-  Threshold, Static, PhaseBarrier,
+  Static, PhaseBarrier,
   Exit,
-  BoardFlipEvent, LevelCompleteEvent, AvatarDestroyedEvent, P1ExitedEvent,
+  LevelCompleteEvent, AvatarDestroyedEvent, P1ExitedEvent,
   APPool, APUnlock, Fx, FocusNode, EchoTile,
 } from '@/components';
 
@@ -21,7 +21,6 @@ export const conduitQuery       = defineQuery([Conduit, MatrixNode]);
 export const movableAvatarQuery = defineQuery([Avatar, Position, Movable]);
 export const collectibleQuery   = defineQuery([Collectible, Position, Dimension]);
 export const hazardQuery        = defineQuery([Hazard, Position, Dimension]);
-export const thresholdQuery     = defineQuery([Threshold, Position]);
 export const staticQuery        = defineQuery([Static, Position]);
 export const exitQuery          = defineQuery([Exit, Position]);
 export const apPoolQuery        = defineQuery([APPool]);
@@ -36,7 +35,6 @@ export const healthQuery         = defineQuery([Health]);
 export const phaseBarrierQuery   = defineQuery([PhaseBarrier, Position]);
 
 // Event entity queries — used by LevelTransitionSystem to consume and destroy events.
-export const boardFlipQuery         = defineQuery([BoardFlipEvent]);
 export const levelCompleteQuery     = defineQuery([LevelCompleteEvent]);
 export const avatarDestroyedQuery   = defineQuery([AvatarDestroyedEvent]);
 export const p1ExitedQuery          = defineQuery([P1ExitedEvent]);

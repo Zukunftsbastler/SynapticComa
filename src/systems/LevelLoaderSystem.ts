@@ -26,7 +26,7 @@ import { GameState } from '@/state/GameState';
 import { createAvatar } from '@/entities/PlayerFactory';
 import { createHazard, createPhaseBarrier, createPushableBlock, createEchoTile } from '@/entities/HazardFactory';
 import { createCollectible } from '@/entities/ConduitFactory';
-import { createExit, createThreshold, createWall } from '@/entities/ExitFactory';
+import { createExit, createWall } from '@/entities/ExitFactory';
 import {
   createSourceNodes, createAbilityNode, createMatrixConduit,
 } from '@/entities/MatrixNodeFactory';
@@ -34,6 +34,7 @@ import { createApUnlockPair } from '@/entities/ApUnlockFactory';
 import { createFocusVaultPair } from '@/entities/FocusVaultFactory';
 import { focusVaults, clearFocusVaults } from '@/state/FocusVaultState';
 import { resetEchoTileState } from '@/systems/EchoTileSystem';
+import { clearResonanceState } from '@/state/ResonanceState';
 import type { LevelDef, EntityDef } from '@/levels/LevelSchema';
 import type { ConduitShape } from '@/types';
 
@@ -65,13 +66,13 @@ const LEVEL_MODULES: Record<string, () => Promise<{ default: unknown }>> = {
   level_23: () => import('@/levels/level_23.json'),
   level_24: () => import('@/levels/level_24.json'),
   level_25: () => import('@/levels/level_25.json'),
+  level_26: () => import('@/levels/level_26.json'),
 };
 
 function dispatchEntityFactory(world: IWorld, def: EntityDef): void {
   switch (def.type) {
     case 'avatar':        createAvatar(world, def);         break;
     case 'exit':          createExit(world, def);           break;
-    case 'threshold':     createThreshold(world, def);      break;
     case 'hazard':        createHazard(world, def);         break;
     case 'phase_barrier': createPhaseBarrier(world, def);   break;
     case 'collectible':   createCollectible(world, def);    break;
@@ -155,17 +156,20 @@ function populateWorld(world: IWorld, def: LevelDef): void {
     entityId: c.entityId,
     shape:    c.shape as ConduitShape,
     rotation: c.rotation,
+    base:     c.base ?? 0,
   }));
   inventory.player1 = def.initialInventory.player1.map(c => ({
     entityId: c.entityId,
     shape:    c.shape as ConduitShape,
     rotation: c.rotation,
+    base:     c.base ?? 0,
   }));
 
   // Populate scrap pool.
   scrapPool.plates = def.scrapPool.map(p => ({
     shape:    p.shape as ConduitShape,
     rotation: p.rotation,
+    base:     p.base ?? 0,
   }));
 }
 
@@ -186,13 +190,13 @@ export async function loadLevel(currentWorld: IWorld, levelId: string): Promise<
   clearAnimationState();
   clearFocusVaults();
   resetEchoTileState();
+  clearResonanceState();
   resetGameState({
     localPlayerId:    GameState.localPlayerId, // preserve networking identity
     viewPlayerId:     GameState.viewPlayerId,  // preserve local-mode view toggle
     revealBothDims:   GameState.revealBothDims,
     currentLevel:     levelId,
     currentLevelName: def.name,
-    thresholdEnabled: def.thresholdEnabled,
     phase:            'PLAYING',
   });
 

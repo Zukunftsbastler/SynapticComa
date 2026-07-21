@@ -27,7 +27,7 @@ The ultimate goal is to navigate both avatars to their designated Nexus Hexes (e
 | Trigger Shared Unlock (both players on node) | Either | +AP gained | `APUnlockSystem` |
 | Open a Focus Vault (both players on node, see §5.7) | Hex Grid | −AP spent (optional, never required) | `FocusVaultSystem` |
 | Push an Impulse Block (see §5.2) | Hex Grid | 1 | `PushSystem` |
-| Neuro-Resonance (specified, not yet implemented — see §4.5) | DNA Matrix | 0 — passive; may grant AP or discounts | *(none yet)* |
+| Neuro-Resonance (implemented SPRINT_026 — see §4.5) | DNA Matrix | 0 — passive; may grant AP or discounts | `ResonanceSystem` |
 
 **Key rule:** AP is a finite resource that shrinks with use and only grows through cooperation. Shared Unlock nodes are the sole mechanism for gaining AP. When AP reaches 0, the game does not reset — it pauses in a Dead End state and allows a manual restart. There is no round, no turn, and no Pass action.
 
@@ -89,9 +89,9 @@ When a conduit is ejected from a matrix column, it is placed **face-down** in a 
 | Cross (+) | Four openings, all directions | `0b1111` | Powerful wildcard; rare in levels |
 | Splitter (Y) | Three openings, asymmetric | `0b1110` (S+W+N) | Acts as a non-standard T-junction |
 
-### 4.5 Neuro-Resonance: Ordered Base Pairing (specified, not yet implemented)
+### 4.5 Neuro-Resonance: Ordered Base Pairing (implemented SPRINT_026)
 
-> **Status (SPRINT_019 audit):** this section is a complete design specification — no code implements it yet. `Conduit` has no `base` field, level JSON has no way to set one, and there is no `ResonanceSystem`. Formally deferred rather than silently half-true; see `mechanic_roadmap.md` F1. Build or drop before any campaign row claims it again.
+> **Status (SPRINT_026):** Implemented, scoped down like D14 was — Till decided alone (governance tension flagged per `decisions_needed.md`'s own rule; Andreas/Chris sign-off outstanding). `Conduit.base` defaults to `NONE` on every plate that predates this sprint, so all 25 existing levels are unaffected. Two deliberate simplifications versus the original spec below, both disclosed in `SPRINTS/SPRINT_026-...md`: (1) floor collectibles (picked up from the Hex Grid) never carry a base — only plates defined directly in level JSON (pre-placed matrix conduits, starting inventory, Scrap Pool) can; (2) the solver models Discharge/Dampening/Anchor (they affect AP cost) but not Clarity (information-only) or pairs pre-formed at level load (no shipped level uses either). Campaign demonstration: level 26 "First Spark".
 
 Every Conduit Plate carries, in addition to its pipe shape, a **neurotransmitter glyph** (its "base") etched into one corner. There are four bases, each with a distinct language-agnostic icon and color:
 
@@ -114,10 +114,9 @@ Every Conduit Plate carries, in addition to its pipe shape, a **neurotransmitter
 All other combinations produce no effect.
 
 **Trigger rules:**
-* A Resonance fires **once, at the moment the pair is formed** by an Insert (column slide) or by loading the level.
-* Re-forming the *same* pair between the *same two plates* does not re-trigger it. Breaking the pair (a slide separates the plates or ejects one) re-arms the slot: a **new** pair formed there triggers normally.
-* Resonances are evaluated by `ResonanceSystem` after every matrix mutation, before routing effects are applied.
-* Rotation never changes a plate's base — the base is a property of the plate, not of its orientation.
+* A Resonance fires **once, at the moment the pair is formed** by an Insert (column slide). As shipped, pairs pre-formed at level load are not evaluated (no level uses that configuration yet — see the status note above).
+* `ResonanceSystem` re-scans both conduit columns every tick, but a pair is keyed by the exact identity of its two plates (their ECS entity ids), so re-scanning an unchanged pair is a no-op — it can only ever fire once for the same two physical plates, even if they separate and later happen to become re-adjacent. This is a deliberate simplification versus "breaking the pair re-arms the slot": in practice the AP economics already prevent farming (see the balance flag below), and re-forming the SAME two plates is a corner case no shipped level relies on.
+* Rotation never changes a plate's base, and never changes which plates are vertically adjacent — it cannot form or break a pair.
 
 **Design intent:** Every Insert is now a **two-layer decision** — it changes the routing topology *and* rewrites the vertical base sequence of the column. Since a slide moves every plate in the column, one action can simultaneously power an ability, break a pair, and form a new one. This is the "shared mutation" principle: no matrix action is ever local.
 

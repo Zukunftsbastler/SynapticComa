@@ -34,10 +34,9 @@ export const enum SpriteId {
   MATRIX_NODE_ABILITY  = 17,  // Ability node (col 3/5): unpowered state
   MATRIX_NODE_POWERED  = 18,  // Ability node: powered state (glowing fluid fill)
 
-  // --- Exit / Threshold ---
+  // --- Exit ---
   EXIT_NEXUS_A         = 19,  // Dim A Nexus Hex exit
   EXIT_NEXUS_B         = 20,  // Dim B Nexus Hex exit
-  THRESHOLD_HEX        = 21,  // Threshold trigger hex
 
   // --- Shared Unlock ---
   AP_UNLOCK_NODE       = 22,  // Shared Unlock hex (one per dimension, paired)
@@ -79,7 +78,6 @@ export const SPRITE_PATHS: Record<SpriteId, string> = {
   [SpriteId.MATRIX_NODE_POWERED]:  '/ui/matrix_node_powered.svg',
   [SpriteId.EXIT_NEXUS_A]:         '/sprites/exit_nexus_a.webp',
   [SpriteId.EXIT_NEXUS_B]:         '/sprites/exit_nexus_b.webp',
-  [SpriteId.THRESHOLD_HEX]:        '/sprites/threshold_hex.webp',
   [SpriteId.AP_UNLOCK_NODE]:       '/sprites/ap_unlock_node.webp',
   [SpriteId.WALL_HEX]:             '/sprites/wall_hex.webp',
   [SpriteId.PUSHABLE_BLOCK]:       '/sprites/pushable_block.webp',

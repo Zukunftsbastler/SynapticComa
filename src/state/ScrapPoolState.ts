@@ -3,6 +3,8 @@ import { ConduitShape } from '@/types';
 export interface ScrapPlate {
   shape:    ConduitShape;
   rotation: number; // 0–3; stored but hidden from render until drawn
+  /** Neuro-Resonance base (mechanics.md §4.5); omitted = ConduitBase.NONE. */
+  base?:    number;
 }
 
 // Shared Scrap Pool — ejected conduits go face-down here.

@@ -2,20 +2,13 @@
 // side-effects; event entity cleanup is safe on both peers since event entities
 // will simply be absent on the Guest's world).
 //
-// Consumes all four event entity types in a single pass:
-//   BoardFlipEvent      — executes board-flip transition effect
+// Consumes all three event entity types in a single pass:
 //   AvatarDestroyedEvent — increments failureCount; triggers level restart logic
 //   P1ExitedEvent       — removes Static from P2's exit hex (activates it)
 //   LevelCompleteEvent  — sets phase = 'LEVEL_COMPLETE'
 //
 // After handling effects each event entity is destroyed with removeEntity so it
 // cannot re-trigger its effect in a future tick.
-//
-// Board-flip effect (stub for Sprint 8 — full level-reload in Sprint 9):
-//   The logical effect is that the two hex-grid dimensions swap active hazard
-//   configurations. In Sprint 8 this logs the event and resets the round so the
-//   game loop continues cleanly. Sprint 9's LevelLoaderSystem will handle the
-//   full re-population when level reload is wired.
 
 import type { IWorld } from 'bitecs';
 import { removeEntity, hasComponent, removeComponent } from 'bitecs';
@@ -23,7 +16,6 @@ import {
   Exit, Static, Dimension,
 } from '@/components';
 import {
-  boardFlipQuery,
   levelCompleteQuery,
   avatarDestroyedQuery,
   p1ExitedQuery,
@@ -46,13 +38,6 @@ function broadcastPhase(state: GameStateData): void {
 }
 
 export function LevelTransitionSystem(world: IWorld, state: GameStateData): void {
-  // ── BoardFlipEvent ─────────────────────────────────────────────────────────
-  const flips = boardFlipQuery(world);
-  if (flips.length > 0) {
-    executeBoardFlip(state);
-    for (let i = 0; i < flips.length; i++) removeEntity(world, flips[i]);
-  }
-
   // ── AvatarDestroyedEvent ───────────────────────────────────────────────────
   const destroyed = avatarDestroyedQuery(world);
   if (destroyed.length > 0) {
@@ -85,13 +70,6 @@ export function LevelTransitionSystem(world: IWorld, state: GameStateData): void
 }
 
 // ── Effect helpers ────────────────────────────────────────────────────────────
-
-function executeBoardFlip(_state: GameStateData): void {
-  // Full board-flip effect (hazard swap, dimension transition) implemented in
-  // Sprint 9 when level JSON is available. The Matrix and AP pool persist
-  // across the flip (level_design.md §4.2).
-  console.debug('[LevelTransitionSystem] Board flip.');
-}
 
 function executeAvatarDestroyed(state: GameStateData): void {
   // Level failure. Increment failure counter and pause the simulation; the

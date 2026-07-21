@@ -13,13 +13,14 @@
 > | D5 | **Standard: one required unlock per level; zero- and multi-unlock levels allowed** as explicit difficulty tools. Generated levels choose per difficulty tier. 🔢 |
 > | D6 | **Option B — variable per node**, defined in the level JSON (`apUnlockNodes[].value`). 🔢 |
 > | D7 | **Option C** — levels 1–5 are always Dead-End-free; from level 6 on, deliberate Dead Ends are a legitimate design tool. The solver's `deadEndDistance` metric enforces fairness. |
-> | D8 | **Option B** — a Ready button appears when the avatar stands on the threshold hex; the Monitor tutorial highlights it on first encounter. |
+> | D8 | ~~Option B — a Ready button...~~ **Moot — Threshold cut (SPRINT_026)**; see the D8 section below. |
 > | D9 | **Option A** — voice chat is assumed and permitted; communication rules apply as an honor system. |
 > | D10 | Levels 3 and 10 redefined (see campaign table, `level_design.md §5`); full campaign gets a solver validation pass in Sprint 14. 🔢 |
 > | D11 | **Decided.** `initialAP` + `apUnlockNodes` replace `apPerRound`; conduits gain a `base` field. Schema in `digital_implementation.md §5.4`. |
 > | D12 | **Option B** — the physical version is a reference design, not a shipped product. Generative levels and the Monitor overlay are digital-only; `architecture.md` keeps physical notes as explanatory analogies. |
 > | D13 | Panels after levels 1, 3, 5, 8, 11 and 15 (arc: onset → reactivation → confrontation → emergence). Andreas leads panel concepts. |
 > | D14 | **Option C, scoped down** (SPRINT_024, 2026-07-21) — see the D14 section below for the full resolution note and why this departs from the normal three-way sign-off. |
+> | D15 | **Resonance built (scoped down), Threshold cut** (SPRINT_026, 2026-07-21) — see the D15 section below. |
 >
 > The original questions are preserved below for context and for Chris's review.
 
@@ -42,6 +43,22 @@ Option A is the strongest narrative fit and forces the desired dialogue but requ
 
 **Relevant files:** `docs/mechanics.md §3/§5.6`, `docs/narrative.md §2`, `SPRINTS/SPRINT_013`
 **Owner:** all three — this reshapes the core loop. 🔢 Chris: any option changes the AP economy; the solver can re-verify all 15 levels per variant.
+
+---
+
+## D15 — Neuro-Resonance and Threshold's Fate: Build or Cut? *(Resolved 2026-07-21, SPRINT_026 — see note)*
+
+> **Resolution note:** The 5th and final item of Till's roadmap-priority punch list (`roadmap.md` §6). `roadmap.md` §2 had flagged this as "'deferred' is not a decision... either answer is fine, 'still deciding' three sprints running is the actual problem," and per this document's own three-way consensus rule that call belongs to all three. Till, informed of that, chose to decide alone — the same authorization pattern as D14 (SPRINT_024). The two mechanics were split, since they warranted opposite calls:
+>
+> - **Neuro-Resonance: built**, scoped down the same way D14 was. The full spec (`mechanics.md §4.5`) applies to ANY two vertically-adjacent based plates — unlike every other mechanic added this session, that is not naturally opt-in, so a naive implementation would have needed re-balancing all 25 existing levels' AP economy. The shipped version adds `Conduit.base` defaulting to `NONE`, which can never form a pair — every existing plate is unaffected, provably (`validate:levels` re-proves all 25 levels byte-identical). Two further scope cuts, both disclosed: floor collectibles never carry a base (only plates defined directly in level JSON can), and the solver models the three AP-cost-relevant effects (Discharge, Dampening, Anchor) but not Clarity (information-only, like Focus Vault/Echo Tile's existing "can't be load-bearing" pattern) or pairs pre-formed at level load. First demonstrated in level 26, "First Spark."
+> - **Threshold: cut**, formally. It had been a functionless stub since Sprint 8 — trigger detection (`ThresholdSystem`) worked, but the board-flip effect itself was never more than a `console.debug`, and SPRINT_013 had already stripped every threshold hex from the shipped campaign with no arc ever assigned to replace it. Building it for real would need a new alt-hex-layout schema and multi-phase solver support, a bigger lift than fits one item of a five-item sprint list. All of its code — `Threshold`, `ThresholdSystem`, `BoardFlipEvent`, `ThresholdReadyMessage`, `GameState.thresholdEnabled`/`thresholdState` — is now deleted, not just marked deprecated (`architecture.md §5.2`).
+>
+> Full detail: `mechanics.md §4.5`, `SPRINTS/SPRINT_026`. **Andreas and Chris have not signed off on either half of this** — flagged here for their review, same as D14.
+
+**Relevant files:** `docs/mechanics.md §4.5`, `docs/architecture.md §5.2`, `docs/roadmap.md §2/§6`, `docs/mechanic_roadmap.md` F1/F2
+**Owner:** all three — Resonance changes the AP economy (🔢 Chris should review the Discharge/Anchor/Dampening balance now that it's real, same flag mechanics.md §4.5 already carried); Threshold's removal deletes a mechanic Andreas's original concept helped inspire (D1).
+
+---
 
 **Purpose:** This document lists every foundational game design question that is currently unresolved, inconsistent, or not yet agreed upon by all contributors. Nothing moves to implementation until all three contributors have signed off on every item here.
 
@@ -207,9 +224,11 @@ This distinction changes how levels are designed, playtested, and validated.
 
 ---
 
-### D8 — The Threshold Mechanic: UI for "Confirm Ready"
+### D8 — The Threshold Mechanic: UI for "Confirm Ready" *(Moot — Threshold cut, SPRINT_026)*
 
-**Current assumption:** `ThresholdSystem` requires both avatars on their threshold hexes AND `GameState.thresholdState.p1Ready && p2Ready` to be true before firing `BoardFlipEvent`. The "Ready" toggle is mentioned in the system but the UI for setting it is undefined.
+> **Resolution note:** Raised alongside the Resonance/Threshold "build or drop" call (`roadmap.md` §2/§6), which Till — per the same authorization pattern as D14 (SPRINT_024) — chose to decide alone. Threshold had been a functionless stub since Sprint 8 (trigger detection worked; the actual board-flip effect was never more than a `console.debug`) and SPRINT_013 had already stripped it from every shipped level. Rather than design this UI for a mechanic with no assigned campaign arc, SPRINT_026 removed Threshold entirely — `ThresholdSystem`, the `Threshold` component, `BoardFlipEvent`, `ThresholdReadyMessage`, and `GameState.thresholdEnabled`/`thresholdState` are all gone from the codebase (`architecture.md §5.2`). This question no longer applies. Andreas/Chris have not signed off; flagged for their review like D14.
+
+**Current assumption (historical, pre-SPRINT_026):** `ThresholdSystem` requires both avatars on their threshold hexes AND `GameState.thresholdState.p1Ready && p2Ready` to be true before firing `BoardFlipEvent`. The "Ready" toggle is mentioned in the system but the UI for setting it is undefined.
 
 **The question:** How does a player set their `p*Ready` flag?
 - **(A)** A dedicated key press (e.g., `Enter` while standing on the threshold hex)
