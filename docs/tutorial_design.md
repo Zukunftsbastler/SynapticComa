@@ -1,5 +1,7 @@
 # Tutorial System: The Monitor
 
+> **Status (SPRINT_023 audit, `docs/roadmap.md` §0):** §§2–5 below describe a 5-file architecture (`concepts.ts`, `TutorialState.ts`, `TutorialTriggerSystem.ts`, `TutorialDirector.ts`, `TutorialOverlay.ts`) with a 14-concept registry, a dedicated ECS trigger system, dim/frame/arrow presentation, and a scripted Level-1 "Calibration" guided intro. **Only 2 of the 5 files exist** (`TutorialState.ts` and a simpler, unspecced `TutorialPopups.ts` in place of the other three) and the guided intro was never built. What's shipped works — 10 concepts get a first-encounter CRT popup, following the pattern this doc's §4.1 describes for triggers, just without the generic registry or the dim/frame/arrow staging — but it's a different, smaller system than what follows. Treat §§2–5 as the target design, not the current implementation; `src/tutorial/TutorialPopups.ts`'s own header comment is the accurate source for what's live today.
+
 A modular, trigger-driven tutorial layer that detects when a player first encounters a game element that needs explanation and delivers that explanation **inside the game's fiction**, with precise visual guidance toward the relevant control.
 
 ---

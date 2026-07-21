@@ -18,6 +18,8 @@ Four separate times now, a system has turned out to be **fully specified in `doc
 
 None of these are secrets — SPRINT logs and `decisions_needed.md` reference most of them as "next planned" going back to SPRINT_007. But a doc that describes unbuilt work in the present tense reads as done, and that's precisely how the Resonance/Threshold-table confusion happened (SPRINT_019). **Recommendation before anything else below:** a single pass marking every doc section describing an unbuilt system with the same explicit status note used for Resonance now (`mechanics.md §4.5`'s "specified, not yet implemented" banner) — cheap, and it stops the pattern from recurring a fifth time.
 
+> **Status update (SPRINT_023):** Done — all five rows in the table above now carry an explicit status banner at their doc's relevant section (`tutorial_design.md`, `narrative.md §5`, `generative_levels.md` + its mirror in `level_design.md §6`; Resonance and Threshold were already marked in SPRINT_019/020). This closes the recommendation, not the underlying gaps — none of the five systems got any closer to existing, only more honestly described.
+
 ---
 
 ## 1. Foundational Gaps

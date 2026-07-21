@@ -87,6 +87,8 @@ To survive the Threshold, players must prepare the DNA Matrix *before* jumping.
 
 ## 6. Generative Levels (The Deep Coma)
 
+> **Status (SPRINT_023 audit):** this whole section describes an unbuilt feature — see `generative_levels.md`'s own status note. §6.1's contract (points 1, 3, 4) is already true in spirit for the hand-crafted campaign, since `validate:levels` enforces the same solver/fairness/difficulty discipline; §6.2's Deep Coma and Daily Synapse modes don't exist.
+
 Beyond the hand-crafted campaign, levels are **procedurally generated with a mathematical solvability guarantee**. The full technical specification lives in `generative_levels.md`; this section defines the design contract.
 
 ### 6.1 The Contract

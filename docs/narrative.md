@@ -34,6 +34,8 @@ The mid-game board flips (The Threshold mechanic) represent diving deeper into t
 
 ## 5. Narrative Delivery: Static Silent Cutscenes
 
+> **Status (SPRINT_023 audit, `docs/roadmap.md` §0):** this section is a complete design specification — no code implements it yet. There is no panel-display system, no cutscene player, and `public/cutscenes/` is empty. `decisions_needed.md` D13 already decided *which* levels get panels (1, 3, 5, 8, 11, 15) — the design question is answered; only the implementation and the actual artwork are outstanding.
+
 The game's story is delivered through **language-agnostic static illustration panels** — no text, no voice, no subtitles. This preserves the language-agnostic design principle at the narrative layer.
 
 ### 5.1 The Opening Sequence (Before Level 1)
@@ -45,7 +47,7 @@ Before the first level loads, three full-screen illustration panels play in sequ
 Players tap/click to advance panels. No button labels. The arrow icon is universal.
 
 ### 5.2 Between-Level Narrative Beats
-After completing specific levels, a single narrative panel appears (not every level). These panels show fragments of the patient's memories surfacing — a child's toy, a broken relationship, a moment of trauma — rendered as surrealist imagery bleeding between the two dimensions. The sequence of panels across all 15 MVP levels forms a complete arc: coma onset → neural reactivation → confrontation with trauma → emergence.
+After completing specific levels, a single narrative panel appears (not every level). These panels show fragments of the patient's memories surfacing — a child's toy, a broken relationship, a moment of trauma — rendered as surrealist imagery bleeding between the two dimensions. The sequence of panels across the original 15-level MVP forms a complete arc: coma onset → neural reactivation → confrontation with trauma → emergence. *(The campaign has since grown to 23 levels, SPRINT_017/020 — the panel schedule was never revisited for 16–23; a future pass should decide whether the arc extends or the epilogue simply lands earlier than the credits.)*
 
 ### 5.2b The Monitor (The One Voice Outside the Mind)
 

@@ -1,5 +1,7 @@
 # Generative Levels: Solver, Generator & Difficulty Model
 
+> **Status (SPRINT_023 audit, `docs/roadmap.md` §0):** the Solver (§2) and Difficulty Scorer (§4) are fully built and load-bearing — `LevelSolver.ts`, `DifficultyModel.ts`, and `WitnessReplay.ts` gate every level in the campaign via `validate:levels`. **The Generator (§3) does not exist.** `src/generation/` holds only those three files; there is no reverse-design pipeline, no "Deep Coma" endless mode, no "Daily Synapse." Despite the diagram below implying otherwise, only two of the three pipeline stages are real.
+
 This document specifies the procedural level pipeline. Design contract and player-facing rules live in `level_design.md §6`. Everything here is deterministic: **seed in → identical level out**, on every client, every time.
 
 ---
@@ -22,7 +24,7 @@ This document specifies the procedural level pipeline. Design contract and playe
 
 The generator proposes, the solver proves, the scorer accepts. A level that cannot be proven solvable, or whose score misses the target difficulty band, is repaired or rejected. Because generation is offline-fast (worst case a few hundred milliseconds), rejection sampling is acceptable.
 
-All three modules live in `src/generation/` and are **plain TypeScript, not ECS systems**. They operate on `LevelDef` data (the JSON schema) and a lightweight abstract game state — never on the live bitECS world.
+The Solver and Difficulty Scorer live in `src/generation/` and are **plain TypeScript, not ECS systems**; they operate on `LevelDef` data (the JSON schema) and a lightweight abstract game state — never on the live bitECS world. The Generator is unbuilt (see status note above) — this diagram describes the intended pipeline, not the current one.
 
 ---
 
@@ -98,7 +100,7 @@ The in-game Dead End check (`digital_implementation.md §7`) reuses the solver's
 
 ---
 
-## 3. The Generator (Reverse Design, Automated)
+## 3. The Generator (Reverse Design, Automated) — UNBUILT, see status note above
 
 The generator automates the human pipeline from `level_design.md §3` — it designs backward from the solution:
 
