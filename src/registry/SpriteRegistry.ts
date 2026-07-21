@@ -50,6 +50,9 @@ export const enum SpriteId {
 
   // --- Focus Vault (mechanic_roadmap.md #8) ---
   FOCUS_NODE             = 25,  // joint-focus hex; consumed AP opens a bonus vault
+
+  // --- Echo Tiles (mechanic_roadmap.md #3) ---
+  ECHO_TILE              = 26,  // thins the split; briefly reveals the far board
 }
 
 // Maps SpriteId to the public asset path.
@@ -81,4 +84,5 @@ export const SPRITE_PATHS: Record<SpriteId, string> = {
   [SpriteId.WALL_HEX]:             '/sprites/wall_hex.webp',
   [SpriteId.PUSHABLE_BLOCK]:       '/sprites/pushable_block.webp',
   [SpriteId.FOCUS_NODE]:           '/sprites/focus_node.webp',
+  [SpriteId.ECHO_TILE]:            '/sprites/echo_tile.webp',
 };

@@ -14,6 +14,7 @@ export { Threshold }       from './Threshold';
 export { Collectible }     from './Collectible';
 export { Static }          from './Static';
 export { PhaseBarrier }    from './PhaseBarrier';
+export { EchoTile }        from './EchoTile';
 export { Exit }            from './Exit';
 export { APPool }          from './APPool';
 export { APUnlock }        from './APUnlock';

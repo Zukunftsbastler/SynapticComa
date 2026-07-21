@@ -25,6 +25,7 @@ export const LEVEL_NAMES: Record<string, string> = {
   level_22: 'Clot',
   level_23: 'Second Thoughts',
   level_24: 'Crossed Wires',
+  level_25: 'Thin Place',
 };
 
 export const LEVEL_ORDER: string[] = [
@@ -52,4 +53,5 @@ export const LEVEL_ORDER: string[] = [
   'level_22',
   'level_23',
   'level_24',
+  'level_25',
 ];

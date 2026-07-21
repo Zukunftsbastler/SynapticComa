@@ -24,7 +24,7 @@ import { scrapPool } from '@/state/ScrapPoolState';
 import { resetGameState } from '@/state/GameState';
 import { GameState } from '@/state/GameState';
 import { createAvatar } from '@/entities/PlayerFactory';
-import { createHazard, createPhaseBarrier, createPushableBlock } from '@/entities/HazardFactory';
+import { createHazard, createPhaseBarrier, createPushableBlock, createEchoTile } from '@/entities/HazardFactory';
 import { createCollectible } from '@/entities/ConduitFactory';
 import { createExit, createThreshold, createWall } from '@/entities/ExitFactory';
 import {
@@ -33,6 +33,7 @@ import {
 import { createApUnlockPair } from '@/entities/ApUnlockFactory';
 import { createFocusVaultPair } from '@/entities/FocusVaultFactory';
 import { focusVaults, clearFocusVaults } from '@/state/FocusVaultState';
+import { resetEchoTileState } from '@/systems/EchoTileSystem';
 import type { LevelDef, EntityDef } from '@/levels/LevelSchema';
 import type { ConduitShape } from '@/types';
 
@@ -63,6 +64,7 @@ const LEVEL_MODULES: Record<string, () => Promise<{ default: unknown }>> = {
   level_22: () => import('@/levels/level_22.json'),
   level_23: () => import('@/levels/level_23.json'),
   level_24: () => import('@/levels/level_24.json'),
+  level_25: () => import('@/levels/level_25.json'),
 };
 
 function dispatchEntityFactory(world: IWorld, def: EntityDef): void {
@@ -75,6 +77,7 @@ function dispatchEntityFactory(world: IWorld, def: EntityDef): void {
     case 'collectible':   createCollectible(world, def);    break;
     case 'wall':          createWall(world, def);           break;
     case 'pushable_block': createPushableBlock(world, def); break;
+    case 'echo_tile':      createEchoTile(world, def);      break;
   }
 }
 
@@ -182,6 +185,7 @@ export async function loadLevel(currentWorld: IWorld, levelId: string): Promise<
   clearCollectionRegistry();
   clearAnimationState();
   clearFocusVaults();
+  resetEchoTileState();
   resetGameState({
     localPlayerId:    GameState.localPlayerId, // preserve networking identity
     viewPlayerId:     GameState.viewPlayerId,  // preserve local-mode view toggle

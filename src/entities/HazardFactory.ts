@@ -1,11 +1,11 @@
 import type { IWorld } from 'bitecs';
 import { addEntity, addComponent } from 'bitecs';
 import {
-  Position, Renderable, Dimension, Hazard, Lethal, Static, PhaseBarrier, Pushable,
+  Position, Renderable, Dimension, Hazard, Lethal, Static, PhaseBarrier, Pushable, EchoTile,
 } from '@/components';
 import { entityRegistry } from '@/registry/EntityRegistry';
 import { SpriteId } from '@/registry/SpriteRegistry';
-import type { HazardDef, PhaseBarrierDef, PushableBlockDef } from '@/levels/LevelSchema';
+import type { HazardDef, PhaseBarrierDef, PushableBlockDef, EchoTileDef } from '@/levels/LevelSchema';
 import { HazardType } from '@/types';
 
 // Sprite map per hazard type and dimension.
@@ -79,6 +79,27 @@ export function createPushableBlock(world: IWorld, def: PushableBlockDef): numbe
   Dimension.layer[eid]     = def.z;
   Pushable.canBePushed[eid] = 1;
   Renderable.spriteId[eid] = SpriteId.PUSHABLE_BLOCK;
+  Renderable.visible[eid]  = 1;
+  Renderable.dirty[eid]    = 1;
+
+  entityRegistry.register(def.id, eid);
+  return eid;
+}
+
+// Echo Tile (mechanic_roadmap.md #3): a pure rendering trigger, no Static, no
+// hazard behavior — an avatar walks over it exactly like empty floor.
+export function createEchoTile(world: IWorld, def: EchoTileDef): number {
+  const eid = addEntity(world);
+  addComponent(world, Position,   eid);
+  addComponent(world, Renderable, eid);
+  addComponent(world, Dimension,  eid);
+  addComponent(world, EchoTile,   eid);
+
+  Position.q[eid]   = def.q;
+  Position.r[eid]   = def.r;
+  Position.z[eid]   = def.z;
+  Dimension.layer[eid]    = def.z;
+  Renderable.spriteId[eid] = SpriteId.ECHO_TILE;
   Renderable.visible[eid]  = 1;
   Renderable.dirty[eid]    = 1;
 

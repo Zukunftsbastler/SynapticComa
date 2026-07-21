@@ -16,6 +16,7 @@ export enum ConceptId {
   PUSH          = 'PUSH',
   FOCUS_VAULT   = 'FOCUS_VAULT',
   ROLE_ASYMMETRY = 'ROLE_ASYMMETRY',
+  ECHO_TILE      = 'ECHO_TILE',
 }
 
 const seen = new Set<string>();

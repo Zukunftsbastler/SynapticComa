@@ -40,6 +40,7 @@ const ENTITY_COLORS: Partial<Record<SpriteId, number>> = {
   [SpriteId.WALL_HEX]:             0x3A3A42, // solid slate wall
   [SpriteId.PUSHABLE_BLOCK]:       0x5A4A32, // impulse block — mobile clot/logic-block
   [SpriteId.FOCUS_NODE]:           0x8A5AC9, // focus vault node — violet, distinct from unlock gold
+  [SpriteId.ECHO_TILE]:            0x3A6A6A, // echo tile — thin teal, "the split runs shallow here"
 };
 
 export function RenderSystem(world: IWorld, driver: PixiDriver, localPlayerId: 0 | 1): void {

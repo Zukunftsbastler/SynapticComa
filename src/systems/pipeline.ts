@@ -24,6 +24,7 @@ import { MatrixRotateSystem } from '@/systems/MatrixRotateSystem';
 import { ScrapPoolSystem } from '@/systems/ScrapPoolSystem';
 import { FxSystem } from '@/systems/FxSystem';
 import { LevelTransitionSystem } from '@/systems/LevelTransitionSystem';
+import { EchoTileSystem } from '@/systems/EchoTileSystem';
 
 export function runCoreSystems(w: IWorld, state: GameStateData): void {
   InputSystem(w, state);
@@ -44,4 +45,5 @@ export function runCoreSystems(w: IWorld, state: GameStateData): void {
   ScrapPoolSystem(w, state);
   FxSystem(w);
   LevelTransitionSystem(w, state);
+  EchoTileSystem(w, state); // local-only, read-only; see EchoTileSystem.ts
 }

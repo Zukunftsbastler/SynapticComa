@@ -3,7 +3,7 @@
 
 export type EntityType =
   | 'avatar' | 'exit' | 'threshold' | 'hazard'
-  | 'phase_barrier' | 'collectible' | 'wall' | 'pushable_block';
+  | 'phase_barrier' | 'collectible' | 'wall' | 'pushable_block' | 'echo_tile';
 
 export interface AvatarDef {
   type: 'avatar';
@@ -68,9 +68,23 @@ export interface PushableBlockDef {
   q: number; r: number; z: number;
 }
 
+/**
+ * Echo Tile (mechanic_roadmap.md #3): standing on this hex briefly reveals
+ * the far dimension's board layout (a temporary, purely local rendering
+ * effect — see EchoTileSystem.ts). No gameplay effect whatsoever; the
+ * solver has no awareness of this entity type at all, by design, exactly
+ * like Focus Vault (mechanic_roadmap.md #8) — an entity nothing in the
+ * required solution ever needs to touch cannot affect a solvability proof.
+ */
+export interface EchoTileDef {
+  type: 'echo_tile';
+  id: string;
+  q: number; r: number; z: number;
+}
+
 export type EntityDef =
   | AvatarDef | ExitDef | ThresholdDef | HazardDef
-  | PhaseBarrierDef | CollectibleDef | WallDef | PushableBlockDef;
+  | PhaseBarrierDef | CollectibleDef | WallDef | PushableBlockDef | EchoTileDef;
 
 export interface MatrixNodeDef {
   id: string;

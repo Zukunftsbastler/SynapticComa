@@ -238,5 +238,15 @@
     "coordinationSteps": 0,
     "drawSteps": 0,
     "matrixRequired": true
+  },
+  "level_25": {
+    "optimalCost": 10,
+    "apSlack": 6,
+    "difficulty": 3.35,
+    "minSwitches": 1,
+    "minSwitchesExact": true,
+    "coordinationSteps": 0,
+    "drawSteps": 0,
+    "matrixRequired": true
   }
 }

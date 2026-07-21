@@ -57,7 +57,7 @@ None of these are secrets — SPRINT logs and `decisions_needed.md` reference mo
 
 **Likely cheap** (probably solver-invisible or UI-only, following the Focus Vault pattern):
 - **Static Field** (#9) — a chat-suppression zone touches nothing about passability, hazards, or AP; purely a UI-layer restriction. Possibly the cheapest item on the entire original list of ten.
-- **Echo Tiles** (#3) — pure information display (a temporary rendering of the far board's layout); doesn't change what's reachable or costly, so the solver never needs to model it, same as Focus Vault.
+- ~~**Echo Tiles** (#3)~~ — **done, SPRINT_025** (level 25 "Thin Place"). Turned out cheaper than estimated: reused the existing `revealBothDims` local-testing flag instead of a new renderer.
 - **Short Circuit** (#7) — if shipped as a single scripted set-piece with generous AP margin around it (never the *only* path to solving), it can stay outside the solver's model entirely, same reasoning as Focus Vault.
 
 **Genuinely need solver work** (something about passability, cost, or timing changes):
@@ -88,5 +88,5 @@ In rough priority order, mixing urgency and low effort:
 1. **Guest-side network test pass** (§1) — highest silent-failure risk, and the tooling to test it headlessly already exists.
 2. **Mark every unbuilt-but-documented system explicitly** (§0) — an afternoon, prevents the next contributor from repeating the Resonance/Threshold confusion a fifth time.
 3. ~~**Resolve D14**~~ Done (SPRINT_024) — Andreas/Chris review still outstanding.
-4. **One more cheap mechanic** (§4: Static Field or Echo Tiles) — keeps content momentum without reopening the solver-extension cost of Push.
+4. ~~**One more cheap mechanic**~~ Done (SPRINT_025, Echo Tiles) — Static Field remains a candidate, though note it currently has no observable effect in-game: `ChatUI` is a complete, working class that's simply never instantiated in `main.ts` (found while scoping this item) — worth fixing before Static Field would be visible to anyone.
 5. **Decide Resonance and Threshold's fate** (§2) — build or formally cut; either answer is fine, "still deciding" three sprints running is the actual problem.

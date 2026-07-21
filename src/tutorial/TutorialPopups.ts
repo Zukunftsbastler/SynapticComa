@@ -12,7 +12,7 @@ import { GameState } from '@/state/GameState';
 import { world } from '@/gameLoop';
 import { inventory } from '@/state/InventoryState';
 import { scrapPool } from '@/state/ScrapPoolState';
-import { apUnlockQuery, matrixNodeQuery, conduitQuery, focusNodeQuery } from '@/queries';
+import { apUnlockQuery, matrixNodeQuery, conduitQuery, focusNodeQuery, echoTileQuery } from '@/queries';
 import { APUnlock, MatrixNode, FocusNode } from '@/components';
 import { AbilityType } from '@/types';
 import { ConceptId, hasSeen, markSeen } from './TutorialState';
@@ -203,6 +203,23 @@ const CONCEPTS: Concept[] = [
       `<b>partner's</b> hands, and the plate that powers <i>theirs</i> sits in ` +
       `yours. Routing for someone else is not a mistake — for a marked node, ` +
       `it's the only way either of you gets anywhere.`,
+  },
+  {
+    id: ConceptId.ECHO_TILE,
+    // Level-START briefing: fires the moment an Echo Tile exists in the
+    // level, regardless of proximity — so players know what the teal hex
+    // is BEFORE they step on it, matching the JUMP/PHASE/PUSH pattern.
+    trigger: () => echoTileQuery(world).length > 0,
+    title: 'A THIN PLACE IN THE SPLIT',
+    bodyHtml:
+      `The <b style="color:#3A6A6A">teal hex</b> is a thin place — where the ` +
+      `wall between minds runs shallow.<br><br>` +
+      `Stand on it and <b>both boards become briefly visible to you</b> — ` +
+      `their world's shape: walls, hazards, where they stand. Any of their ` +
+      `plates still lying on the floor stay face-down; what's in their ` +
+      `hands or the Scrap Pool never shows at all.<br><br>` +
+      `The reveal fades a few seconds after you step off. <b>Never required</b> ` +
+      `— a glimpse, not a shortcut.`,
   },
   {
     id: ConceptId.FOCUS_VAULT,
