@@ -12,6 +12,7 @@ import { hasComponent } from 'bitecs';
 import { Renderable, Dimension, Static, APUnlock, MatrixNode } from '@/components';
 import { renderableQuery, matrixNodeQuery } from '@/queries';
 import { SpriteId } from '@/registry/SpriteRegistry';
+import { ENTITY_LABELS, swatchFor } from '@/ui/legendLabels';
 
 // ── Swatch builders (inline SVG) ─────────────────────────────────────────────
 
@@ -55,22 +56,58 @@ function boardItems(
 ): LegendItem[] {
   const items: LegendItem[] = [];
   const wispColor = viewId === 0 ? 0x8B2FC9 : 0x3AAED8;
-  items.push({ swatch: circleSwatch(wispColor, true), label: 'You (ring = controlled)' });
+  const avatarSid = viewId === 0 ? SpriteId.AVATAR_P1 : SpriteId.AVATAR_P2;
+  items.push({ swatch: swatchFor(avatarSid, circleSwatch(wispColor, true)), label: 'You (ring = controlled)' });
+
+  // Locked-vs-open is instance state, not part of the sprite's fixed meaning —
+  // keep it a flat color swatch (no separate "locked" art variant exists yet)
+  // rather than reusing the sprite thumbnail for both states.
+  const exitSid = viewId === 0 ? SpriteId.EXIT_NEXUS_A : SpriteId.EXIT_NEXUS_B;
   items.push({
-    swatch: hexSwatch(exitLocked ? 0x14401E : 0x1E8A3C),
+    swatch: exitLocked ? hexSwatch(0x14401E) : swatchFor(exitSid, hexSwatch(0x1E8A3C)),
     label: exitLocked ? 'Your exit — opens after P1 exits' : 'Your exit — the goal',
   });
-  if (present.has(SpriteId.AP_UNLOCK_NODE)) {
-    items.push({ swatch: hexSwatch(0xC9A227), label: 'Shared Unlock — both wisps on it: +AP' });
+  // AP_UNLOCK_NODE/WALL_HEX/HAZARD_FIRE each have one sprite per dimension
+  // (styled as belonging to the OTHER world, for the unlock node — see
+  // SpriteRegistry.ts) — only one of the pair can ever be `present` for a
+  // given board view, so pick whichever one that is.
+  const unlockSid = present.has(SpriteId.AP_UNLOCK_NODE_A) ? SpriteId.AP_UNLOCK_NODE_A
+    : present.has(SpriteId.AP_UNLOCK_NODE_B) ? SpriteId.AP_UNLOCK_NODE_B : null;
+  if (unlockSid !== null) {
+    items.push({ swatch: swatchFor(unlockSid, hexSwatch(0xC9A227)), label: ENTITY_LABELS[unlockSid]! });
   }
-  if (present.has(SpriteId.WALL_HEX)) items.push({ swatch: hexSwatch(0x3A3A42), label: 'Wall' });
-  if (present.has(SpriteId.HAZARD_LOCKED_RED)) items.push({ swatch: hexSwatch(0x8B2430), label: 'Red door — open while R is powered' });
-  if (present.has(SpriteId.HAZARD_LOCKED_BLUE)) items.push({ swatch: hexSwatch(0x24478B), label: 'Blue door — open while B is powered' });
-  if (present.has(SpriteId.HAZARD_FIRE)) items.push({ swatch: hexSwatch(0xB0521A), label: 'Fire — lethal without ♨' });
+  const wallSid = present.has(SpriteId.WALL_HEX_A) ? SpriteId.WALL_HEX_A
+    : present.has(SpriteId.WALL_HEX_B) ? SpriteId.WALL_HEX_B : null;
+  if (wallSid !== null) {
+    items.push({ swatch: swatchFor(wallSid, hexSwatch(0x3A3A42)), label: ENTITY_LABELS[wallSid]! });
+  }
+  if (present.has(SpriteId.HAZARD_LOCKED_RED)) {
+    items.push({ swatch: swatchFor(SpriteId.HAZARD_LOCKED_RED, hexSwatch(0x8B2430)), label: ENTITY_LABELS[SpriteId.HAZARD_LOCKED_RED]! });
+  }
+  if (present.has(SpriteId.HAZARD_LOCKED_BLUE)) {
+    items.push({ swatch: swatchFor(SpriteId.HAZARD_LOCKED_BLUE, hexSwatch(0x24478B)), label: ENTITY_LABELS[SpriteId.HAZARD_LOCKED_BLUE]! });
+  }
+  const fireSid = present.has(SpriteId.HAZARD_FIRE_A) ? SpriteId.HAZARD_FIRE_A
+    : present.has(SpriteId.HAZARD_FIRE_B) ? SpriteId.HAZARD_FIRE_B : null;
+  if (fireSid !== null) {
+    items.push({ swatch: swatchFor(fireSid, hexSwatch(0xB0521A)), label: ENTITY_LABELS[fireSid]! });
+  }
   if (present.has(SpriteId.HAZARD_LETHAL_A) || present.has(SpriteId.HAZARD_LETHAL_B)) {
-    items.push({ swatch: hexSwatch(0x7A1010), label: 'Lethal — never enter; ⇈ jumps across' });
+    const sid = present.has(SpriteId.HAZARD_LETHAL_A) ? SpriteId.HAZARD_LETHAL_A : SpriteId.HAZARD_LETHAL_B;
+    items.push({ swatch: swatchFor(sid, hexSwatch(0x7A1010)), label: ENTITY_LABELS[sid]! });
   }
-  if (present.has(SpriteId.HAZARD_PHASE_BARRIER)) items.push({ swatch: hexSwatch(0x3A6A78), label: 'Phase barrier — open while ◈ is powered' });
+  if (present.has(SpriteId.HAZARD_PHASE_BARRIER)) {
+    items.push({ swatch: swatchFor(SpriteId.HAZARD_PHASE_BARRIER, hexSwatch(0x3A6A78)), label: ENTITY_LABELS[SpriteId.HAZARD_PHASE_BARRIER]! });
+  }
+  if (present.has(SpriteId.PUSHABLE_BLOCK)) {
+    items.push({ swatch: swatchFor(SpriteId.PUSHABLE_BLOCK, hexSwatch(0x5A4A32)), label: ENTITY_LABELS[SpriteId.PUSHABLE_BLOCK]! });
+  }
+  if (present.has(SpriteId.FOCUS_NODE)) {
+    items.push({ swatch: swatchFor(SpriteId.FOCUS_NODE, hexSwatch(0x8A5AC9)), label: ENTITY_LABELS[SpriteId.FOCUS_NODE]! });
+  }
+  if (present.has(SpriteId.ECHO_TILE)) {
+    items.push({ swatch: swatchFor(SpriteId.ECHO_TILE, hexSwatch(0x3A6A6A)), label: ENTITY_LABELS[SpriteId.ECHO_TILE]! });
+  }
   if (present.has(SpriteId.CONDUIT_UNKNOWN)) {
     items.push({
       swatch: squareSwatch(0x2A1A2E, `<rect x="6" y="6" width="10" height="10" fill="#D8CCAA"/>`),

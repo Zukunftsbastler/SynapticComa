@@ -21,6 +21,7 @@ The design documents in [`docs/`](docs/) are the **single source of truth** — 
 | Tutorial layer ("The Monitor") | [`docs/tutorial_design.md`](docs/tutorial_design.md) |
 | Story & dimensions | [`docs/narrative.md`](docs/narrative.md) |
 | Visual identity & UI | [`docs/art_and_ui.md`](docs/art_and_ui.md) |
+| Generative artwork pipeline (concept) | [`docs/art_pipeline_roadmap.md`](docs/art_pipeline_roadmap.md) |
 | Player communication rules | [`docs/communication_rules.md`](docs/communication_rules.md) |
 | Design decision record | [`docs/open_questions.md`](docs/open_questions.md), [`docs/decisions_needed.md`](docs/decisions_needed.md) |
 

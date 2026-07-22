@@ -18,7 +18,8 @@ export const enum SpriteId {
   HAZARD_LETHAL_B      = 5,   // Dim B lethal: sputtering electrical arcs (Firewall Laser)
   HAZARD_LOCKED_RED    = 6,   // Dim A locked door: fleshy sphincter / braided thorns
   HAZARD_LOCKED_BLUE   = 7,   // Dim B locked door: heavy rusted vault door / jammed puzzle-lock
-  HAZARD_FIRE          = 8,   // Fire hazard tile (organic, smoldering)
+  HAZARD_FIRE_A        = 8,   // Dim A: infected/inflamed wound — pus, heat, danger
+  HAZARD_FIRE_B        = 28,  // Dim B: glowing molten metal slag — overheated/short-circuited damage
   HAZARD_PHASE_BARRIER = 9,   // Phase barrier hex (passable only under Phase Shift)
 
   // --- Conduit Plates (Bakelite / clouded glass with etched pipe grooves) ---
@@ -39,10 +40,16 @@ export const enum SpriteId {
   EXIT_NEXUS_B         = 20,  // Dim B Nexus Hex exit
 
   // --- Shared Unlock ---
-  AP_UNLOCK_NODE       = 22,  // Shared Unlock hex (one per dimension, paired)
+  // Each half is deliberately styled as belonging to the OTHER dimension's
+  // material (Till's ask, 2026-07-23): "etwas aus der anderen Welt übergeben"
+  // — the bonus AP is narratively a gift crossing the gap between the two
+  // minds, so the object itself should look out of place on its own board.
+  AP_UNLOCK_NODE_A     = 22,  // Dim A hex: styled as a SUPEREGO artifact (steel/ceramic)
+  AP_UNLOCK_NODE_B     = 27,  // Dim B hex: styled as an ID artifact (bone/resin)
 
   // --- Walls ---
-  WALL_HEX             = 23,  // solid impassable hex
+  WALL_HEX_A           = 23,  // Dim A: a stacked pile of bone
+  WALL_HEX_B           = 29,  // Dim B: a stack of riveted steel plates
 
   // --- Impulse Blocks (mechanic_roadmap.md #2) ---
   PUSHABLE_BLOCK        = 24,  // movable clot/logic-block; solid until pushed
@@ -65,7 +72,8 @@ export const SPRITE_PATHS: Record<SpriteId, string> = {
   [SpriteId.HAZARD_LETHAL_B]:      '/sprites/hazard_lethal_b.webp',
   [SpriteId.HAZARD_LOCKED_RED]:    '/sprites/hazard_locked_red.webp',
   [SpriteId.HAZARD_LOCKED_BLUE]:   '/sprites/hazard_locked_blue.webp',
-  [SpriteId.HAZARD_FIRE]:          '/sprites/hazard_fire.webp',
+  [SpriteId.HAZARD_FIRE_A]:        '/sprites/hazard_fire_a.webp',
+  [SpriteId.HAZARD_FIRE_B]:        '/sprites/hazard_fire_b.webp',
   [SpriteId.HAZARD_PHASE_BARRIER]: '/sprites/hazard_phase_barrier.webp',
   [SpriteId.CONDUIT_STRAIGHT]:     '/ui/conduit_straight.svg',
   [SpriteId.CONDUIT_CURVED]:       '/ui/conduit_curved.svg',
@@ -78,8 +86,10 @@ export const SPRITE_PATHS: Record<SpriteId, string> = {
   [SpriteId.MATRIX_NODE_POWERED]:  '/ui/matrix_node_powered.svg',
   [SpriteId.EXIT_NEXUS_A]:         '/sprites/exit_nexus_a.webp',
   [SpriteId.EXIT_NEXUS_B]:         '/sprites/exit_nexus_b.webp',
-  [SpriteId.AP_UNLOCK_NODE]:       '/sprites/ap_unlock_node.webp',
-  [SpriteId.WALL_HEX]:             '/sprites/wall_hex.webp',
+  [SpriteId.AP_UNLOCK_NODE_A]:     '/sprites/ap_unlock_node_a.webp',
+  [SpriteId.AP_UNLOCK_NODE_B]:     '/sprites/ap_unlock_node_b.webp',
+  [SpriteId.WALL_HEX_A]:           '/sprites/wall_hex_a.webp',
+  [SpriteId.WALL_HEX_B]:           '/sprites/wall_hex_b.webp',
   [SpriteId.PUSHABLE_BLOCK]:       '/sprites/pushable_block.webp',
   [SpriteId.FOCUS_NODE]:           '/sprites/focus_node.webp',
   [SpriteId.ECHO_TILE]:            '/sprites/echo_tile.webp',

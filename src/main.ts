@@ -36,6 +36,7 @@ import { LevelCompleteScreen, NeuralCollapseScreen } from '@/ui/LevelCompleteScr
 import { LevelSelectScreen } from '@/ui/LevelSelectScreen';
 import { MonitorStrip } from '@/ui/MonitorStrip';
 import { LegendPanel } from '@/ui/LegendPanel';
+import { HoverTooltip } from '@/ui/HoverTooltip';
 import { TutorialPopups } from '@/tutorial/TutorialPopups';
 import { CANVAS_WIDTH, CANVAS_HEIGHT } from '@/constants';
 
@@ -126,6 +127,7 @@ function startSession(result: LobbyResult): void {
   const abilities = new AbilityPanel(document.body);
   const monitor   = new MonitorStrip(document.body, networked);
   const legend    = new LegendPanel(document.body);
+  const tooltip   = new HoverTooltip(document.body);
   const tutorials = new TutorialPopups(document.body);
   setUiHook(() => {
     // Local mode: when P1 dissolves into the Nexus, hand control to P2 so the
@@ -138,6 +140,7 @@ function startSession(result: LobbyResult): void {
     abilities.update();
     monitor.update();
     legend.update();
+    tooltip.update();
     tutorials.update();
     watchGamePhase();
   });

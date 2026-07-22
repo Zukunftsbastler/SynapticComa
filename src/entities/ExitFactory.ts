@@ -42,7 +42,7 @@ export function createWall(world: IWorld, def: WallDef): number {
   Position.r[eid] = def.r;
   Position.z[eid] = def.z;
   Dimension.layer[eid]     = def.z;
-  Renderable.spriteId[eid] = SpriteId.WALL_HEX;
+  Renderable.spriteId[eid] = def.z === 0 ? SpriteId.WALL_HEX_A : SpriteId.WALL_HEX_B;
   Renderable.visible[eid]  = 1;
   Renderable.dirty[eid]    = 1;
 

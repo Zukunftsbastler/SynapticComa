@@ -28,7 +28,9 @@ function createNode(
   APUnlock.id[eid]         = numericId;
   APUnlock.value[eid]      = value;
   APUnlock.triggered[eid]  = 0;
-  Renderable.spriteId[eid] = SpriteId.AP_UNLOCK_NODE;
+  // Styled as belonging to the OTHER dimension (SpriteRegistry.ts comment) —
+  // z is which board this half sits on, so the sprite is the opposite one.
+  Renderable.spriteId[eid] = z === 0 ? SpriteId.AP_UNLOCK_NODE_A : SpriteId.AP_UNLOCK_NODE_B;
   Renderable.visible[eid]  = 1;
   Renderable.layer[eid]    = 0; // floor-level marker; avatars render above it
   Renderable.dirty[eid]    = 1;

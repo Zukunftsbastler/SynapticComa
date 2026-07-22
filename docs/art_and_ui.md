@@ -53,8 +53,17 @@ To maintain the dark, immersive atmosphere, standard video game UI elements are 
 * **The Inventory:** A personal wooden rack sitting just at the edge of the spotlight. When an avatar collects a `???` conduit on the board, a physical tile slides into the wooden rack, flipping face-up to reveal its shape.
 * **Active Abilities:** When an ability is powered by the Matrix, a heavy brass indicator light next to the avatar's portrait mechanically snaps "ON," casting a warm, analogue glow.
 
-## 6. The Threshold (Board Flip Animation)
+## 6. The Threshold — cut (SPRINT_026)
+
+The Threshold mechanic was formally removed from the project in SPRINT_026 (`decisions_needed.md` D15, `architecture.md §5.2`). Do not generate art for a board-flip transition — there is no mechanic left to attach it to. Kept below for historical/design-record purposes only.
+
+<details>
+<summary>Original design text (historical)</summary>
+
+### The Threshold (Board Flip Animation)
 When the players trigger the Threshold to move deeper into the coma:
 1. The overhead "spotlight" snaps off, plunging the screen into total darkness.
 2. A sound like a massive, heavy slab of stone turning over grinds through the audio.
 3. The spotlight snaps back on with a loud electrical *BZZT*, revealing the completely new, flipped hex grid, with dust particles settling in the light shaft above the board.
+
+</details>

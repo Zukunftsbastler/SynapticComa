@@ -35,6 +35,7 @@ import { createFocusVaultPair } from '@/entities/FocusVaultFactory';
 import { focusVaults, clearFocusVaults } from '@/state/FocusVaultState';
 import { resetEchoTileState } from '@/systems/EchoTileSystem';
 import { clearResonanceState } from '@/state/ResonanceState';
+import { scatterDecals } from '@/state/DecalState';
 import type { LevelDef, EntityDef } from '@/levels/LevelSchema';
 import type { ConduitShape } from '@/types';
 
@@ -87,6 +88,7 @@ function populateWorld(world: IWorld, def: LevelDef): void {
   // to this radius (MovementSystem checks GameState.gridRadius).
   const radius = def.gridRadius ?? 3;
   GameState.gridRadius = radius;
+  scatterDecals(radius); // fresh random cosmetic scatter every load — see state/DecalState.ts
   for (const z of [0, 1] as const) {
     for (const { q, r } of hexesInRadius(radius)) {
       const eid = addEntity(world);

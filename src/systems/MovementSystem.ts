@@ -46,7 +46,10 @@ function pushableAt(world: IWorld, tq: number, tr: number, tz: number): number {
 // PhaseBarrier passability depends on phaseShiftActive flag.
 // The board boundary (GameState.gridRadius) is a hard wall — wisps never
 // leave the visible hex grid.
-function isHexPassable(world: IWorld, tq: number, tr: number, tz: number): boolean {
+// Exported so RenderSystem.ts can classify the hovered hex (valid step/jump
+// vs blocked) using the exact same rule MovementSystem itself validates
+// against — never a second, potentially-diverging copy of this logic.
+export function isHexPassable(world: IWorld, tq: number, tr: number, tz: number): boolean {
   if (hexDistance(0, 0, tq, tr) > GameState.gridRadius) return false;
 
   const statics = staticQuery(world);

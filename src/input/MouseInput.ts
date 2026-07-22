@@ -15,8 +15,29 @@ import { pixelToAxial, hexDistance } from '@/rendering/HexMath';
 import type { PixiDriver } from '@/rendering/PixiDriver';
 import type { MoveAvatarMessage } from '@/network/messages';
 import { HEX_SIZE } from '@/constants';
+import { uiState } from '@/ui/uiState';
 
 export function initMouseInput(driver: PixiDriver): void {
+  // Hover tracking — same coordinate mapping as the click handler below,
+  // read-only. Drives the hex border highlight (RenderSystem.ts) so tile
+  // boundaries stay legible against photographic floor art.
+  window.addEventListener('mousemove', (e: MouseEvent) => {
+    uiState.mouseClient = { x: e.clientX, y: e.clientY };
+    if (GameState.phase !== 'PLAYING') { uiState.hoveredHex = null; return; }
+
+    const avatarId = `avatar_p${GameState.viewPlayerId + 1}`;
+    if (!entityRegistry.has(avatarId)) { uiState.hoveredHex = null; return; }
+    const eid = entityRegistry.get(avatarId);
+
+    const z = Position.z[eid] as 0 | 1;
+    const origin = z === 0 ? driver.hexToScreenA(0, 0) : driver.hexToScreenB(0, 0);
+    const { q, r } = pixelToAxial(e.clientX - origin.x, e.clientY - origin.y, HEX_SIZE);
+
+    uiState.hoveredHex = hexDistance(0, 0, q, r) > GameState.gridRadius
+      ? null
+      : { q, r, z };
+  });
+
   window.addEventListener('click', (e: MouseEvent) => {
     if (GameState.phase !== 'PLAYING') return;
 

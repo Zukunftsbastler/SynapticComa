@@ -12,12 +12,23 @@
 // hoverInsert: which insert arrow the pointer is over while armed. Drives the
 // push preview (feedforward): ghost of the incoming plate at the entry row,
 // shift markers on every plate in the column, ejection warning at the far end.
+//
+// hoveredHex: which hex of the CONTROLLED avatar's own board the pointer is
+// currently over (same coordinate mapping as click-to-move, MouseInput.ts).
+// Drives the hex border highlight (RenderSystem.ts) so tile boundaries stay
+// legible against photographic floor art. Purely local, never networked.
+//
+// mouseClient: raw viewport (clientX/clientY) coords from the same mousemove
+// listener that computes hoveredHex — kept here too so HoverTooltip.ts can
+// position itself near the cursor without a second mousemove listener.
 
 export const uiState = {
   selectedSlot:    0,
   insertArmed:     false,
   pendingRotation: null as number | null,
   hoverInsert:     null as { col0: number; fromTop: boolean } | null,
+  hoveredHex:      null as { q: number; r: number; z: 0 | 1 } | null,
+  mouseClient:     null as { x: number; y: number } | null,
 };
 
 export function armInsert(slot: number): void {

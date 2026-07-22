@@ -29,8 +29,16 @@ The shared square board in the center of the table represents the patient's core
 * **The Abilities:** When a connection is made, a "Thought" is completed. For example, connecting a path to the "Phase Shift" icon represents the brain temporarily remembering how to be intangible or abstract, applying that rule to the avatars on the hex grid.
 * **The Bases (Neuro-Resonance):** Each synapse plate carries a neurotransmitter glyph — Glutamate, GABA, Dopamine, Serotonin. When two plates stack in the right order, the chemistry *fires*: a correct excitatory-over-inhibitory stack releases a surge of energy (AP), a stabilizing stack steadies the next action. The mind rewards well-formed chemistry — this is the thematic ground for the ordered base pairing in `mechanics.md §4.5`.
 
-## 4. The Threshold: Trauma Landmarks
+## 4. The Threshold: Trauma Landmarks — cut (SPRINT_026)
+
+The Threshold mechanic was formally removed from the project in SPRINT_026 (`decisions_needed.md` D15). No board-flip narrative beat exists to illustrate anymore — don't generate "Trauma Landmark" or board-flip artwork. Kept below for historical/design-record purposes only.
+
+<details>
+<summary>Original design text (historical)</summary>
+
 The mid-game board flips (The Threshold mechanic) represent diving deeper into the patient's subconscious. To progress, the fragments must push past "Trauma Landmarks"—core memories that caused the coma. Crossing a Threshold is a violent mental shift, instantly rewriting the landscape of both the Id and the Superego, which is why the Hex Grids must physically flip to the next phase of the puzzle.
+
+</details>
 
 ## 5. Narrative Delivery: Static Silent Cutscenes
 
@@ -53,8 +61,16 @@ After completing specific levels, a single narrative panel appears (not every le
 
 The single exception to the wordless world is **The Monitor** — the hospital's bedside machine observing the coma from outside. Its clinical, typed CRT annotations frame the story ("SUBJECT: COMATOSE. DAY 214. INITIATING DEEP STIMULATION.") and carry the entire tutorial layer (`tutorial_design.md`). The rule: *the mind is wordless; the machine watching it is not.* Game pieces and boards never show text; the Monitor overlay may.
 
-### 5.3 The Threshold Transition
+### 5.3 The Threshold Transition — cut (SPRINT_026)
+
+The Threshold mechanic was formally removed from the project in SPRINT_026 (`decisions_needed.md` D15). No board-flip transition exists to animate or illustrate. Kept below for historical/design-record purposes only.
+
+<details>
+<summary>Original design text (historical)</summary>
+
 Crossing a Threshold triggers a brief full-screen visual event: the two hex grids convulse, a shockwave of light pulses through the DNA Matrix, and the boards slam into their new configurations. No text. The violence of the transition communicates the narrative weight (a Trauma Landmark is being crossed) through pure visual and audio response.
+
+</details>
 
 ## 6. Language-Agnostic Translation
 Because the game uses no text, the psychological theme must be conveyed entirely through art and icons.

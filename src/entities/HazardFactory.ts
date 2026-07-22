@@ -13,7 +13,7 @@ function hazardSpriteId(hazardType: number, z: number): SpriteId {
   switch (hazardType) {
     case HazardType.LOCKED_RED:   return SpriteId.HAZARD_LOCKED_RED;
     case HazardType.LOCKED_BLUE:  return SpriteId.HAZARD_LOCKED_BLUE;
-    case HazardType.FIRE:         return SpriteId.HAZARD_FIRE;
+    case HazardType.FIRE:         return z === 0 ? SpriteId.HAZARD_FIRE_A : SpriteId.HAZARD_FIRE_B;
     case HazardType.LASER:        return z === 0 ? SpriteId.HAZARD_LETHAL_A : SpriteId.HAZARD_LETHAL_B;
     case HazardType.CHASM:
     default:                      return z === 0 ? SpriteId.HAZARD_LETHAL_A : SpriteId.HAZARD_LETHAL_B;
