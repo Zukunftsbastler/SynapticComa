@@ -64,19 +64,20 @@ const PULSE_AMPLITUDE  = 0.06;   // ±6% scale
 const BOB_PERIOD_MS    = 3400;
 const BOB_AMPLITUDE    = 0.16;   // fraction of HEX_SIZE the sprite rises
 
-// Ambient pulsing rings for "this tile is special" markers (AP unlock node,
-// Focus node) — Till's ask, 2026-07-22: "gelbe, konzentrische Ringe, die
-// nach und nach verblassen" (yellow concentric rings, gradually fading).
-// Also the answer to a broader complaint the same message raised: special
-// tiles looked like a "harter Bruch" from the regular floor because their
-// art used to bake the whole hex (see the sprite-regeneration note in
+// Ambient pulsing rings for "this tile is special" markers — originally
+// used for both AP unlock node and Focus node (Till's ask, 2026-07-22:
+// "gelbe, konzentrische Ringe, die nach und nach verblassen"). Also the
+// answer to a broader complaint the same message raised: special tiles
+// looked like a "harter Bruch" from the regular floor because their art
+// used to bake the whole hex (see the sprite-regeneration note in
 // docs/art_pipeline_roadmap.md) — the glow is now a real-time effect layered
 // over an ordinary floor tile + a small transparent-background icon, rather
 // than baked into the icon art itself, so it can't reintroduce a hard edge.
+// AP unlock node moved OFF this effect 2026-07-23 (see pushGroundedGlow
+// below) — Focus node still uses it.
 const NODE_RING_PERIOD_MS         = 1600;
 const NODE_RING_MAX_RADIUS_FACTOR = 0.9; // × HEX_SIZE
-const NODE_RING_GOLD              = 0xFFD84A; // AP unlock node
-const NODE_RING_VIOLET            = 0xC79CFF; // Focus node — matches its own violet, not unlock's gold
+const NODE_RING_VIOLET            = 0xC79CFF; // Focus node
 
 /** Three staggered expanding-and-fading ring outlines, looping forever on
  *  wall-clock time (never networked — purely decorative, like the avatar
@@ -93,6 +94,27 @@ function pushPulseRings(x: number, y: number, color: number, eid: number): void 
       color, lineWidth: 2.5, alpha: (1 - t) * 0.6,
     });
   }
+}
+
+// AP unlock node's own effect (2026-07-23): the ring-pulse above visually
+// echoed HAZARD_PHASE_BARRIER's shimmer closely enough that Till flagged a
+// real risk of confusing "a beneficial AP node" with "a hazard" — a single
+// soft, slowly-breathing glow with a FIXED radius (no expansion, no rings)
+// reads as "ambient light seeping from the tile" instead, which is both
+// visually distinct from the barrier and helps the node feel embedded in
+// its floor tile rather than a cutout pasted on top (the other half of the
+// same complaint — "besser in das jeweilige Tile integriert").
+const NODE_GLOW_PERIOD_MS  = 2400;
+const NODE_GLOW_RADIUS_FACTOR = 0.55; // × HEX_SIZE — stays within the tile
+
+function pushGroundedGlow(x: number, y: number, color: number, eid: number): void {
+  const now = performance.now() + (eid * 89) % 1000;
+  const breathe = 0.5 + 0.5 * Math.sin((now / NODE_GLOW_PERIOD_MS) * 2 * Math.PI);
+  renderCommandBuffer.push({
+    cmd: 'drawCircle', x, y,
+    radius: HEX_SIZE * NODE_GLOW_RADIUS_FACTOR,
+    fillColor: color, alpha: 0.12 + 0.10 * breathe,
+  });
 }
 
 // Fire hazard animation (Till's ask, 2026-07-23): "wirklich gefährlich
@@ -122,6 +144,37 @@ function fireFlickerScale(eid: number): number {
   return 1 + 0.07 * Math.sin((now / (FIRE_FLICKER_PERIOD_MS * 1.3)) * 2 * Math.PI);
 }
 
+// Phase barrier shimmer (Till's ask, 2026-07-23): "dringend mit einer
+// Flirren-Animation belegt werden." A gentler, faster wave than fire's
+// flicker (no "flame" quality wanted here) plus a tiny positional jitter —
+// real heat-haze bends light slightly, so a small wobble sells "shimmering"
+// better than an alpha/scale pulse alone would.
+const BARRIER_SHIMMER_PERIOD_MS = 900;
+const BARRIER_JITTER_PERIOD_MS  = 340;
+const BARRIER_JITTER_AMPLITUDE  = 0.045; // × HEX_SIZE
+
+function barrierShimmerAlpha(eid: number): number {
+  const now = performance.now() + (eid * 61) % 1000;
+  const n1 = Math.sin((now / BARRIER_SHIMMER_PERIOD_MS) * 2 * Math.PI);
+  const n2 = Math.sin((now / (BARRIER_SHIMMER_PERIOD_MS * 0.53)) * 2 * Math.PI);
+  return 0.78 + 0.22 * ((n1 * 0.6 + n2 * 0.4) * 0.5 + 0.5);
+}
+
+function barrierShimmerScale(eid: number): number {
+  const now = performance.now() + (eid * 83) % 1000;
+  return 1 + 0.05 * Math.sin((now / (BARRIER_SHIMMER_PERIOD_MS * 0.8)) * 2 * Math.PI);
+}
+
+function barrierShimmerOffset(eid: number): { dx: number; dy: number } {
+  const now = performance.now();
+  const px = (eid * 97) % 1000;
+  const py = (eid * 131) % 1000;
+  return {
+    dx: Math.sin(((now + px) / BARRIER_JITTER_PERIOD_MS) * 2 * Math.PI) * HEX_SIZE * BARRIER_JITTER_AMPLITUDE,
+    dy: Math.cos(((now + py) / (BARRIER_JITTER_PERIOD_MS * 1.15)) * 2 * Math.PI) * HEX_SIZE * BARRIER_JITTER_AMPLITUDE,
+  };
+}
+
 /** Small embers rising and fading above the hazard, looping on wall-clock
  *  time — the "flirrende Hitze" cue a static sprite can't provide alone. */
 function pushFireFlicker(x: number, y: number, eid: number): void {
@@ -139,6 +192,72 @@ function pushFireFlicker(x: number, y: number, eid: number): void {
       fillColor: FIRE_EMBER_COLOR, alpha: (1 - t) * 0.85,
     });
   }
+}
+
+// Unlockable-door glow, breathing exits, and echo-tile shimmer (Till's ask,
+// 2026-07-23, confirmed via a quick check-in on which elements deserved
+// animation). Doors/exits both already expose "currently open" via the same
+// `Static` component RenderSystem's own color logic reads (absence of
+// Static = unlocked) — reusing that instead of a second copy of the rule.
+const DOOR_GLOW_PERIOD_MS    = 1400;
+const DOOR_GLOW_COLOR_RED    = 0xFF4050;
+const DOOR_GLOW_COLOR_BLUE   = 0x4AA0FF;
+const EXIT_BREATHE_PERIOD_MS = 2600;
+const EXIT_BREATHE_LOCKED    = 0.025;  // subtle — still just a locked marker
+const EXIT_BREATHE_ACTIVE    = 0.07;   // more inviting once it's the actual goal
+const ECHO_SHIMMER_PERIOD_MS = 2000;
+
+/** Alpha pulse for a currently-unlockable door — only meaningful while the
+ *  door is actually passable, so callers gate this on `!hasComponent(Static)`. */
+function doorGlowAlpha(eid: number): number {
+  const now = performance.now() + (eid * 47) % 1000;
+  return 0.85 + 0.15 * Math.sin((now / DOOR_GLOW_PERIOD_MS) * 2 * Math.PI);
+}
+
+/** Three staggered glow rings in the door's own bright color — reuses
+ *  pushPulseRings' shape, just a different color per door and gated on the
+ *  door actually being open right now. */
+function pushDoorGlow(x: number, y: number, color: number, eid: number): void {
+  pushPulseRings(x, y, color, eid);
+}
+
+function exitBreatheScale(eid: number, active: boolean): number {
+  const now = performance.now() + (eid * 59) % 1000;
+  const amp = active ? EXIT_BREATHE_ACTIVE : EXIT_BREATHE_LOCKED;
+  return 1 + amp * Math.sin((now / EXIT_BREATHE_PERIOD_MS) * 2 * Math.PI);
+}
+
+function echoShimmerAlpha(eid: number): number {
+  const now = performance.now() + (eid * 43) % 1000;
+  return 0.7 + 0.3 * (Math.sin((now / ECHO_SHIMMER_PERIOD_MS) * 2 * Math.PI) * 0.5 + 0.5);
+}
+
+// Erratic lightning-variant flicker for HAZARD_LETHAL_B (Till's ask,
+// 2026-07-23): "die 'Elektroden' dürfen sich nicht ändern, sondern nur die
+// Blitze... am besten erratisch." The four hazard_lethal_b*.webp files share
+// pixel-identical electrodes (one base render + a procedurally-composited
+// bolt per variant — see SKILL.md) — only WHICH variant shows needs to
+// change over time. Unlike every other multi-variant sprite (floor tiles),
+// which picks ONE variant per-instance forever via a stable hash, this one
+// needs to keep changing — and irregularly, not on a metronome, which needs
+// real per-entity state rather than a pure function of wall-clock time. Same
+// non-ECS Map pattern AnimationState.ts already uses for movement tweening;
+// stale entries after a level reload (bitECS recycles eids) are harmless —
+// worst case a reused eid inherits a leftover flicker phase, imperceptible
+// for a purely cosmetic effect.
+const LIGHTNING_VARIANT_COUNT = 4;
+const lightningFlicker = new Map<number, { variant: number; nextSwitchMs: number }>();
+
+function lightningVariantSeed(eid: number): number {
+  const now = performance.now();
+  const state = lightningFlicker.get(eid);
+  if (!state || now >= state.nextSwitchMs) {
+    lightningFlicker.set(eid, {
+      variant: Math.floor(Math.random() * LIGHTNING_VARIANT_COUNT),
+      nextSwitchMs: now + 60 + Math.random() * 160, // 60-220ms — irregular, not a steady rate
+    });
+  }
+  return lightningFlicker.get(eid)!.variant;
 }
 
 type HoverKind = 'neutral' | 'step' | 'jump' | 'blocked';
@@ -281,9 +400,11 @@ export function RenderSystem(world: IWorld, driver: PixiDriver, localPlayerId: 0
     let color = ENTITY_COLORS[sid];
     let alpha = 1;
 
-    if (sid === SpriteId.EXIT_NEXUS_A || sid === SpriteId.EXIT_NEXUS_B) {
+    const isExit = sid === SpriteId.EXIT_NEXUS_A || sid === SpriteId.EXIT_NEXUS_B;
+    let exitLocked = false;
+    if (isExit) {
       // Locked exit (P2's, pre-P1-exit) renders dim; active exit glows.
-      if (hasComponent(world, Static, eid)) { color = 0x14401E; alpha = 0.9; }
+      if (hasComponent(world, Static, eid)) { color = 0x14401E; alpha = 0.9; exitLocked = true; }
     }
     let unlockTriggered = false;
     let focusTriggered  = false;
@@ -297,9 +418,16 @@ export function RenderSystem(world: IWorld, driver: PixiDriver, localPlayerId: 0
     }
 
     const isUnlockNode = sid === SpriteId.AP_UNLOCK_NODE_A || sid === SpriteId.AP_UNLOCK_NODE_B;
-    if ((isUnlockNode && !unlockTriggered) || (sid === SpriteId.FOCUS_NODE && !focusTriggered)) {
+    if (isUnlockNode && !unlockTriggered) {
+      // Cool steel-blue glow for the Superego-styled half, violet for the
+      // Id-styled half — the glow color itself reinforces which world each
+      // one is "from," same crossover idea as the material split.
       const screen = dimLayer === 0 ? driver.hexToScreenA(q, r) : driver.hexToScreenB(q, r);
-      pushPulseRings(screen.x, screen.y, isUnlockNode ? NODE_RING_GOLD : NODE_RING_VIOLET, eid);
+      pushGroundedGlow(screen.x, screen.y, sid === SpriteId.AP_UNLOCK_NODE_A ? 0x8FD8FF : 0xB07AFF, eid);
+    }
+    if (sid === SpriteId.FOCUS_NODE && !focusTriggered) {
+      const screen = dimLayer === 0 ? driver.hexToScreenA(q, r) : driver.hexToScreenB(q, r);
+      pushPulseRings(screen.x, screen.y, NODE_RING_VIOLET, eid);
     }
 
     const isFire = sid === SpriteId.HAZARD_FIRE_A || sid === SpriteId.HAZARD_FIRE_B;
@@ -307,15 +435,33 @@ export function RenderSystem(world: IWorld, driver: PixiDriver, localPlayerId: 0
       const screen = dimLayer === 0 ? driver.hexToScreenA(q, r) : driver.hexToScreenB(q, r);
       pushFireFlicker(screen.x, screen.y, eid);
     }
+    const isBarrier = sid === SpriteId.HAZARD_PHASE_BARRIER;
+    const isEcho    = sid === SpriteId.ECHO_TILE;
+
+    const isDoor = sid === SpriteId.HAZARD_LOCKED_RED || sid === SpriteId.HAZARD_LOCKED_BLUE;
+    const doorOpen = isDoor && !hasComponent(world, Static, eid);
+    if (doorOpen) {
+      const screen = dimLayer === 0 ? driver.hexToScreenA(q, r) : driver.hexToScreenB(q, r);
+      pushDoorGlow(screen.x, screen.y, sid === SpriteId.HAZARD_LOCKED_RED ? DOOR_GLOW_COLOR_RED : DOOR_GLOW_COLOR_BLUE, eid);
+    }
 
     if (isSpriteLoaded(sid)) {
       const screen = dimLayer === 0 ? driver.hexToScreenA(q, r) : driver.hexToScreenB(q, r);
-      const flickerAlpha = isFire ? alpha * fireFlickerAlpha(eid) : alpha;
+      const offset = isBarrier ? barrierShimmerOffset(eid) : { dx: 0, dy: 0 };
+      const animAlpha = isFire ? alpha * fireFlickerAlpha(eid)
+        : isBarrier ? alpha * barrierShimmerAlpha(eid)
+        : isEcho ? alpha * echoShimmerAlpha(eid)
+        : doorOpen ? alpha * doorGlowAlpha(eid)
+        : alpha;
+      const animScale = isFire ? fireFlickerScale(eid)
+        : isBarrier ? barrierShimmerScale(eid)
+        : isExit ? exitBreatheScale(eid, !exitLocked)
+        : 1;
       renderCommandBuffer.push({
-        cmd: 'drawSprite', x: screen.x, y: screen.y,
-        width: isFire ? SPRITE_SIZE * fireFlickerScale(eid) : SPRITE_SIZE,
-        height: isFire ? SPRITE_SIZE * fireFlickerScale(eid) : SPRITE_SIZE,
-        spriteId: sid, alpha: flickerAlpha, visible: true,
+        cmd: 'drawSprite', x: screen.x + offset.dx, y: screen.y + offset.dy,
+        width: SPRITE_SIZE * animScale, height: SPRITE_SIZE * animScale,
+        spriteId: sid, alpha: animAlpha, visible: true,
+        variantSeed: sid === SpriteId.HAZARD_LETHAL_B ? lightningVariantSeed(eid) : 0,
       });
     } else if (color !== undefined) {
       renderCommandBuffer.push({

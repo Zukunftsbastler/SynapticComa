@@ -87,7 +87,7 @@ Cross-reference `src/registry/SpriteRegistry.ts`'s `SpriteId` enum for the autho
 | `AVATAR_P1` | ID | ✅ promoted — a small chaotic wisp of jagged obsidian shards and coagulated resin, isolated floating object, no container/pouch/wrapping |
 | `AVATAR_P2` | SUPEREGO | ✅ promoted — a small geometric structured spark of interlocking tarnished steel shards, isolated floating object, no frame/panel |
 | `HAZARD_LETHAL_A` | ID | ✅ promoted — a small jagged cluster of blackened glass shards embedded in a torn flesh fragment, isolated floating object |
-| `HAZARD_LETHAL_B` | SUPEREGO | ✅ promoted — two small rusted iron nodes with crackling arcs between them, isolated floating object |
+| `HAZARD_LETHAL_B` | SUPEREGO | ✅ promoted — **4 variants**, procedurally composited (not 4 separate generations — see "Fixed-part / varying-part multi-variant assets" below): identical rusted-iron electrodes, a different jagged lightning bolt on each. `RenderSystem.ts`'s `lightningVariantSeed()` cycles between them irregularly at runtime (60–220ms) for a genuine flicker, unlike every other multi-variant sprite which picks one variant per-instance forever |
 | `HAZARD_LOCKED_RED` | ID | ✅ promoted — a circular fleshy sealed orifice wrapped in braided thorns, isolated floating object (avoid the word "door" — see the isolation note above) |
 | `HAZARD_LOCKED_BLUE` | SUPEREGO | ✅ promoted — a heavy rusted circular vault lock mechanism with a spoked wheel, isolated floating object |
 | `HAZARD_FIRE_A` | ID | ✅ promoted — a small severely inflamed infected wound, oozing pus, isolated floating object. Animated (`RenderSystem.ts`'s `pushFireFlicker`/`fireFlickerAlpha`/`fireFlickerScale`) — reworked 2026-07-23 from a literal-flame version Till judged narratively off (a medical-macabre game reads infection better than campfire) |
@@ -98,8 +98,8 @@ Cross-reference `src/registry/SpriteRegistry.ts`'s `SpriteId` enum for the autho
 | `MATRIX_NODE_SOURCE`/`_ABILITY`/`_POWERED` | MATRIX | a matrix node housing socket, [dim / unpowered / glowing with viscous nerve fluid] |
 | `EXIT_NEXUS_A` | ID | ✅ promoted — a small warm glowing circular portal in a fleshy ring, isolated floating object |
 | `EXIT_NEXUS_B` | SUPEREGO | ✅ promoted — a small precise glowing portal in a brushed steel ring, isolated floating object |
-| `AP_UNLOCK_NODE_A` | SUPEREGO (on the ID board) | ✅ promoted — a small precise steel-and-ceramic cube, isolated floating object, **no baked glow** (real-time pulsing-ring effect instead, `pushPulseRings`). Deliberately styled as the OTHER dimension's material (Till's ask, 2026-07-23: "etwas aus der anderen Welt übergeben" — the AP bonus is narratively a gift crossing between the two minds) |
-| `AP_UNLOCK_NODE_B` | ID (on the SUPEREGO board) | ✅ promoted — a small organic bone-and-resin cube, same silhouette as `AP_UNLOCK_NODE_A` but the opposite material — same crossover concept, mirrored |
+| `AP_UNLOCK_NODE_A` | SUPEREGO (on the ID board) | ✅ promoted — a circular steel hatch/portal device: polished chrome rim, precision rivets, a glowing aperture viewport at center. **Reworked twice** (2026-07-23): first draft was "a precise steel cube" — right material, but Till: "sieht nicht nach Portal aus... kein einfacher Würfel." A cube reads as an inert block no matter how well-colored; a circular hatch/viewport shape reads as "a technical device/window into the other world" instead, which was the actual ask. No baked glow — real-time `pushGroundedGlow` instead (see below) |
+| `AP_UNLOCK_NODE_B` | ID (on the SUPEREGO board) | ✅ promoted — an organic brain-like mass with veined tendrils fading outward, **recolored for much stronger purple/black** (2026-07-23) — the shape was already right (bigger/organic/veiny, previous round's fix) but the color had drifted too gray; regenerated with heavier purple/black material language AND `--recolor-hue 280` as a guarantee, same philosophy as the locked-door color fixes: don't trust the model's exact tone, lock it in code too |
 | `WALL_HEX_A` | ID | ✅ promoted — a small stacked pile of yellowed bone. Split from a single dimension-neutral version 2026-07-23 (Till's ask) |
 | `WALL_HEX_B` | SUPEREGO | ✅ promoted — a small stack of heavy riveted steel plates |
 | `PUSHABLE_BLOCK` | either | ✅ promoted — a heavy movable velvet clot with bone-chip flecks, isolated floating object |
@@ -128,6 +128,25 @@ done
 ```
 
 Use `--width`/`--height` 1024×1024 (or matching the intended aspect) for backgrounds/narrative panels instead of 512×512. `--steps 6` matched the model's recommended fast settings in the first style test (2026-07-21) and produced clean results in ~15–25s each including model load; raise it if a specific asset looks under-rendered.
+
+## Verifying legibility at the REAL render size (do this before promoting, not after a complaint)
+
+`SPRITE_SIZE = HEX_SIZE*2` in `RenderSystem.ts` — `HEX_SIZE` is 40 in `src/constants.ts`, so every hex-grid sprite renders at **80×80 screen pixels**, however large the source/candidate image is. A candidate that looks great at full size in this chat can still be illegible in-game — confirmed 2026-07-23 on six already-promoted icons (`HAZARD_LETHAL_A`/`_B`, `HAZARD_FIRE_A`, `HAZARD_PHASE_BARRIER`, `FOCUS_NODE`, `EXIT_NEXUS_B`) that Till judged unreadable in the real game. Don't guess which candidates have this problem — check, the same way that audit did:
+```bash
+python3 -c "
+from PIL import Image
+im = Image.open('candidate_or_promoted.png').convert('RGBA')
+small = im.resize((80,80), Image.NEAREST)   # matches PixiDriver's scaleMode:'nearest'
+bg = Image.new('RGBA', small.size, (30,90,30,255))   # arbitrary mid-tone background
+bg.alpha_composite(small)
+bg.convert('RGB').resize((320,320), Image.NEAREST).save('/tmp/check_80px.png')
+"
+```
+Then actually look at `/tmp/check_80px.png` (Read tool) before deciding a candidate is done.
+
+Separately, `main.ts`'s `Application.init()` now sets `resolution: window.devicePixelRatio || 1, autoDensity: true` (added 2026-07-23) — without it, PixiJS renders at a fixed backing-buffer resolution regardless of the display, so a Retina/HiDPI screen upscales everything generically on top of whatever detail loss a given sprite already has. That's a one-time engine fix, not something to re-check per asset.
+
+**Why this happens, and why post-processing tricks don't fully fix it:** `PixiDriver.ts` sets `scaleMode: 'nearest'` with no mipmap generation, so the GPU point-samples when *minifying* a texture the same way it does when magnifying — fine, high-frequency detail (individual glass shards, thin arcs, a small dim glow) aliases into visual noise at 80px far worse than it looks in any desktop preview. The fix that actually works is **regenerating simpler, bolder, higher-contrast content** — explicit `high contrast, simple bold shapes` in the prompt, `fine detail, tiny detail, subtle` in the negative — not a post-process step; there's no filter that reliably un-aliases detail that was too fine for the target size to begin with. A tighter `--autocrop-margin` (0.15–0.2 instead of the usual 0.35) also helps generically, since a bigger subject within the frame survives minification better than a small one with lots of transparent padding.
 
 ## Post-processing
 
@@ -184,6 +203,20 @@ cwebp -q 90 "<candidate-2>.png" -o "public/sprites/hex_id_floor_2.webp"
 cwebp -q 90 "<candidate-3>.png" -o "public/sprites/hex_id_floor_3.webp"
 ```
 `PixiDriver.ts` probes `<base>_2.webp`, `<base>_3.webp`, ... at startup and stops at the first gap — numbering must be contiguous starting at 2 (the base file itself, no suffix, is variant 1). Generate each variant the same way as the base (same preset, same uniform/low-detail content rule, same `--pixelate` grid), just a different seed — see the Id floor tile's 4 variants for the working pattern. **Only generate multiple variants where repetition is actually a problem** — Till confirmed the Superego side is fine looking like a repeating pattern (fits the clinical/mechanical theme); don't multiply variants there just for symmetry.
+
+**Floor tiles pick their variant once, per-hex, forever (a stable hash of q,r). Some effects instead need the variant to keep changing at runtime** — that's a different consumer of the exact same `PixiDriver.ts` multi-variant/`variantSeed` mechanism, not a new one. `HAZARD_LETHAL_B`'s lightning flicker (below) is the first example: `RenderSystem.ts` computes a fresh `variantSeed` from real per-entity timer state instead of a stable hash, so the same entity cycles through its variants over time. No `PixiDriver.ts`/`RenderCommandBuffer.ts` changes were needed for this — the loading and variant-selection code already treats `variantSeed` as "whatever the caller passes this frame," it just happened that every prior caller passed a stable value.
+
+## Fixed-part / varying-part multi-variant assets (lightning flicker, 2026-07-23)
+
+Some hazards need part of the image to visibly NEVER change (Till, on `HAZARD_LETHAL_B`: "die 'Elektroden' dürfen sich nicht ändern, sondern nur die Blitze") while another part varies across the multi-variant set. **Don't try to get this from separate generations** — even with an identical prompt/seed, the model will never reproduce pixel-identical "fixed" content across runs, and a viewer WILL notice the electrodes subtly shifting between variants once they're cycling at runtime. Composite instead:
+
+1. Generate ONE clean base with the fixed part only (for lightning: two electrodes, explicitly prompted `no arc, no lightning, no electricity` and negative-prompted the same) — this is the one and only source of truth for that part, shared byte-for-byte across every variant.
+2. Generate the varying part **procedurally in code**, not via the model. A jagged lightning bolt between two known points is a solved, simple algorithm (recursive midpoint displacement — perturb the midpoint of each segment perpendicular to itself, recurse, shrinking the perturbation each pass) that's more reliable AND more genuinely "erratic" than trying to get a diffusion model to draw a bolt connecting two exact pixel coordinates. Draw with a few decreasing-width, decreasing-alpha passes in a glow color plus a thin bright core on top for a believable electric look.
+3. Find the fixed part's anchor points once (scan the base image's alpha channel for the relevant bounding boxes/edges — see the electrode-finding snippet in this round's session, or just eyeball pixel coordinates from a zoomed still).
+4. Composite each variant: `Image.alpha_composite(base, procedural_overlay)`.
+5. **Crop every variant to the exact same fixed pixel box before `fit_square`/`radial_fade`/`feather`** — do NOT use `--autocrop-margin`'s per-image alpha-bbox detection here, since the varying part's bounding box differs slightly between variants (a wider bolt swing vs. a narrower one) and would shift the fixed part's on-screen position between variants, which is exactly the bug this whole approach exists to avoid. Compute one crop box from the fixed part's own bbox plus margin for the widest reasonable swing of the varying part, and reuse it for every variant.
+6. Promote as the usual numbered variant sequence (`hazard_lethal_b.webp`, `_2.webp`, `_3.webp`, `_4.webp`) — `PixiDriver.ts` doesn't know or care that these came from compositing rather than separate generations.
+7. Drive the variant SELECTION from real per-entity timer state in `RenderSystem.ts` for genuine irregularity (see the note above) — a pure function of wall-clock time can look regular/metronomic in a way a real random-interval timer doesn't.
 
 ## Decals — multi-hex cosmetic overlay props (new, 2026-07-21)
 

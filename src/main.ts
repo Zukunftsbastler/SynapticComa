@@ -194,9 +194,18 @@ function startSession(result: LobbyResult): void {
 async function main(): Promise<void> {
   const app = new Application();
   await app.init({
-    width:      CANVAS_WIDTH,
-    height:     CANVAS_HEIGHT,
-    background: 0x000000,
+    width:       CANVAS_WIDTH,
+    height:      CANVAS_HEIGHT,
+    background:  0x000000,
+    // Without this, PixiJS renders at a fixed 1280x720 backing buffer
+    // regardless of the display — on a Retina/HiDPI screen (devicePixelRatio
+    // 2, typical on modern Macs) the browser then has to upscale that buffer
+    // to fill physical pixels, softening every sprite generically on top of
+    // whatever detail loss the sprite's own resolution already has. `width`/
+    // `height` above stay the logical CSS size either way; only the backing
+    // buffer gets sharper.
+    resolution:  window.devicePixelRatio || 1,
+    autoDensity: true,
   });
   document.body.appendChild(app.canvas);
 
