@@ -258,5 +258,35 @@
     "coordinationSteps": 0,
     "drawSteps": 0,
     "matrixRequired": true
+  },
+  "level_27": {
+    "optimalCost": 11,
+    "apSlack": 1,
+    "difficulty": 6,
+    "minSwitches": 2,
+    "minSwitchesExact": true,
+    "coordinationSteps": 1,
+    "drawSteps": 0,
+    "matrixRequired": true
+  },
+  "level_28": {
+    "optimalCost": 10,
+    "apSlack": 1,
+    "difficulty": 5.93,
+    "minSwitches": 2,
+    "minSwitchesExact": true,
+    "coordinationSteps": 1,
+    "drawSteps": 0,
+    "matrixRequired": true
+  },
+  "level_29": {
+    "optimalCost": 10,
+    "apSlack": 1,
+    "difficulty": 5.91,
+    "minSwitches": 2,
+    "minSwitchesExact": true,
+    "coordinationSteps": 1,
+    "drawSteps": 0,
+    "matrixRequired": true
   }
 }

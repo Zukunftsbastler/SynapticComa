@@ -68,6 +68,9 @@ const LEVEL_MODULES: Record<string, () => Promise<{ default: unknown }>> = {
   level_24: () => import('@/levels/level_24.json'),
   level_25: () => import('@/levels/level_25.json'),
   level_26: () => import('@/levels/level_26.json'),
+  level_27: () => import('@/levels/level_27.json'),
+  level_28: () => import('@/levels/level_28.json'),
+  level_29: () => import('@/levels/level_29.json'),
 };
 
 function dispatchEntityFactory(world: IWorld, def: EntityDef): void {

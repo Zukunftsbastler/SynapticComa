@@ -1,0 +1,45 @@
+{
+  "id": "level_29",
+  "name": "Second Sight",
+  "initialAP": 9,
+  "apUnlockNodes": [
+    {
+      "id": "unlock_01",
+      "value": 2,
+      "hexA": { "q": 0, "r": 1 },
+      "hexB": { "q": 0, "r": 1 }
+    }
+  ],
+  "initialInventory": {
+    "player0": [
+      { "entityId": "inv_p1_plain", "shape": 0, "rotation": 0 }
+    ],
+    "player1": [
+      { "entityId": "inv_p2_mod_spare", "shape": 0, "rotation": 0, "base": 3 }
+    ]
+  },
+  "scrapPool": [
+    { "shape": 1, "rotation": 0 },
+    { "shape": 2, "rotation": 0 }
+  ],
+  "entities": [
+    { "type": "avatar", "id": "avatar_p1", "playerId": 0, "q": 0, "r": 2, "z": 0 },
+    { "type": "avatar", "id": "avatar_p2", "playerId": 1, "q": 0, "r": 2, "z": 1 },
+    { "type": "exit", "id": "exit_p1", "playerId": 0, "q": 0, "r": -2, "z": 0 },
+    { "type": "exit", "id": "exit_p2", "playerId": 1, "q": 0, "r": -2, "z": 1, "initiallyLocked": true },
+    { "type": "hazard", "id": "door_red_a", "hazardType": 1, "q": 0, "r": -1, "z": 0 },
+    { "type": "wall", "id": "wall_e_0_1_-2", "q": 1, "r": -2, "z": 0 },
+    { "type": "wall", "id": "wall_e_0_1_-3", "q": 1, "r": -3, "z": 0 },
+    { "type": "wall", "id": "wall_e_0_0_-3", "q": 0, "r": -3, "z": 0 },
+    { "type": "wall", "id": "wall_e_0_-1_-2", "q": -1, "r": -2, "z": 0 },
+    { "type": "wall", "id": "wall_e_0_-1_-1", "q": -1, "r": -1, "z": 0 }
+  ],
+  "matrix": {
+    "nodes": [
+      { "id": "node_c3r0", "column": 3, "row": 0, "abilityType": 3 }
+    ],
+    "conduits": [
+      { "id": "prep_stab_plate", "column": 4, "row": 0, "shape": 1, "rotation": 0, "base": 4 }
+    ]
+  }
+}

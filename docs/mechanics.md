@@ -92,6 +92,8 @@ When a conduit is ejected from a matrix column, it is placed **face-down** in a 
 ### 4.5 Neuro-Resonance: Ordered Base Pairing (implemented SPRINT_026)
 
 > **Status (SPRINT_026):** Implemented, scoped down like D14 was — Till decided alone (governance tension flagged per `decisions_needed.md`'s own rule; Andreas/Chris sign-off outstanding). `Conduit.base` defaults to `NONE` on every plate that predates this sprint, so all 25 existing levels are unaffected. Two deliberate simplifications versus the original spec below, both disclosed in `SPRINTS/SPRINT_026-...md`: (1) floor collectibles (picked up from the Hex Grid) never carry a base — only plates defined directly in level JSON (pre-placed matrix conduits, starting inventory, Scrap Pool) can; (2) the solver models Discharge/Dampening/Anchor (they affect AP cost) but not Clarity (information-only) or pairs pre-formed at level load (no shipped level uses either). Campaign demonstration: level 26 "First Spark".
+>
+> **Follow-up (SPRINT_028):** All four ordered pairs are now demonstrated in the campaign — level 27 "Steady Hand" (Anchor), level 28 "Muscle Memory" (Dampening), and level 29 "Second Sight" (Clarity) join level 26. No changes to `ResonanceSystem`/`LevelSolver` were needed; this was level design + solver verification only. All three re-confirm the solver-modeling split above: 27/28 are load-bearing (`slack=1`, forming the pair is mandatory), 29 keeps Clarity strictly optional (the solver's proven-optimal path never touches the pre-placed pair).
 
 Every Conduit Plate carries, in addition to its pipe shape, a **neurotransmitter glyph** (its "base") etched into one corner. There are four bases, each with a distinct language-agnostic icon and color:
 

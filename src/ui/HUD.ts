@@ -41,6 +41,9 @@ export class HUD {
 
     this.apRow = document.createElement('div');
     this.apRow.style.cssText = 'display:flex;gap:6px;align-items:center;';
+    // Stable target for TutorialOverlay's dom-kind focus (only innerHTML is
+    // rebuilt each frame in renderAP() below — this node itself never moves).
+    this.apRow.dataset.tutorialTarget = 'ap-pool';
 
     const center = document.createElement('div');
     center.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:4px;';
@@ -63,6 +66,7 @@ export class HUD {
       'background:#120404;',
     ].join('');
     this.deadEndEl.textContent = '⊘ DEAD END';
+    this.deadEndEl.dataset.tutorialTarget = 'dead-end';
 
     center.appendChild(this.levelEl);
     center.appendChild(this.syncEl);

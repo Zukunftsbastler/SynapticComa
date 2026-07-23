@@ -17,6 +17,14 @@ export enum ConceptId {
   FOCUS_VAULT   = 'FOCUS_VAULT',
   ROLE_ASYMMETRY = 'ROLE_ASYMMETRY',
   ECHO_TILE      = 'ECHO_TILE',
+  // Added for the full Monitor build-out (tutorial_design.md §§2-5, 2026-07-23):
+  // previously-unexplained gaps (DEAD_END, EXIT_SEQUENCE, RESONANCE) plus the
+  // two Calibration-only steps (MOVE, AP_POOL) that only ever fire on Level 1.
+  MOVE          = 'MOVE',
+  AP_POOL       = 'AP_POOL',
+  EXIT_SEQUENCE = 'EXIT_SEQUENCE',
+  DEAD_END      = 'DEAD_END',
+  RESONANCE     = 'RESONANCE',
 }
 
 const seen = new Set<string>();

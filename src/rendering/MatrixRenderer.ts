@@ -65,6 +65,47 @@ export function scrapPileRect(
   };
 }
 
+// Single-cell geometry (1-indexed column, per this file's own convention) —
+// shared source of truth for the Monitor tutorial overlay's "frame this
+// matrix cell" highlighting (tutorial_design.md §3), same reasoning as
+// scrapPileRect above: an invisible/drifting highlight target is worse than
+// none. Mirrors the inline cx/cy math in the render loop below exactly.
+export function cellRect(
+  originX: number, originY: number, column: number, row: number,
+): { x: number; y: number; w: number; h: number } {
+  const colIdx = column - 1;
+  return {
+    x: originX + colIdx * (CELL + GAP),
+    y: originY + row * (CELL + GAP),
+    w: CELL,
+    h: CELL,
+  };
+}
+
+// Insert-arrow geometry (1-indexed column — must be 2 or 4, the only
+// insertable columns) — mirrors the arrow cx/topY/bottomY math in the render
+// loop below exactly, same sharing rationale as cellRect above.
+export function insertArrowRect(
+  originX: number, originY: number, column: number, fromTop: boolean,
+): { x: number; y: number; w: number; h: number } {
+  const colIdx = column - 1;
+  const cx = originX + colIdx * (CELL + GAP) + CELL / 2;
+  const y  = fromTop ? originY - 12 : originY + MATRIX_ROWS * (CELL + GAP) + 9;
+  const size = 26; // generous — matches the armed arrow's glow-circle radius (13) × 2
+  return { x: cx - size / 2, y: y - size / 2, w: size, h: size };
+}
+
+// Whole-tray rect — for tutorial concepts with no single pinpointable cell
+// (Neuro-Resonance base pairs can form in any column, dynamically). Mirrors
+// the tray-background rect drawn at the top of renderMatrix() below exactly.
+export function matrixPanelRect(
+  originX: number, originY: number,
+): { x: number; y: number; w: number; h: number } {
+  const totalW = MATRIX_COLS * CELL + (MATRIX_COLS - 1) * GAP;
+  const totalH = MATRIX_ROWS * CELL + (MATRIX_ROWS - 1) * GAP;
+  return { x: originX - 6, y: originY - 6, w: totalW + 12, h: totalH + 12 };
+}
+
 export function renderMatrix(
   world: IWorld,
   buf: RenderCommandBuffer,

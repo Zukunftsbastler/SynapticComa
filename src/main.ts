@@ -37,7 +37,7 @@ import { LevelSelectScreen } from '@/ui/LevelSelectScreen';
 import { MonitorStrip } from '@/ui/MonitorStrip';
 import { LegendPanel } from '@/ui/LegendPanel';
 import { HoverTooltip } from '@/ui/HoverTooltip';
-import { TutorialPopups } from '@/tutorial/TutorialPopups';
+import { TutorialDirector } from '@/tutorial/TutorialDirector';
 import { CANVAS_WIDTH, CANVAS_HEIGHT } from '@/constants';
 
 let driver:    PixiDriver;
@@ -128,7 +128,7 @@ function startSession(result: LobbyResult): void {
   const monitor   = new MonitorStrip(document.body, networked);
   const legend    = new LegendPanel(document.body);
   const tooltip   = new HoverTooltip(document.body);
-  const tutorials = new TutorialPopups(document.body);
+  const tutorials = new TutorialDirector(document.body, driver);
   setUiHook(() => {
     // Local mode: when P1 dissolves into the Nexus, hand control to P2 so the
     // player is never left staring at an empty board.
