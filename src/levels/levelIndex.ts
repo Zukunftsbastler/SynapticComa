@@ -30,6 +30,19 @@ export const LEVEL_NAMES: Record<string, string> = {
   level_27: 'Steady Hand',
   level_28: 'Muscle Memory',
   level_29: 'Second Sight',
+  // Levels 30-39: the Generator's first batch (SPRINT_029 follow-up,
+  // 2026-07-23) — solver + headless-replay + real-browser verified, not
+  // hand-authored. See SPRINTS/SPRINT_029-...md's "Generator Batch 1" note.
+  level_30: 'First Threshold',
+  level_31: 'Cold Current',
+  level_32: 'Controlled Burn',
+  level_33: 'Spark and Circuit',
+  level_34: 'Deep Reserves',
+  level_35: 'Ember Glimpse',
+  level_36: 'Compound Interest',
+  level_37: 'Blue Resonance',
+  level_38: 'Triple Threat',
+  level_39: 'Everything At Once',
 };
 
 export const LEVEL_ORDER: string[] = [
@@ -62,4 +75,14 @@ export const LEVEL_ORDER: string[] = [
   'level_27',
   'level_28',
   'level_29',
+  'level_30',
+  'level_31',
+  'level_32',
+  'level_33',
+  'level_34',
+  'level_35',
+  'level_36',
+  'level_37',
+  'level_38',
+  'level_39',
 ];

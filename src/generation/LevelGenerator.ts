@@ -118,19 +118,22 @@ export function generateLevel(params: GeneratorParams): GeneratorResult {
     // solver's own optimal ordering more expensive (e.g. a cheaper path needs
     // more AP mid-route, before the Shared Unlock's +value is earned, than a
     // tight starting pool allows), so a *lower* AP can imply a *higher*
-    // optimalCost. Naively re-solving at "optimalCost + margin" can then
-    // oscillate between two AP values forever (each implying the other).
-    // Climbing monotonically instead — only ever raising initialAP, and
-    // stopping the moment the achieved margin already meets the target —
-    // always terminates: actual slack may end up somewhat more generous than
-    // `margin` in this interaction, but never less, and never oscillates.
+    // optimalCost — and at the extreme, tight enough to make the level
+    // genuinely UNSOLVABLE (not just costlier), since a fixed-overhead
+    // template like this one's has a hard minimum AP no amount of clever play
+    // gets under. Both cases climb `finalInitialAP` monotonically — costlier
+    // implies a higher target directly; genuinely unsolvable bumps it by a
+    // step and retries — and stop the moment a solved run's achieved margin
+    // already meets the target. Always terminates (AP only ever rises) and
+    // never oscillates; actual slack may end up more generous than the
+    // requested `margin` when the template's own floor exceeds it, never less.
     let finalInitialAP = probe.optimalCost - totalUnlockValue + margin;
     let result: Extract<SolverResult, { solvable: true }> | null = null;
     let converged = false;
-    for (let iter = 0; iter < 6; iter++) {
-      if (finalInitialAP < 1) break; // degenerate for this seed
+    for (let iter = 0; iter < 12; iter++) {
+      if (finalInitialAP < 1 || finalInitialAP > SOLVE_AP_CEILING) break; // degenerate for this seed
       const attemptResult = solveLevel({ ...draft, initialAP: finalInitialAP });
-      if (!attemptResult.solvable) break; // never trust the probe blindly
+      if (!attemptResult.solvable) { finalInitialAP += 2; continue; } // below this template's floor — bump and retry
       result = attemptResult;
       const impliedAP = attemptResult.optimalCost - totalUnlockValue + margin;
       if (impliedAP <= finalInitialAP) { converged = true; break; }
