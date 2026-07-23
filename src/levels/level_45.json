@@ -1,0 +1,271 @@
+{
+  "id": "level_45",
+  "name": "Ashen Threshold",
+  "initialAP": 20,
+  "apUnlockNodes": [
+    {
+      "id": "unlock_01",
+      "value": 4,
+      "hexA": {
+        "q": -1,
+        "r": 3
+      },
+      "hexB": {
+        "q": -1,
+        "r": 3
+      }
+    }
+  ],
+  "gridRadius": 5,
+  "initialInventory": {
+    "player0": [
+      {
+        "entityId": "inv_route_plate_1",
+        "shape": 0,
+        "rotation": 0
+      }
+    ],
+    "player1": [
+      {
+        "entityId": "inv_route_plate_0",
+        "shape": 0,
+        "rotation": 0,
+        "base": 1
+      }
+    ]
+  },
+  "scrapPool": [],
+  "entities": [
+    {
+      "type": "avatar",
+      "id": "avatar_p1",
+      "playerId": 0,
+      "q": 0,
+      "r": 4,
+      "z": 0
+    },
+    {
+      "type": "avatar",
+      "id": "avatar_p2",
+      "playerId": 1,
+      "q": 0,
+      "r": 4,
+      "z": 1
+    },
+    {
+      "type": "exit",
+      "id": "exit_p1",
+      "playerId": 0,
+      "q": 0,
+      "r": -4,
+      "z": 0
+    },
+    {
+      "type": "exit",
+      "id": "exit_p2",
+      "playerId": 1,
+      "q": 0,
+      "r": -4,
+      "z": 1,
+      "initiallyLocked": true
+    },
+    {
+      "type": "hazard",
+      "id": "gate0_hazard_0",
+      "hazardType": 2,
+      "q": 0,
+      "r": 3,
+      "z": 0
+    },
+    {
+      "type": "wall",
+      "id": "gate0_wall_0_0",
+      "q": 1,
+      "r": 4,
+      "z": 0
+    },
+    {
+      "type": "wall",
+      "id": "gate0_wall_0_1",
+      "q": 1,
+      "r": 3,
+      "z": 0
+    },
+    {
+      "type": "wall",
+      "id": "gate0_wall_0_2",
+      "q": 0,
+      "r": 5,
+      "z": 0
+    },
+    {
+      "type": "wall",
+      "id": "gate0_wall_0_3",
+      "q": -1,
+      "r": 5,
+      "z": 0
+    },
+    {
+      "type": "wall",
+      "id": "gate0_wall_0_4",
+      "q": -1,
+      "r": 4,
+      "z": 0
+    },
+    {
+      "type": "hazard",
+      "id": "gate0_hazard_1",
+      "hazardType": 2,
+      "q": 0,
+      "r": 3,
+      "z": 1
+    },
+    {
+      "type": "wall",
+      "id": "gate0_wall_1_0",
+      "q": 1,
+      "r": 4,
+      "z": 1
+    },
+    {
+      "type": "wall",
+      "id": "gate0_wall_1_1",
+      "q": 1,
+      "r": 3,
+      "z": 1
+    },
+    {
+      "type": "wall",
+      "id": "gate0_wall_1_2",
+      "q": 0,
+      "r": 5,
+      "z": 1
+    },
+    {
+      "type": "wall",
+      "id": "gate0_wall_1_3",
+      "q": -1,
+      "r": 5,
+      "z": 1
+    },
+    {
+      "type": "wall",
+      "id": "gate0_wall_1_4",
+      "q": -1,
+      "r": 4,
+      "z": 1
+    },
+    {
+      "type": "hazard",
+      "id": "gate1_hazard_0",
+      "hazardType": 3,
+      "q": 0,
+      "r": -3,
+      "z": 0
+    },
+    {
+      "type": "wall",
+      "id": "gate1_wall_0_0",
+      "q": 1,
+      "r": -4,
+      "z": 0
+    },
+    {
+      "type": "wall",
+      "id": "gate1_wall_0_1",
+      "q": 1,
+      "r": -5,
+      "z": 0
+    },
+    {
+      "type": "wall",
+      "id": "gate1_wall_0_2",
+      "q": 0,
+      "r": -5,
+      "z": 0
+    },
+    {
+      "type": "wall",
+      "id": "gate1_wall_0_3",
+      "q": -1,
+      "r": -4,
+      "z": 0
+    },
+    {
+      "type": "wall",
+      "id": "gate1_wall_0_4",
+      "q": -1,
+      "r": -3,
+      "z": 0
+    },
+    {
+      "type": "hazard",
+      "id": "gate1_hazard_1",
+      "hazardType": 3,
+      "q": 0,
+      "r": -3,
+      "z": 1
+    },
+    {
+      "type": "wall",
+      "id": "gate1_wall_1_0",
+      "q": 1,
+      "r": -4,
+      "z": 1
+    },
+    {
+      "type": "wall",
+      "id": "gate1_wall_1_1",
+      "q": 1,
+      "r": -5,
+      "z": 1
+    },
+    {
+      "type": "wall",
+      "id": "gate1_wall_1_2",
+      "q": 0,
+      "r": -5,
+      "z": 1
+    },
+    {
+      "type": "wall",
+      "id": "gate1_wall_1_3",
+      "q": -1,
+      "r": -4,
+      "z": 1
+    },
+    {
+      "type": "wall",
+      "id": "gate1_wall_1_4",
+      "q": -1,
+      "r": -3,
+      "z": 1
+    }
+  ],
+  "matrix": {
+    "nodes": [
+      {
+        "id": "node_c3r0",
+        "column": 3,
+        "row": 0,
+        "abilityType": 4
+      },
+      {
+        "id": "node_c3r1",
+        "column": 3,
+        "row": 1,
+        "abilityType": 6
+      }
+    ],
+    "conduits": [
+      {
+        "id": "prep_in_plate",
+        "column": 2,
+        "row": 0,
+        "shape": 1,
+        "rotation": 0,
+        "base": 2
+      }
+    ]
+  }
+}

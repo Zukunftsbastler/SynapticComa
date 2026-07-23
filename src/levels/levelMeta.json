@@ -388,5 +388,105 @@
     "coordinationSteps": 1,
     "drawSteps": 0,
     "matrixRequired": true
+  },
+  "level_40": {
+    "optimalCost": 16,
+    "apSlack": 4,
+    "difficulty": 5.1,
+    "minSwitches": 1,
+    "minSwitchesExact": true,
+    "coordinationSteps": 0,
+    "drawSteps": 0,
+    "matrixRequired": true
+  },
+  "level_41": {
+    "optimalCost": 17,
+    "apSlack": 1,
+    "difficulty": 7.11,
+    "minSwitches": 5,
+    "minSwitchesExact": false,
+    "coordinationSteps": 1,
+    "drawSteps": 0,
+    "matrixRequired": true
+  },
+  "level_42": {
+    "optimalCost": 18,
+    "apSlack": 1,
+    "difficulty": 7.13,
+    "minSwitches": 2,
+    "minSwitchesExact": true,
+    "coordinationSteps": 1,
+    "drawSteps": 0,
+    "matrixRequired": true
+  },
+  "level_43": {
+    "optimalCost": 22,
+    "apSlack": 1,
+    "difficulty": 7.79,
+    "minSwitches": 5,
+    "minSwitchesExact": false,
+    "coordinationSteps": 1,
+    "drawSteps": 0,
+    "matrixRequired": true
+  },
+  "level_44": {
+    "optimalCost": 19,
+    "apSlack": 5,
+    "difficulty": 5.7,
+    "minSwitches": 3,
+    "minSwitchesExact": false,
+    "coordinationSteps": 0,
+    "drawSteps": 0,
+    "matrixRequired": true
+  },
+  "level_45": {
+    "optimalCost": 19,
+    "apSlack": 5,
+    "difficulty": 5.7,
+    "minSwitches": 3,
+    "minSwitchesExact": false,
+    "coordinationSteps": 0,
+    "drawSteps": 0,
+    "matrixRequired": true
+  },
+  "level_46": {
+    "optimalCost": 22,
+    "apSlack": 1,
+    "difficulty": 7.79,
+    "minSwitches": 5,
+    "minSwitchesExact": false,
+    "coordinationSteps": 1,
+    "drawSteps": 0,
+    "matrixRequired": true
+  },
+  "level_47": {
+    "optimalCost": 22,
+    "apSlack": 1,
+    "difficulty": 7.79,
+    "minSwitches": 5,
+    "minSwitchesExact": false,
+    "coordinationSteps": 1,
+    "drawSteps": 0,
+    "matrixRequired": true
+  },
+  "level_48": {
+    "optimalCost": 19,
+    "apSlack": 5,
+    "difficulty": 5.7,
+    "minSwitches": 3,
+    "minSwitchesExact": false,
+    "coordinationSteps": 0,
+    "drawSteps": 0,
+    "matrixRequired": true
+  },
+  "level_49": {
+    "optimalCost": 19,
+    "apSlack": 5,
+    "difficulty": 5.7,
+    "minSwitches": 3,
+    "minSwitchesExact": false,
+    "coordinationSteps": 0,
+    "drawSteps": 0,
+    "matrixRequired": true
   }
 }

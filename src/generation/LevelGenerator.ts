@@ -1,32 +1,32 @@
 // LevelGenerator: docs/generative_levels.md §3's reverse-design pipeline —
-// sample which ability is required → build the matrix goal state that powers
-// it → lay a hex gate around it → add a decoy → optionally layer Neuro-
-// Resonance/Focus Vault/Echo Tile → set initialAP from the difficulty target
-// → verify. Every candidate is solver-checked before being returned; the CLI
-// (scripts/generateLevel.ts) layers the headless witness-replay and real-
-// browser Playwright checks on top before accepting one for real.
+// sample which ability(ies) are required → build the matrix goal state that
+// powers them → lay hex gates around them → add a decoy → optionally layer
+// Neuro-Resonance/Focus Vault/Echo Tile → set initialAP from the difficulty
+// target → verify. Every candidate is solver-checked before being returned;
+// the CLI (scripts/generateLevel.ts) layers the headless witness-replay and
+// real-browser Playwright checks on top before accepting one for real.
 //
 // SCOPE CUT (disclosed, not silent): the full spec's step 1 ("sample the
 // ability requirement graph") allows arbitrary multi-ability dependency
-// chains across arbitrary hex topology. Reliably laying out arbitrary hex
-// paths without risking a broken or trivially-bypassable level is a much
-// bigger undertaking than fits this pass. v1 instead reuses the exact,
-// already-proven "gate-wall funnel around one hazard" template shared by
-// levels 2/3/8/20/23/25/26/27/28/29 — one required core ability per
-// generated level, picked from whichever of UNLOCK_RED/UNLOCK_BLUE/
-// FIRE_IMMUNITY are in `mechanics`. JUMP/PUSH/PHASE_SHIFT are fully
-// solver-modeled (LevelSolver.ts) but need fundamentally different terrain
-// (a missing-tile gap, a pushable block, a phase barrier respectively, not a
-// swapped hazard type) — requesting them alone returns a clean, explicit
-// failure rather than a broken level. RESONANCE/FOCUS_VAULT/ECHO_TILE (all
-// three explicitly requested for v1, unlike the core three) layer on top of
-// any core mechanic without needing new hex geometry: RESONANCE always uses
-// the safe, never-load-bearing Discharge pattern levels 26-29 established
-// (a bonus AP credit, never required — Anchor/Dampening's load-bearing
-// variants would complicate the difficulty budget this pass doesn't need to
-// solve); FOCUS_VAULT/ECHO_TILE are placed exactly as in levels 23/25,
-// solver-invisible by construction, same as every hand-authored level using
-// them.
+// chains across arbitrary hex topology. v2 (SPRINT_029 follow-up, after
+// Batch 1 confirmed a single-ability template plateaus around D≈6.2) chains
+// up to **two** simultaneous required core abilities and scales gridRadius
+// with difficulty — still short of arbitrary N-ability graphs, but reusing
+// the exact, already-proven "two gate-wall funnels, one near spawn and one
+// near exit, each mirrored across both dimensions" shape `level_16.json`
+// "Airlock" (RED+BLUE) already ships. `JUMP`/`PUSH`/`PHASE_SHIFT` still need
+// fundamentally different terrain (a missing-tile gap, a pushable block, a
+// phase barrier respectively, not a swapped hazard type) and a 3rd physical
+// gate ring is still unbuilt — both stay explicit follow-ups, not silent
+// gaps: requesting JUMP/PUSH/PHASE_SHIFT alone still fails cleanly.
+// RESONANCE/FOCUS_VAULT/ECHO_TILE layer on top of any core-ability count
+// without needing new hex geometry, same as v1: RESONANCE always uses the
+// safe, never-load-bearing Discharge pattern levels 26-29 established;
+// FOCUS_VAULT/ECHO_TILE are placed solver-invisible by construction, same as
+// every hand-authored level using them — just re-anchored relative to the
+// (now variable) spawn hex instead of fixed absolute coordinates, backed by
+// a defensive collision check (see buildDraft) rather than hand-proving
+// non-overlap for every radius/ability-count combination by inspection.
 
 import type {
   LevelDef, EntityDef, MatrixConduitDef, MatrixNodeDef, InventoryConduitDef,
@@ -47,9 +47,10 @@ export interface GeneratorParams {
   /** Target DifficultyModel score (same units as scoreDifficulty's output). */
   difficulty: number;
   /** Eligible mechanics — at least one of UNLOCK_RED/UNLOCK_BLUE/FIRE_IMMUNITY
-   * is required (the Generator picks one per candidate); RESONANCE/
-   * FOCUS_VAULT/ECHO_TILE layer on top if present; JUMP/PUSH/PHASE_SHIFT are
-   * accepted by the type but never wired up (see the file header). */
+   * is required (the Generator picks one or two per candidate, see
+   * computeAbilityCount); RESONANCE/FOCUS_VAULT/ECHO_TILE layer on top if
+   * present; JUMP/PUSH/PHASE_SHIFT are accepted by the type but never wired
+   * up (see the file header). */
   mechanics: MechanicId[];
   seed: number;
 }
@@ -99,14 +100,18 @@ export function generateLevel(params: GeneratorParams): GeneratorResult {
     };
   }
 
+  const abilityCount = computeAbilityCount(params.difficulty, coreOptions.length);
+  const gridRadius = computeGridRadius(params.difficulty);
+
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     const rng = forkStream(params.seed, attempt);
-    const core = rng.pick(coreOptions);
+    const cores = pickDistinct(rng, coreOptions, abilityCount);
     const wantResonance  = params.mechanics.includes('RESONANCE');
     const wantFocusVault = params.mechanics.includes('FOCUS_VAULT');
     const wantEchoTile   = params.mechanics.includes('ECHO_TILE');
 
-    const draft = buildDraft(params, rng, attempt, core, wantResonance, wantFocusVault, wantEchoTile);
+    const draft = buildDraft(params, rng, attempt, cores, gridRadius, wantResonance, wantFocusVault, wantEchoTile);
+    if (!draft) continue; // collision in this attempt's layout — fresh sub-seed next time
 
     const probe = solveLevel(draft);
     if (!probe.solvable) continue; // fresh sub-seed next attempt
@@ -171,63 +176,158 @@ function computeMargin(difficulty: number): number {
   return Math.max(1, Math.min(8, Math.round(8 - difficulty)));
 }
 
+/** Chains a 2nd required core ability once requested difficulty and the
+ * caller's mechanics set both allow it — this is what lets achieved
+ * difficulty climb past the ~D=6.2 plateau v1's single-ability levels hit
+ * (Batch 1, SPRINT_029). Falls back to 1 (today's exact v1 behavior) when
+ * only one core mechanic is eligible — fully backward compatible. 🔢 same
+ * disclosed-heuristic status as computeMargin. */
+function computeAbilityCount(difficulty: number, eligibleCoreCount: number): 1 | 2 {
+  return difficulty >= 5 && eligibleCoreCount >= 2 ? 2 : 1;
+}
+
+/** Scales the board with difficulty — a longer walk between gates, not just
+ * a tighter AP budget, contributes to raising D past the single-radius
+ * plateau. Capped at 5: gridRadius has no hidden engine cap (confirmed via
+ * LevelLoaderSystem.ts/MovementSystem.ts/LevelSolver.ts — it only widens
+ * floor-tile scatter and the movement/solver boundary check), but 5 is the
+ * largest value this generator has actually verified end-to-end so far. */
+function computeGridRadius(difficulty: number): number {
+  if (difficulty >= 9) return 5;
+  if (difficulty >= 6) return 4;
+  return 3;
+}
+
+function pickDistinct<T>(rng: PCG32, items: readonly T[], n: number): T[] {
+  return rng.shuffle([...items]).slice(0, n);
+}
+
+type Axial = { q: number; r: number };
+const add = (a: Axial, [dq, dr]: [number, number]): Axial => ({ q: a.q + dq, r: a.r + dr });
+
+// The proven two-ring shape, traced from level_16.json "Airlock" (RED+BLUE,
+// D=5.70) — one ring near spawn, one near exit, each mirrored across both
+// dimensions. Offsets are relative to spawn/exit respectively so the whole
+// shape scales automatically as gridRadius (and therefore spawn/exit
+// distance from origin) grows.
+const SPAWN_RING_WALLS: [number, number][] = [[1, 0], [1, -1], [0, 1], [-1, 1], [-1, 0]];
+const SPAWN_RING_HAZARD: [number, number] = [0, -1];
+const EXIT_RING_WALLS: [number, number][] = [[1, 0], [1, -1], [0, -1], [-1, 0], [-1, 1]];
+const EXIT_RING_HAZARD: [number, number] = [0, 1];
+// Optional-extra anchors, relative to spawn — reproduce v1's exact absolute
+// positions at gridRadius=3 (spawn=(0,2)) for backward compatibility, and
+// scale sensibly for larger radii. Chosen to avoid the spawn-side ring above
+// by inspection; the collision guard in buildDraft is the real safety net.
+const SHARED_UNLOCK_OFFSET: [number, number] = [-1, -1];
+const FOCUS_VAULT_NODE_OFFSET: [number, number] = [1, -1];
+const FOCUS_VAULT_PLATE_OFFSET: [number, number] = [2, -2];
+const ECHO_TILE_OFFSET: [number, number] = [-2, 0];
+
+function ringEntities(
+  center: Axial, wallOffsets: [number, number][], hazardOffset: [number, number],
+  z: 0 | 1, idPrefix: string, hazardType: number,
+): EntityDef[] {
+  const hazardHex = add(center, hazardOffset);
+  return [
+    { type: 'hazard', id: `${idPrefix}_hazard_${z}`, hazardType, q: hazardHex.q, r: hazardHex.r, z },
+    ...wallOffsets.map((off, i) => {
+      const hex = add(center, off);
+      return { type: 'wall' as const, id: `${idPrefix}_wall_${z}_${i}`, q: hex.q, r: hex.r, z };
+    }),
+  ];
+}
+
 function buildDraft(
-  params: GeneratorParams, rng: PCG32, attempt: number, core: CoreMechanic,
+  params: GeneratorParams, rng: PCG32, attempt: number, cores: CoreMechanic[], gridRadius: number,
   wantResonance: boolean, wantFocusVault: boolean, wantEchoTile: boolean,
-): LevelDef {
-  const { hazardType, abilityType } = CORE_TABLE[core];
-  const holder: 0 | 1 = rng.nextInt(2) as 0 | 1;
+): LevelDef | null {
+  const spawn: Axial = { q: 0, r: gridRadius - 1 };
+  const exit:  Axial = { q: 0, r: -(gridRadius - 1) };
 
   const entities: EntityDef[] = [
-    { type: 'avatar', id: 'avatar_p1', playerId: 0, q: 0, r: 2, z: 0 },
-    { type: 'avatar', id: 'avatar_p2', playerId: 1, q: 0, r: 2, z: 1 },
-    { type: 'exit', id: 'exit_p1', playerId: 0, q: 0, r: -2, z: 0 },
-    { type: 'exit', id: 'exit_p2', playerId: 1, q: 0, r: -2, z: 1, initiallyLocked: true },
-    { type: 'hazard', id: 'door_gate', hazardType, q: 0, r: -1, z: 0 },
-    ...gateWallCluster(),
+    { type: 'avatar', id: 'avatar_p1', playerId: 0, q: spawn.q, r: spawn.r, z: 0 },
+    { type: 'avatar', id: 'avatar_p2', playerId: 1, q: spawn.q, r: spawn.r, z: 1 },
+    { type: 'exit', id: 'exit_p1', playerId: 0, q: exit.q, r: exit.r, z: 0 },
+    { type: 'exit', id: 'exit_p2', playerId: 1, q: exit.q, r: exit.r, z: 1, initiallyLocked: true },
   ];
-  if (wantEchoTile) entities.push({ type: 'echo_tile', id: 'echo_a', q: 0, r: 1, z: 0 });
 
+  const matrixNodes: MatrixNodeDef[] = [];
   const conduits: MatrixConduitDef[] = [];
-  const routePlate: InventoryConduitDef = { entityId: 'inv_route_plate', shape: ConduitShape.STRAIGHT, rotation: 0 };
+  const inventory: { player0: InventoryConduitDef[]; player1: InventoryConduitDef[] } = { player0: [], player1: [] };
 
-  if (wantResonance) {
-    // Discharge (EX→IN) — the safe, never-load-bearing pattern levels 26-29
-    // already established. A CURVED dummy (not STRAIGHT) at the entry row so
-    // it can never be rotated into the route's own E-W orientation and
-    // silently substitute for the real fresh insert (the exact rotate-bypass
-    // flaw found and fixed during SPRINT_028's level 27).
-    conduits.push({ id: 'prep_in_plate', column: 2, row: 0, shape: ConduitShape.CURVED, rotation: 0, base: ConduitBase.IN });
-    routePlate.base = ConduitBase.EX;
+  // Exit-side ring always exists (v1's original single-gate shape); the
+  // spawn-side ring only when a 2nd ability was chained. Both rings gate
+  // BOTH dimensions — z:0 and z:1 each get their own copy of the same
+  // hazard type/wall cluster — which is what forces both avatars through
+  // both gates (level_16's proven shape), since abilities are global once
+  // powered.
+  cores.forEach((core, i) => {
+    const { hazardType, abilityType } = CORE_TABLE[core];
+    const isSpawnRing = cores.length === 2 && i === 0;
+    const center = isSpawnRing ? spawn : exit;
+    const wallOffsets = isSpawnRing ? SPAWN_RING_WALLS : EXIT_RING_WALLS;
+    const hazardOffset = isSpawnRing ? SPAWN_RING_HAZARD : EXIT_RING_HAZARD;
+    const idPrefix = `gate${i}`;
+    entities.push(
+      ...ringEntities(center, wallOffsets, hazardOffset, 0, idPrefix, hazardType),
+      ...ringEntities(center, wallOffsets, hazardOffset, 1, idPrefix, hazardType),
+    );
+
+    matrixNodes.push({ id: `node_c3r${i}`, column: 3, row: i, abilityType });
+    const routePlate: InventoryConduitDef = { entityId: `inv_route_plate_${i}`, shape: ConduitShape.STRAIGHT, rotation: 0 };
+    if (wantResonance && i === 0) {
+      // Discharge (EX→IN) — the safe, never-load-bearing pattern levels
+      // 26-29 already established. A CURVED dummy (not STRAIGHT) at the
+      // entry row so it can never be rotated into the route's own E-W
+      // orientation and silently substitute for the real fresh insert (the
+      // exact rotate-bypass flaw found and fixed for SPRINT_028's level 27).
+      conduits.push({ id: 'prep_in_plate', column: 2, row: 0, shape: ConduitShape.CURVED, rotation: 0, base: ConduitBase.IN });
+      routePlate.base = ConduitBase.EX;
+    }
+    const holder: 0 | 1 = rng.nextInt(2) as 0 | 1;
+    (holder === 0 ? inventory.player0 : inventory.player1).push(routePlate);
+  });
+
+  const unlockHex = add(spawn, SHARED_UNLOCK_OFFSET);
+  const apUnlockNodes = [{ id: 'unlock_01', value: 4, hexA: { q: unlockHex.q, r: unlockHex.r }, hexB: { q: unlockHex.q, r: unlockHex.r } }];
+
+  const focusVaultNodes = wantFocusVault ? (() => {
+    const vaultHex = add(spawn, FOCUS_VAULT_NODE_OFFSET);
+    const plateHex = add(spawn, FOCUS_VAULT_PLATE_OFFSET);
+    return [{
+      id: 'vault_01', cost: 3,
+      hexA: { q: vaultHex.q, r: vaultHex.r }, hexB: { q: vaultHex.q, r: vaultHex.r },
+      vault: { q: plateHex.q, r: plateHex.r, z: 0 as const, shape: ConduitShape.CROSS, rotation: 0 },
+    }];
+  })() : undefined;
+
+  if (wantEchoTile) {
+    const echoHex = add(spawn, ECHO_TILE_OFFSET);
+    entities.push({ type: 'echo_tile', id: 'echo_a', q: echoHex.q, r: echoHex.r, z: 0 });
   }
 
-  const inventory: { player0: InventoryConduitDef[]; player1: InventoryConduitDef[] } = { player0: [], player1: [] };
-  (holder === 0 ? inventory.player0 : inventory.player1).push(routePlate);
-
-  const matrixNodes: MatrixNodeDef[] = [{ id: 'node_c3r0', column: 3, row: 0, abilityType }];
-  const apUnlockNodes = [{ id: 'unlock_01', value: 4, hexA: { q: -1, r: 1 }, hexB: { q: -1, r: 1 } }];
-  const focusVaultNodes = wantFocusVault ? [{
-    id: 'vault_01', cost: 3,
-    hexA: { q: 1, r: 1 }, hexB: { q: 1, r: 1 },
-    vault: { q: 2, r: 0, z: 0 as const, shape: ConduitShape.CROSS, rotation: 0 },
-  }] : undefined;
+  // Defensive collision guard (plan §4): rather than hand-proving every
+  // radius/ability-count/optional-extra combination never overlaps, reject
+  // any attempt where two entities land on the same (q,r,z) — cheap, and
+  // turns a layout mistake into "try a different seed" instead of a broken
+  // or silently-miswired level.
+  const seen = new Set<string>();
+  for (const e of entities) {
+    const key = `${e.q},${e.r},${e.z}`;
+    if (seen.has(key)) return null;
+    seen.add(key);
+  }
 
   return {
     id: '_candidate',
-    name: `Generated ${core}${wantResonance ? '+RESONANCE' : ''}${wantFocusVault ? '+FOCUS_VAULT' : ''}${wantEchoTile ? '+ECHO_TILE' : ''} (seed=${params.seed}, attempt=${attempt}, D=${params.difficulty})`,
+    name: `Generated ${cores.join('+')}${wantResonance ? '+RESONANCE' : ''}${wantFocusVault ? '+FOCUS_VAULT' : ''}${wantEchoTile ? '+ECHO_TILE' : ''} (seed=${params.seed}, attempt=${attempt}, D=${params.difficulty}, R=${gridRadius})`,
     initialAP: SOLVE_AP_CEILING, // replaced with the real value once optimalCost is known
     apUnlockNodes,
+    gridRadius,
     focusVaultNodes,
     initialInventory: inventory,
     scrapPool: [],
     entities,
     matrix: { nodes: matrixNodes, conduits },
   };
-}
-
-/** The proven 5-wall funnel shared by levels 2/3/8/20/23/25/26/27/28/29 —
- * forces routing through the single gated hex at (0,-1) instead of around it. */
-function gateWallCluster(): EntityDef[] {
-  const offsets: [number, number][] = [[1, -2], [1, -3], [0, -3], [-1, -2], [-1, -1]];
-  return offsets.map(([q, r]) => ({ type: 'wall', id: `gate_wall_${q}_${r}`, q, r, z: 0 }));
 }

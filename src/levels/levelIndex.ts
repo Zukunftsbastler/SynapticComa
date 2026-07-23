@@ -43,6 +43,19 @@ export const LEVEL_NAMES: Record<string, string> = {
   level_37: 'Blue Resonance',
   level_38: 'Triple Threat',
   level_39: 'Everything At Once',
+  // Levels 40-49: Generator v2 batch (SPRINT_029 follow-up #2, 2026-07-23) —
+  // multi-ability chains (up to 2 required core abilities) + scaled
+  // gridRadius, past Batch 1's single-ability D≈6.2 plateau.
+  level_40: 'Twin Gates',
+  level_41: 'Burning Circuit',
+  level_42: 'Vaulted Passage',
+  level_43: 'The Long Corridor',
+  level_44: 'Full Spectrum',
+  level_45: 'Ashen Threshold',
+  level_46: 'Wide Reach',
+  level_47: 'Reserve Circuit',
+  level_48: 'Distant Echo',
+  level_49: 'The Far Shore',
 };
 
 export const LEVEL_ORDER: string[] = [
@@ -85,4 +98,14 @@ export const LEVEL_ORDER: string[] = [
   'level_37',
   'level_38',
   'level_39',
+  'level_40',
+  'level_41',
+  'level_42',
+  'level_43',
+  'level_44',
+  'level_45',
+  'level_46',
+  'level_47',
+  'level_48',
+  'level_49',
 ];
