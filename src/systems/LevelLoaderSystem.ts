@@ -71,6 +71,10 @@ const LEVEL_MODULES: Record<string, () => Promise<{ default: unknown }>> = {
   level_27: () => import('@/levels/level_27.json'),
   level_28: () => import('@/levels/level_28.json'),
   level_29: () => import('@/levels/level_29.json'),
+  // Generator scratch slot (generative_levels.md §3's acceptance gate,
+  // scripts/generateLevel.ts) — never a shipped campaign level. Overwritten
+  // on disk before each verification pass; loaded only via ?debugLevel=_candidate.
+  _candidate: () => import('@/levels/_candidate.json'),
 };
 
 function dispatchEntityFactory(world: IWorld, def: EntityDef): void {

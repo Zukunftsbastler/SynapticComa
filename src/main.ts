@@ -20,6 +20,9 @@ import { PixiDriver } from '@/rendering/PixiDriver';
 import { loadLevel } from '@/systems/LevelLoaderSystem';
 import { setGuestLevelLoadHandler } from '@/systems/GuestSyncSystem';
 import { GameState } from '@/state/GameState';
+import { inventory } from '@/state/InventoryState';
+import { scrapPool } from '@/state/ScrapPoolState';
+import { uiState } from '@/ui/uiState';
 import { loadProgress, ProgressionState } from '@/state/ProgressionState';
 import { LEVEL_ORDER } from '@/levels/levelIndex';
 import { initKeyboardInput } from '@/input/KeyboardInput';
@@ -45,6 +48,31 @@ let matrixUI:  MatrixUI | null = null;
 let overlay:   { destroy(): void } | null = null;
 let networked = false;
 let transitioning = false;
+
+// Verification-only bypass (Playwright e2e, generative_levels.md §3's
+// acceptance gate): ?debugLevel=<id> skips the Lobby and Level Select
+// entirely and loads that level directly in local mode, ignoring
+// ProgressionState's unlock rule. Mirrors the existing GameState.revealBothDims
+// "local-testing flag" precedent (SPRINT_025) — additive, never touched by
+// normal play.
+const debugLevel = new URLSearchParams(location.search).get('debugLevel');
+
+// Read-only introspection surface for e2e/actionToInput.ts (Playwright can't
+// import app modules directly — it drives real clicks/keys from outside the
+// page, then reads live state through this to decide what to click next).
+// Only ever populated when debugLevel is set; absent in normal play.
+declare global {
+  interface Window {
+    __e2e?: {
+      GameState:  typeof GameState;
+      inventory:  typeof inventory;
+      scrapPool:  typeof scrapPool;
+      uiState:    typeof uiState;
+      driver:     PixiDriver;
+      tutorials:  TutorialDirector;
+    };
+  }
+}
 
 async function goToLevel(levelId: string, carriedFailures: number): Promise<void> {
   transitioning = true;
@@ -129,10 +157,20 @@ function startSession(result: LobbyResult): void {
   const legend    = new LegendPanel(document.body);
   const tooltip   = new HoverTooltip(document.body);
   const tutorials = new TutorialDirector(document.body, driver);
+  if (debugLevel) {
+    window.__e2e = { GameState, inventory, scrapPool, uiState, driver, tutorials };
+  }
   setUiHook(() => {
     // Local mode: when P1 dissolves into the Nexus, hand control to P2 so the
-    // player is never left staring at an empty board.
-    if (!networked && GameState.p1HasExited && GameState.viewPlayerId === 0) {
+    // player is never left staring at an empty board. Suppressed under
+    // ?debugLevel=: the solver's witness (LevelSolver.ts) treats both
+    // inventories as one ownership-agnostic pool, matching NETWORKED play
+    // (each client keeps permanent access to its own board) — this local-only
+    // convenience would otherwise strand a witness that has the exited
+    // player's leftover plate still needed for a later Insert, a restriction
+    // that doesn't exist in real (networked) play and that the solver never
+    // modeled in the first place.
+    if (!networked && !debugLevel && GameState.p1HasExited && GameState.viewPlayerId === 0) {
       GameState.viewPlayerId = 1;
     }
     hud.update();
@@ -162,8 +200,15 @@ function startSession(result: LobbyResult): void {
       void goToLevel(GameState.currentLevel, GameState.failureCount);
     }
     // Esc: level select (host/local decide the level; the Guest follows).
+    // Suppressed under ?debugLevel=: Escape is also the Monitor's documented
+    // hold-to-skip affordance (TutorialDirector.ts, doc §3.6) — the e2e
+    // verification harness (e2e/actionToInput.ts) uses it to clear a blocking
+    // concept the witness's own actions will never satisfy (e.g. a
+    // "rotate the existing plate" tip when the witness only ever inserts a
+    // fresh one). Without this guard the same keypress would also hijack the
+    // session into LevelSelectScreen mid-replay.
     if (
-      e.key === 'Escape' && !transitioning &&
+      e.key === 'Escape' && !transitioning && !debugLevel &&
       (!networked || GameState.localPlayerId === 0)
     ) {
       if (overlay instanceof LevelSelectScreen) {
@@ -182,7 +227,9 @@ function startSession(result: LobbyResult): void {
 
   // ── Host/local: choose the level; Guest: load the handshake level and
   //    follow the Host's LEVEL_LOAD messages from there. ────────────────────
-  if (result.role === 0) {
+  if (debugLevel) {
+    void goToLevel(debugLevel, 0);
+  } else if (result.role === 0) {
     openLevelSelect(false);
   } else {
     void goToLevel(result.levelId, 0);
@@ -213,7 +260,11 @@ async function main(): Promise<void> {
   setDriver(driver);
 
   loadProgress();
-  new LobbyUI(document.body, startSession);
+  if (debugLevel) {
+    startSession({ role: 0, levelId: debugLevel, networked: false });
+  } else {
+    new LobbyUI(document.body, startSession);
+  }
 }
 
 main().catch(console.error);

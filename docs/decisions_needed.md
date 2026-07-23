@@ -21,8 +21,22 @@
 > | D13 | Panels after levels 1, 3, 5, 8, 11 and 15 (arc: onset → reactivation → confrontation → emergence). Andreas leads panel concepts. |
 > | D14 | **Option C, scoped down** (SPRINT_024, 2026-07-21) — see the D14 section below for the full resolution note and why this departs from the normal three-way sign-off. |
 > | D15 | **Resonance built (scoped down), Threshold cut** (SPRINT_026, 2026-07-21) — see the D15 section below. |
+> | D16 | **Proposed, unresolved** (2026-07-23) — concept only, see the D16 section below. |
 >
 > The original questions are preserved below for context and for Chris's review.
+
+---
+
+## D16 — The Body: A Meta-Progression Layer *(Proposed 2026-07-23, rescaled 2026-07-23b — concept only, unresolved)*
+
+**Trigger:** Till: give the puzzle-solving a visible "why" by showing the comatose patient's body gradually waking up as levels are completed — a few body regions unlock every so often, delivered through short cutscenes, with some player choice in which region wakes first tied to mechanic flavor (movement vs. perception), the head/consciousness gated behind the most content, and enough narrative variety (~10 story variants) that replays feel different. Follow-up: rescale to a planned **100-level campaign** (up from 29 shipped), guarantee a story beat in every one of the first 10 levels, spell out exactly what each player narratively contributes to each recovery, and solve AI-art consistency/small-image/region-highlighting concretely.
+
+**Current state:** Concept-only, written up in full at `docs/body_awakening.md`. No code, no art, no schedule changes. Overlays body-region milestones onto the *existing* 29-level campaign's already-named mechanic blocks (zero re-verification risk), guarantees a beat (vignette or region-unlock) on every one of levels 1–10, and sketches an Act-level cadence for the not-yet-built levels 30–100. Places the one real player-choice fork (~L48, a "soft fork" — narrative flavor only, no branching level graph) in that unbuilt range. Player roles are narrated entirely through the existing shared-Matrix loop (Id gathers the impulse, Superego routes it into a stable circuit, both required — no new mechanics). Art consistency is addressed via a fixed cast-reference-sheet approach (reusing the existing Draw Things pipeline's own effort-ranked consistency ladder, `art_pipeline_roadmap.md §4.3`) and a third "clinical reality" palette distinct from both dimensions. Body-region highlighting is explicitly **not** AI-regenerated per state — one fixed silhouette image plus code-defined region rects (mirroring `MatrixRenderer.ts`'s `cellRect` pattern) and the existing `TutorialOverlay.ts` dim/frame overlay technique.
+
+**The question:** Do we build this, and if so — the milestone schedule, the fork's exact mechanic commitments, the story-variant count (10 as first asked, or scoped down), and — newly flagged — **the jump from 29 to 100 levels itself (71 new levels of content)**, all need a decision. Also needs an art/story owner.
+
+**Relevant files:** `docs/body_awakening.md` (full concept), `docs/narrative.md §5.2c`, `docs/level_design.md §5` (existing campaign blocks this would overlay), `docs/art_pipeline_roadmap.md §4.3` (consistency ladder this reuses)
+**Owner:** all three — this is a structural + content commitment, not just an engineering one. 🔢 no AP-economy impact expected (pure meta/narrative layer), but Andreas's art/story workload — now scaled to 100 levels — is the real cost driver and should be estimated before this is greenlit.
 
 ---
 

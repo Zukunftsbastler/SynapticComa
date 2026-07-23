@@ -149,4 +149,12 @@ export class TutorialDirector {
   destroy(): void {
     this.overlay.destroy();
   }
+
+  /** Read-only — lets the e2e verification harness (e2e/actionToInput.ts)
+   * know a box is up before clicking, since a blocking box's real action never
+   * completes it via Enter and its box can overlap other UI (InventoryPanel
+   * included) with pointer-events:auto. Never used to bypass anything itself —
+   * the harness still only ever presses real keys (Enter to dismiss non-
+   * blocking, hold-Escape per doc §3.6 to skip a blocking one). */
+  get isActive(): boolean { return this.active !== null; }
 }

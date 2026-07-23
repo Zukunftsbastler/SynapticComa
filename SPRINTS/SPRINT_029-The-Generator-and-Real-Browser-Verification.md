@@ -1,0 +1,50 @@
+# SPRINT 029: The Generator + a Real Browser-Verification Gate
+
+**Status:** ✅ Completed 2026-07-23
+**Trigger:** Till: build "the Generator" — procedural levels of a defined difficulty using a prescribed set of mechanics. Same message, unprompted: the solver "must urgently simulate the browser's view, so that no problems arise." That instinct was correct — investigation confirmed neither existing solvability gate (`validateLevels.ts`'s static UI-producer scan, SPRINT_015; `WitnessReplay.ts`'s headless ECS replay, SPRINT_016) touches the DOM at all, and both sprint docs say so themselves. Confirmed via `AskUserQuestion`: build both the Playwright gate and the Generator together in one sprint (not split), support all mechanics from the start including the solver-invisible optional ones (Focus Vault, Echo Tile), and scope this as the offline generate-and-verify pipeline only (no live "Daily Synapse" delivery — this client is P2P-only, no backend server).
+
+---
+
+## 1. Part A — A Real Browser-Verification Gate
+
+New: `@playwright/test` (devDependency), `playwright.config.ts` (`webServer` auto-runs `vite build && vite preview`), `e2e/verifyLevel.spec.ts`, `e2e/actionToInput.ts`, `e2e/global.d.ts`. New script `validate:e2e`.
+
+- **`?debugLevel=<id>` bypass** (`src/main.ts`): skips Lobby + Level Select, loads any level directly in local mode — needed to reach deep campaign levels and the Generator's `_candidate` slot without replaying progression. Gated entirely behind the query param; zero effect on normal play.
+- **`window.__e2e`** (`main.ts`, same gate): a read-only introspection surface (`GameState`, `inventory`, `scrapPool`, `uiState`, `driver`, `tutorials`) — Playwright can't import app modules directly, so it reads live state through this to decide what to click next. Never used to bypass an input listener; every action is still a real `page.mouse.click`/`page.keyboard.press`.
+- **`e2e/actionToInput.ts`** translates one `SolverAction` (the solver's witness format) into real input, reusing existing exported geometry (`PixiDriver.hexToScreenA/B`, `MatrixRenderer.ts`'s `cellRect`/`insertArrowRect`/`scrapPileRect`) instead of inventing coordinate math. Blind draws are forced onto the witness's assumed shape by monkey-patching `Math.random` inside the page's own realm — mirroring exactly what `WitnessReplay.ts` already does for the headless gate.
+- **`e2e/verifyLevel.spec.ts`** is data-driven: one Playwright test per level id (`LEVEL_ORDER` plus `_candidate`), each solving the level fresh, replaying the witness through `actionToInput.ts`, and asserting the `NEXUS CLEARED` heading actually appears.
+
+**Three real bugs found and fixed while getting this green, none hypothetical:**
+1. **Local-mode's auto-view-switch-on-exit could strand a witness.** When P1 exits, `main.ts` auto-switches the view to P2 (a solo-testing convenience) — but the solver's witness treats both inventories as one ownership-agnostic pool and can legitimately need P1's leftover plate *after* P1 has exited. Fixed by suppressing the auto-switch under `?debugLevel=` (real networked play never has this restriction at all, since each client is permanently fixed to its own role).
+2. **A blocking tutorial popup can overlap and swallow clicks on unrelated UI.** `TutorialOverlay`'s explanation box has `pointer-events:auto` and can sit directly over `InventoryPanel` — and a *blocking* concept (e.g. "rotate the existing plate") ignores Enter by design, so it doesn't clear until its own described action happens, which the witness may never perform. Fixed with the same documented escape hatch a real stuck player has: hold-Escape-to-skip (`TutorialDirector.ts`'s existing `SKIP_HOLD_MS`), checked via a new `TutorialDirector.isActive` getter rather than DOM sniffing.
+3. **Escape-to-skip collided with Escape-opens-Level-Select.** `main.ts`'s own Escape handler opens `LevelSelectScreen` — the same key the tutorial skip needs. Fixed by suppressing that handler under `?debugLevel=` too.
+
+All three fixes are small, disclosed, `debugLevel`-gated additions to `main.ts`/`TutorialDirector.ts` — normal play is untouched.
+
+**Result:** all 29 shipped levels + the `_candidate` slot pass `validate:e2e` — the first time this project's solvability proofs have been checked against a real rendered browser, not just headless logic.
+
+## 2. Part B — The Generator
+
+New: `src/generation/Random.ts` (a real PCG32 per `generative_levels.md §3.1` — this codebase had zero seeded RNG anywhere before this), `src/generation/LevelGenerator.ts`, `scripts/generateLevel.ts` (`npm run generate:level -- --difficulty=N --mechanics=A,B,C --seed=N`).
+
+**Scoped-down v1** (disclosed in full in `generative_levels.md §3.0`): one required core ability per generated level (`UNLOCK_RED`/`UNLOCK_BLUE`/`FIRE_IMMUNITY`), reusing the exact proven "gate-wall funnel" template shared by 10 existing hand-authored levels rather than the full spec's arbitrary multi-ability hex topology. `RESONANCE`/`FOCUS_VAULT`/`ECHO_TILE` all layer on top fully supported, per Till's explicit choice. `JUMP`/`PUSH`/`PHASE_SHIFT` are accepted by the type but not wired into hex-layout yet (each needs genuinely different terrain, not a swapped hazard type) — requesting them alone fails with a clear message, never a broken level.
+
+**Acceptance gate:** every candidate must clear `solveLevel` (in-process), `WitnessReplay.ts` (headless ECS truth-check), and the new Playwright gate (Part A) before `scripts/generateLevel.ts` accepts it. `LevelGenerator.ts` itself retries internally (up to 20 attempts, fresh forked sub-seed each time) against the first two; the CLI runs the real-browser check once per invocation and reports rejection plainly if it somehow fails (re-run with a different `--seed` rather than retrying in-process, deliberately — `_candidate.json` is loaded via a cached dynamic `import()`, so silently regenerating and re-importing the same path within one process would risk a stale module).
+
+**A real bug found and fixed during testing, not hypothetical:** a tight `initialAP` doesn't just cap total spend — it can make the solver's *own* optimal route more expensive (a cheaper path needs more AP mid-route, before the Shared Unlock's value is earned, than a tight starting pool allows). Naively setting `initialAP = optimalCost + margin` from one generous probe solve, then re-solving at that tighter value, could **oscillate forever** between two AP values that each implied the other whenever Neuro-Resonance's Discharge bonus was in play. Fixed by climbing monotonically instead — only ever raising `initialAP`, stopping the moment the achieved margin already meets the target — which always terminates (actual slack may end up slightly more generous than requested in this interaction, never less, and never loops).
+
+**Verified:** multiple difficulty/mechanic/seed combinations generated, solver+replay+Playwright-accepted end to end, including Resonance and Focus Vault + Echo Tile together. Determinism confirmed (same seed ⇒ byte-identical `LevelDef`). Clean rejection confirmed for an unsupported-only mechanics request. At the very tightest requested difficulty (margin=1) combined with Resonance, the retry loop's limited per-attempt variation (only which player holds the plate, when only one core ability is available) can occasionally exhaust its 20 attempts — a real, disclosed edge case, not a silent bad output.
+
+## 3. Files Touched
+
+- New: `src/generation/Random.ts`, `src/generation/LevelGenerator.ts`, `scripts/generateLevel.ts`, `playwright.config.ts`, `e2e/actionToInput.ts`, `e2e/verifyLevel.spec.ts`, `e2e/global.d.ts`, `src/levels/_candidate.json` (generator scratch slot — committed as a harmless placeholder, *not* gitignored: `LEVEL_MODULES`' import of it is a static path Vite resolves at build time, so it must exist on a fresh clone).
+- Modified: `package.json` (`@playwright/test` devDependency, `validate:e2e`/`generate:level` scripts), `src/main.ts` (debug level-load hook, `window.__e2e`, two `debugLevel`-gated behavior suppressions), `src/systems/LevelLoaderSystem.ts` (`_candidate` registry entry), `src/tutorial/TutorialDirector.ts` (new `isActive` getter), `.gitignore` (Playwright's own output dirs).
+- Docs: `docs/generative_levels.md` (status banner, new §3.0, §3.1, §5, §6 updates), `docs/roadmap.md §5` item 4.
+- No changes to `LevelSolver.ts`, `DifficultyModel.ts`, `WitnessReplay.ts`, `ResonanceSystem.ts`, or any of the 29 hand-authored level JSONs — all reused as-is.
+
+## 4. Open / Next
+
+- Endless mode / "Daily Synapse"'s live delivery mechanism — a separate, later decision (no backend server exists; likely an offline batch-generate-and-publish job, not client-side runtime generation).
+- Arbitrary multi-ability requirement graphs and JUMP/PUSH/PHASE_SHIFT hex-layout support — the two biggest remaining gaps versus the full `generative_levels.md §3` spec.
+- 🔢 Chris's calibration of `computeMargin`'s difficulty→AP-slack curve against real playtests (same standing flag `DifficultyModel.ts`'s own weight vector already carries).
+- Andreas/Chris have not reviewed any of this — flagged here for their awareness, same convention as D14/D15/SPRINT_026's scoped-down shapes.

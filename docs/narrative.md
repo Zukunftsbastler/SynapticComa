@@ -61,6 +61,10 @@ After completing specific levels, a single narrative panel appears (not every le
 
 The single exception to the wordless world is **The Monitor** — the hospital's bedside machine observing the coma from outside. Its clinical, typed CRT annotations frame the story ("SUBJECT: COMATOSE. DAY 214. INITIATING DEEP STIMULATION.") and carry the entire tutorial layer (`tutorial_design.md`). The rule: *the mind is wordless; the machine watching it is not.* Game pieces and boards never show text; the Monitor overlay may.
 
+### 5.2c The Body: A Meta-Progression Layer (Concept, 2026-07-23)
+
+> **Status: concept only, not reviewed, nothing implemented.** Full proposal in `docs/body_awakening.md` — a body-silhouette meta-screen where the patient's regions gradually "wake up," scaled to a planned 100-level campaign (~13 regions, dense guaranteed story beats across levels 1–10), delivered as silent illustrated panels (Monitor text exception for clinical dialogue, same rule as §5.2b) plus a third "clinical reality" visual palette distinct from both dimensions. A single late-game soft fork (Id/motor vs. Superego/perception track) gates the final Head/Consciousness milestone. Proposed as `decisions_needed.md` D16.
+
 ### 5.3 The Threshold Transition — cut (SPRINT_026)
 
 The Threshold mechanic was formally removed from the project in SPRINT_026 (`decisions_needed.md` D15). No board-flip transition exists to animate or illustrate. Kept below for historical/design-record purposes only.

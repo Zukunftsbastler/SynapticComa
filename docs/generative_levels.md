@@ -1,6 +1,6 @@
 # Generative Levels: Solver, Generator & Difficulty Model
 
-> **Status (SPRINT_023 audit, `docs/roadmap.md` §0):** the Solver (§2) and Difficulty Scorer (§4) are fully built and load-bearing — `LevelSolver.ts`, `DifficultyModel.ts`, and `WitnessReplay.ts` gate every level in the campaign via `validate:levels`. **The Generator (§3) does not exist.** `src/generation/` holds only those three files; there is no reverse-design pipeline, no "Deep Coma" endless mode, no "Daily Synapse." Despite the diagram below implying otherwise, only two of the three pipeline stages are real.
+> **Status (SPRINT_029, 2026-07-23):** the Solver (§2) and Difficulty Scorer (§4) remain fully built and load-bearing. **The Generator (§3) is now built too, in a scoped-down v1** — `src/generation/LevelGenerator.ts` + `src/generation/Random.ts` (a real PCG32, per §3.1) + a CLI (`scripts/generateLevel.ts`, `npm run generate:level -- --difficulty=N --mechanics=... --seed=N`). Every candidate clears three gates before being accepted: the solver (`solveLevel`, in-process), the headless witness replay (`WitnessReplay.ts`, unchanged), and — newly added this same sprint, closing a real gap Till flagged unprompted — a **real-browser Playwright check** (`playwright.config.ts`, `e2e/`) that replays the witness via actual clicks/keys against a real rendered page. Neither prior gate touched the DOM at all; both said so in their own sprint docs. Disclosed scope cuts, not silent: (1) v1 reuses the proven single-hazard "gate-wall funnel" template (levels 2/3/8/20/23/25/26/27/28/29) rather than the full spec's arbitrary multi-ability hex topology — **one required core ability per generated level**, picked from UNLOCK_RED/UNLOCK_BLUE/FIRE_IMMUNITY; (2) JUMP/PUSH/PHASE_SHIFT are fully solver-modeled but need fundamentally different terrain (a missing-tile gap, a pushable block, a phase barrier — not a swapped hazard type) and aren't wired into the Generator's hex-layout step yet — requesting them alone fails cleanly rather than emitting something broken; (3) RESONANCE/FOCUS_VAULT/ECHO_TILE all layer on top of any core mechanic and are fully supported (Resonance always uses the safe, never-load-bearing Discharge pattern levels 26-29 established); (4) at the very tightest requested difficulty (margin=1, the floor) combined with RESONANCE, the retry loop's limited per-attempt variation may occasionally exhaust its budget rather than find a fit — a real, disclosed edge case, not a silent wrong answer. No live "Daily Synapse"/endless-mode delivery mechanism exists — this is the offline generate-and-verify pipeline only (this is a P2P-only client with no backend server, so a live daily challenge is a separate, later decision). Full detail: `SPRINTS/SPRINT_029-...md`.
 
 This document specifies the procedural level pipeline. Design contract and player-facing rules live in `level_design.md §6`. Everything here is deterministic: **seed in → identical level out**, on every client, every time.
 
@@ -100,7 +100,7 @@ The in-game Dead End check (`digital_implementation.md §7`) reuses the solver's
 
 ---
 
-## 3. The Generator (Reverse Design, Automated) — UNBUILT, see status note above
+## 3. The Generator (Reverse Design, Automated)
 
 The generator automates the human pipeline from `level_design.md §3` — it designs backward from the solution:
 
@@ -113,9 +113,20 @@ The generator automates the human pipeline from `level_design.md §3` — it des
 
 Terrain decoration (which floor variant, vein/circuit texture placement) is painted by a small **Wave Function Collapse** pass — purely cosmetic, seeded from the same RNG, zero mechanical impact.
 
+### 3.0 As Shipped (SPRINT_029) vs. This Spec
+
+`LevelGenerator.ts` implements steps 1-2-6 essentially as specced, and a **scoped-down** version of 3-4-5:
+
+- **Step 1 (requirement graph):** narrowed to exactly one required core ability per generated level (not an arbitrary multi-ability dependency chain), drawn from whichever of `UNLOCK_RED`/`UNLOCK_BLUE`/`FIRE_IMMUNITY` the caller allows. `JUMP`/`PUSH`/`PHASE_SHIFT` are accepted by the parameter type (so the interface matches the full spec) but not yet wired into hex-layout — see below.
+- **Step 3 (hex paths):** rather than walking arbitrary terrain, v1 reuses the exact, already-proven single-hazard "gate-wall funnel" template shared by levels 2/3/8/20/23/25/26/27/28/29 — reliable by construction, since it's the same shape 10 hand-authored levels already ship with. This is the real reason JUMP/PUSH/PHASE_SHIFT aren't wired up yet: each needs different terrain (a missing-tile gap, a pushable block, a phase barrier), not just a swapped hazard type, and laying that out safely is a bigger follow-up than fit this pass.
+- **Step 4 (noise):** a decoy plate in the unused matrix column, solver-reconfirmed to never beat `optimalCost` — a much smaller decoy repertoire than the full spec's (alternate routes, red-herring locks), but exercising the same "propose then reconfirm" loop.
+- **Step 5 (bases):** only ever assigns the safe, never-load-bearing **Discharge** pair (levels 26-29's own established pattern) when `RESONANCE` is requested — Anchor/Dampening's load-bearing variants would need to feed back into the difficulty/margin math this pass doesn't attempt to solve.
+- **`FOCUS_VAULT`/`ECHO_TILE`** (not in the original spec's step list at all) are fully supported additions, placed exactly as in levels 23/25 — solver-invisible by construction, same as every hand-authored level using them.
+- **A real acceptance gate, closing a gap the original spec didn't mention:** `scripts/generateLevel.ts` requires every candidate to clear the solver (in `LevelGenerator.ts`), the headless witness replay (`WitnessReplay.ts`, unchanged), *and* a real-browser Playwright check (`playwright.config.ts`, `e2e/`) before it's accepted — the first two never touch the DOM (both say so in their own sprint docs); the third does, closing a real blind spot Till flagged when this sprint started.
+
 ### 3.1 Determinism & RNG
 
-All randomness flows from a single **PCG32** stream seeded by the level seed. The generator, base assignment, WFC decoration, and the Scrap Pool's blind-draw shuffle all draw from forked sub-streams (`seed_child = pcg(seed, streamId)`) so that adding a new consumer never perturbs existing ones. The Host sends only the seed in the handshake; both clients generate bit-identical levels.
+All randomness flows from a single **PCG32** stream (`src/generation/Random.ts`, `forkStream(seed, streamId)`) seeded by the level seed — this exact algorithm/API now really exists, not just as a spec. v1 forks one sub-stream per generation attempt (`forkStream(seed, attempt)`); base assignment, WFC decoration, and the Scrap Pool's blind-draw shuffle drawing from further forked sub-streams remain future work as those pieces themselves get built out. The Host sends only the seed in the handshake; both clients generate bit-identical levels (confirmed: same seed ⇒ byte-identical `LevelDef`).
 
 ---
 
@@ -141,15 +152,25 @@ D(level) = w₁·len(solutionPath)
 
 ```
 src/generation/
-├── LevelGenerator.ts    # §3 pipeline; emits LevelDef
+├── LevelGenerator.ts    # §3 pipeline (scoped v1, §3.0); emits LevelDef
 ├── LevelSolver.ts       # §2 A*/IDA*; SolverProof; reachability core
 ├── DifficultyModel.ts   # §4 scoring + target curve
-├── ZobristTable.ts      # fixed-seed 64-bit key table
-├── Pcg32.ts             # deterministic RNG with forkable streams
-└── wfc/                 # cosmetic terrain decoration
+├── Random.ts            # §3.1 PCG32 with forkable streams (real, not a stub)
+└── WitnessReplay.ts     # Gate 4 — headless replay through the real ECS pipeline
+
+scripts/
+├── validateLevels.ts    # campaign-wide gates 1-4 over all hand-authored levels
+└── generateLevel.ts     # CLI: generate → solve → replay → e2e-verify → accept/reject
+
+e2e/
+├── verifyLevel.spec.ts  # Gate 5 (new, SPRINT_029) — real-browser Playwright replay
+├── actionToInput.ts     # SolverAction → real clicks/keys
+└── global.d.ts          # ambient type for window.__e2e (main.ts, debugLevel-gated)
 ```
 
-Build-time validation (`npm run validate:levels`) runs `LevelSolver` against all hand-crafted campaign JSONs and fails the build if any level lacks a proof or its stored `optimalCost` drifts.
+No `ZobristTable.ts` or `wfc/` exist yet — the solver's Zobrist hashing (§2.3) is inline in `LevelSolver.ts`, and terrain WFC decoration remains unbuilt (v1's generated levels reuse the existing `scatterDecals` cosmetic scatter, same as every hand-authored level).
+
+Build-time validation (`npm run validate:levels`) runs `LevelSolver` against all hand-crafted campaign JSONs and fails the build if any level lacks a proof or its stored `optimalCost` drifts. `npm run validate:e2e` (new) runs the real-browser gate against the same campaign, plus `_candidate` when invoked by `generate:level`.
 
 ---
 
@@ -157,4 +178,4 @@ Build-time validation (`npm run validate:levels`) runs `LevelSolver` against all
 
 1. **Solver first** (Sprint 14): it immediately pays for itself — campaign validation + runtime Dead End detection.
 2. **Difficulty scorer** (Sprint 14): scores the existing 15 levels; calibration data for Chris.
-3. **Generator** (Sprint 15): endless mode + Daily Synapse, gated on the scorer being calibrated.
+3. **Generator v1** (SPRINT_029, 2026-07-23): the offline generate-and-verify CLI, scoped down per §3.0 — done. Still open: endless mode / Daily Synapse's live delivery mechanism (a separate, later decision — this client is P2P-only with no backend server), the remaining multi-ability/arbitrary-topology generality, JUMP/PUSH/PHASE_SHIFT hex-layout support, and 🔢 Chris's calibration of `computeMargin`/the difficulty curve against real playtests.
