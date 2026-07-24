@@ -91,6 +91,16 @@ const LEVEL_MODULES: Record<string, () => Promise<{ default: unknown }>> = {
   level_47: () => import('@/levels/level_47.json'),
   level_48: () => import('@/levels/level_48.json'),
   level_49: () => import('@/levels/level_49.json'),
+  level_50: () => import('@/levels/level_50.json'),
+  level_51: () => import('@/levels/level_51.json'),
+  level_52: () => import('@/levels/level_52.json'),
+  level_53: () => import('@/levels/level_53.json'),
+  level_54: () => import('@/levels/level_54.json'),
+  level_55: () => import('@/levels/level_55.json'),
+  level_56: () => import('@/levels/level_56.json'),
+  level_57: () => import('@/levels/level_57.json'),
+  level_58: () => import('@/levels/level_58.json'),
+  level_59: () => import('@/levels/level_59.json'),
   // Generator scratch slot (generative_levels.md §3's acceptance gate,
   // scripts/generateLevel.ts) — never a shipped campaign level. Overwritten
   // on disk before each verification pass; loaded only via ?debugLevel=_candidate.

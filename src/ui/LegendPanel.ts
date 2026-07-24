@@ -158,18 +158,36 @@ export class LegendPanel {
       'position:absolute;right:8px;top:150px;width:280px;max-height:440px;',
       'background:#0c0a08ee;border:1px solid #3a2508;font-family:monospace;',
       'color:#c8a87c;font-size:0.68rem;z-index:25;overflow-y:auto;',
+      // This box's footprint overlaps the right hex board (radius≥4 levels
+      // push board hexes well into this region) — pointer-events:none here,
+      // re-enabled only on the header, so a click meant for a hex underneath
+      // doesn't get swallowed by empty panel space (MouseInput.ts's canvas
+      // guard now surfaces exactly this once-invisible conflict).
+      'pointer-events:none;',
     ].join('');
 
+    // Only the toggle glyph itself takes clicks (pointer-events:auto below) —
+    // the header row's full 280px width stays pass-through like the rest of
+    // the panel, so a hex rendered under the row's non-glyph portion (e.g. an
+    // exit at high gridRadius) still reaches MouseInput's canvas listener.
     const header = document.createElement('div');
-    header.textContent = '▤ LEGEND (click to toggle)';
     header.style.cssText = [
-      'padding:5px 8px;color:#7a6040;letter-spacing:0.12em;cursor:pointer;',
+      'padding:5px 8px;color:#7a6040;letter-spacing:0.12em;',
       'border-bottom:1px solid #2a1a08;user-select:none;',
+      'display:flex;justify-content:space-between;align-items:center;',
     ].join('');
-    header.addEventListener('click', () => {
+    const headerLabel = document.createElement('span');
+    headerLabel.textContent = 'LEGEND';
+    const toggleGlyph = document.createElement('span');
+    toggleGlyph.textContent = '▤';
+    toggleGlyph.title = 'Click to toggle';
+    toggleGlyph.style.cssText = 'cursor:pointer;pointer-events:auto;padding:0 4px;';
+    toggleGlyph.addEventListener('click', () => {
       this.collapsed = !this.collapsed;
       this.body.style.display = this.collapsed ? 'none' : 'block';
     });
+    header.appendChild(headerLabel);
+    header.appendChild(toggleGlyph);
 
     this.body = document.createElement('div');
     this.body.style.cssText = 'padding:6px 8px;';

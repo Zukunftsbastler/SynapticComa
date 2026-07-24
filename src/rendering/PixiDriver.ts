@@ -311,4 +311,12 @@ export class PixiDriver {
   getMatrixOrigin(): { x: number; y: number } {
     return { ...this.matrixOrigin };
   }
+
+  // Exposed so MouseInput.ts can scope its click listener to genuine canvas
+  // clicks — HTML overlays (InventoryPanel, MatrixUI) are separate DOM
+  // elements, but a click on them still bubbles to window, and without this
+  // check MouseInput would misread that bubbled event as a hex-board click.
+  get canvasElement(): HTMLCanvasElement {
+    return this.app.canvas;
+  }
 }

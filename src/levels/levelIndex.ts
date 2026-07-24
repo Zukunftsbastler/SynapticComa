@@ -56,6 +56,20 @@ export const LEVEL_NAMES: Record<string, string> = {
   level_47: 'Reserve Circuit',
   level_48: 'Distant Echo',
   level_49: 'The Far Shore',
+  // Levels 50-59: Generator v3 batch (SPRINT_031, 2026-07-24) — JUMP/PUSH/
+  // PHASE_SHIFT fully wired (full-row seal, not a fixed-width flank — see
+  // generative_levels.md §3.0), up to 3 chained core abilities. JUMP stays
+  // solo-only (a powered JUMP bypasses any other row-gate 2 rows away).
+  level_50: 'Clean Leap',
+  level_51: 'Heavy Load',
+  level_52: 'Between Worlds',
+  level_53: 'Twin Barriers',
+  level_54: 'Push and Pull',
+  level_55: 'Triple Lock',
+  level_56: 'Guarded Passage',
+  level_57: 'Resonant Barrier',
+  level_58: 'The Long Push',
+  level_59: 'Everything, Carefully',
 };
 
 export const LEVEL_ORDER: string[] = [
@@ -108,4 +122,14 @@ export const LEVEL_ORDER: string[] = [
   'level_47',
   'level_48',
   'level_49',
+  'level_50',
+  'level_51',
+  'level_52',
+  'level_53',
+  'level_54',
+  'level_55',
+  'level_56',
+  'level_57',
+  'level_58',
+  'level_59',
 ];

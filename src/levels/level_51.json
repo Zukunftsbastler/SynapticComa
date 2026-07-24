@@ -1,0 +1,175 @@
+{
+  "id": "level_51",
+  "name": "Heavy Load",
+  "initialAP": 14,
+  "apUnlockNodes": [
+    {
+      "id": "unlock_01",
+      "value": 4,
+      "hexA": {
+        "q": -1,
+        "r": 2
+      },
+      "hexB": {
+        "q": -1,
+        "r": 2
+      }
+    }
+  ],
+  "gridRadius": 3,
+  "initialInventory": {
+    "player0": [],
+    "player1": [
+      {
+        "entityId": "inv_route_plate_0",
+        "shape": 0,
+        "rotation": 0
+      }
+    ]
+  },
+  "scrapPool": [],
+  "entities": [
+    {
+      "type": "avatar",
+      "id": "avatar_p1",
+      "playerId": 0,
+      "q": 0,
+      "r": 2,
+      "z": 0
+    },
+    {
+      "type": "avatar",
+      "id": "avatar_p2",
+      "playerId": 1,
+      "q": 0,
+      "r": 2,
+      "z": 1
+    },
+    {
+      "type": "exit",
+      "id": "exit_p1",
+      "playerId": 0,
+      "q": 0,
+      "r": -2,
+      "z": 0
+    },
+    {
+      "type": "exit",
+      "id": "exit_p2",
+      "playerId": 1,
+      "q": 0,
+      "r": -2,
+      "z": 1,
+      "initiallyLocked": true
+    },
+    {
+      "type": "pushable_block",
+      "id": "gate0_block_0",
+      "q": 0,
+      "r": 0,
+      "z": 0
+    },
+    {
+      "type": "wall",
+      "id": "gate0_seal_0_-3",
+      "q": -3,
+      "r": 0,
+      "z": 0
+    },
+    {
+      "type": "wall",
+      "id": "gate0_seal_0_-2",
+      "q": -2,
+      "r": 0,
+      "z": 0
+    },
+    {
+      "type": "wall",
+      "id": "gate0_seal_0_-1",
+      "q": -1,
+      "r": 0,
+      "z": 0
+    },
+    {
+      "type": "wall",
+      "id": "gate0_seal_0_1",
+      "q": 1,
+      "r": 0,
+      "z": 0
+    },
+    {
+      "type": "wall",
+      "id": "gate0_seal_0_2",
+      "q": 2,
+      "r": 0,
+      "z": 0
+    },
+    {
+      "type": "wall",
+      "id": "gate0_seal_0_3",
+      "q": 3,
+      "r": 0,
+      "z": 0
+    },
+    {
+      "type": "pushable_block",
+      "id": "gate0_block_1",
+      "q": 0,
+      "r": 0,
+      "z": 1
+    },
+    {
+      "type": "wall",
+      "id": "gate0_seal_1_-3",
+      "q": -3,
+      "r": 0,
+      "z": 1
+    },
+    {
+      "type": "wall",
+      "id": "gate0_seal_1_-2",
+      "q": -2,
+      "r": 0,
+      "z": 1
+    },
+    {
+      "type": "wall",
+      "id": "gate0_seal_1_-1",
+      "q": -1,
+      "r": 0,
+      "z": 1
+    },
+    {
+      "type": "wall",
+      "id": "gate0_seal_1_1",
+      "q": 1,
+      "r": 0,
+      "z": 1
+    },
+    {
+      "type": "wall",
+      "id": "gate0_seal_1_2",
+      "q": 2,
+      "r": 0,
+      "z": 1
+    },
+    {
+      "type": "wall",
+      "id": "gate0_seal_1_3",
+      "q": 3,
+      "r": 0,
+      "z": 1
+    }
+  ],
+  "matrix": {
+    "nodes": [
+      {
+        "id": "node_c3r0",
+        "column": 3,
+        "row": 0,
+        "abilityType": 2
+      }
+    ],
+    "conduits": []
+  }
+}

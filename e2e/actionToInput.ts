@@ -225,5 +225,6 @@ export async function performAction(page: Page, action: SolverAction): Promise<v
 }
 
 export async function assertLevelComplete(page: Page): Promise<void> {
+  if (process.env.E2E_DEBUG) await page.screenshot({ path: '/tmp/e2e-final.png' });
   await expect(page.getByRole('heading', { name: 'NEXUS CLEARED' })).toBeVisible({ timeout: 10_000 });
 }

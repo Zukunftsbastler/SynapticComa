@@ -40,6 +40,12 @@ export function initMouseInput(driver: PixiDriver): void {
 
   window.addEventListener('click', (e: MouseEvent) => {
     if (GameState.phase !== 'PLAYING') return;
+    // Clicks on HTML overlays (InventoryPanel, MatrixUI's insert arrows/cells)
+    // bubble to window same as a genuine board click — without this guard
+    // they'd be misread as a hex-move attempt whenever the overlay's on-screen
+    // position happens to land on a valid adjacent hex for the currently
+    // controlled avatar (SPRINT_031 level_59 e2e investigation).
+    if (e.target !== driver.canvasElement) return;
 
     const avatarId = `avatar_p${GameState.viewPlayerId + 1}`;
     if (!entityRegistry.has(avatarId)) return;
