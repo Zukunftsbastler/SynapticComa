@@ -34,6 +34,11 @@ Every generation prompt is: `<preset material/color clause>, <content clause>, <
 **MATRIX / NEUTRAL (shared DNA Matrix pieces — conduit plates, matrix node housing) preset clause:**
 `heavy vintage Bakelite or clouded glass, warm amber worn plastic, deep-cut grooves, neutral museum-specimen-tray lighting, no strong color bias toward either purple or blue`
 
+**CLINICAL REALITY (narrative panels set in the outside world — added 2026-07-25, SPRINT_033) preset clause:**
+`desaturated hospital ward realism, muted grey-green painted walls and worn linoleum, dull chrome and scuffed enamel equipment, harsh fluorescent white overhead light falling off into deep shadow, heavy vignetting, muted and still`
+
+The fourth register, for everything *outside* the patient's mind — the ward, the corridor, the equipment (`body_awakening.md §6`, `narrative.md §5`). Deliberately neither dimension's palette: the Id is purple/crimson organic, the Superego cyan/steel clinical, and outside reality is the third thing, the register the Monitor already occupies narratively. See "Narrative panels" below for the four further consistency levers this preset is used with — the preset clause alone is *not* sufficient for a multi-panel set.
+
 **Shared negative prompt (always pass this via `--negative-prompt`):**
 `text, watermark, blurry, photo, human face, realistic person, low quality, extra limbs, cropped, signature`
 
@@ -75,6 +80,26 @@ Negative prompt adds `wall, ceiling, room, perspective, horizon, corridor, vigne
 **Found the hard way (2026-07-21):**
 - Without explicit top-down/no-perspective language, the model happily generates a full 3D room with walls, a ceiling, and a vanishing point for anything described as "a clinical laboratory" or similar architectural language. Fine for a narrative panel (which is *supposed* to be a scene), useless for anything meant to sit flat under/as part of the hex grid — always add explicit top-down framing for floor tiles and any Superego-preset content that risks reading as architecture.
 - **Never ask the model to draw the hex silhouette itself.** First attempt asked for "a hexagonal tile, hexagon silhouette... plain black background outside the hexagon" — the model reliably drew an **octagon** on black, not a true 6-sided hexagon (confirmed both dimensions). Cropping that octagon with `postprocess.py`'s exact hex mask didn't fix it either: the mask's flat-top hexagon has left/right vertices reaching the full image radius, farther out than the model's own octagon edge reaches in those directions — so the crop let the model's *black background* show through as visible wedges inside the hex frame, reading as "an octagon inside a hexagon." **The actual fix: stop asking the model for a shape at all.** Prompt for a full-bleed square material texture with content to every edge (same framing as a narrative panel, just square) — then `--hex-mask` cuts a clean hexagon out of real content in every direction, no black gaps possible since there's no black in the source to begin with. This is why the floor-tile framing clause above says "full-bleed... filling the entire frame edge to edge," not "hexagonal tile."
+
+## Narrative panels — a multi-panel SET, not individual images (2026-07-25, SPRINT_033)
+
+Everything above optimises one asset at a time. Narrative panels (`narrative.md §5`, Phase 5) are different in kind: ~24 images that must look like each other and like the same place over months of story. The preset clause alone does **not** get you there. `.claude/skills/generate-sprite/gen_panels.sh` is the working script; it encodes five locked levers, and the reasoning for each is worth keeping:
+
+1. **The CLINICAL REALITY preset clause**, verbatim, exactly like the three object presets.
+2. **A locked scene anchor** — one identical room description (`a single dim hospital room, one bed, a bedside vital-signs monitor on a stand, an IV pole, worn linoleum floor`) pasted into every ward panel. This is what stops panel 17 being a different hospital than panel 2.
+3. **Five locked camera setups, reused verbatim** (room-wide / monitor-close / bedside-detail / doorway / window) — the single strongest lever for a set this size. Twenty-one freely-invented compositions drift into twenty-one different hospitals no matter how good the prompt is; five repeated shots of one room read as "the same place, months passing," which *is* the story. Vary time of day, weather, and one added prop — never the place.
+4. **Empty of people by default; a human trace is opted INTO per panel.** The first pass used "no people shown in full, only a partial glimpse such as hands, a sleeve, or a distant silhouette" — and got cropped torsos standing at the left and right edge of **all three** panels, including two that must have nobody in them. *Naming the thing you don't want summons it*, the same prior-dragging failure this doc already records for "door" → "door on its own plaque". Invert it: default `completely empty of people, no figures, no limbs, no hands`, plus `person at edge of frame, torso, shoulder, arm, silhouette of a person` in the negative. Where a human trace IS wanted, ask for hands only and nothing else of the person — a hand cannot drift the way a recurring face would, because there is no face to keep consistent (`body_awakening.md §8.4`).
+5. **Identical generation and post-processing parameters** for every panel in the set.
+
+**Post-processing:** `--no-key-black --no-resize --pixelate 60` at 832×512 source. Panels are NOT exempt from the pixel-art house style (`body_awakening.md §7`) — an un-pixelated panel reads as a photograph dropped into a pixel-art game. Pick the grid so the resulting block size matches the tiles' on-screen blocks: tiles are 400px sourced, `--pixelate 20`, shown at 80px → ~4px blocks; a panel shown at 420px wants ~105 blocks for the same block size, but **60 tested better** — 105 is so mild it still reads photographic, 60 is unmistakably the same visual family while every object in the room stays readable. Verify by compositing at the true display size (420×260) before promoting, exactly like the 80px icon check above.
+
+**Legibility beats literalism.** `narrative.md §5.1` calls for "two *small* points of light"; generated literally, they were two specks lost in black at 420×260. Enlarged to "each filling a third of the frame" — same fiction, readable composition. Same lesson as the 80px icon audit: regenerate bolder content, don't post-process.
+
+**A prologue-style sequence may deliberately leave the preset.** The three opening panels bridge from outside reality into the mind, so panel 1 is pure CLINICAL, panel 3 is pure ID/SUPEREGO material language, and panel 2 is the handoff. Colour saturation rising across the sequence is the point, not drift.
+
+**Watch for candy colours whenever the two dimension colours appear in a panel.** "Deep purple / cold blue" first came back as glossy pink and baby blue — a science-museum promo, not this game. Use the decayed wording the style bible actually specifies (`deep bruised violet-purple`, `cold slate grey-blue`, `dull matte`, `dusty and decayed`) and negative-prompt `pink, rose, magenta, cyan, turquoise, glossy, shiny, plastic model, bright, vivid, clean`.
+
+**Promotion:** `cwebp -q 90 <pixelated>.png -o public/cutscenes/<name>.webp`, then set `asset` on the matching `PanelDef` in `src/narrative/beats.ts`. That is the entire integration step — `CutscenePlayer` already renders `/cutscenes/<asset>` when present and falls back to a tinted placeholder when absent, so panels can be promoted one at a time with the game playable throughout.
 
 ## Asset → preset lookup
 

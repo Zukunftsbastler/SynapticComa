@@ -8,6 +8,9 @@
 // split every other overlay in this project already uses.
 
 import { describe, it, expect, beforeEach } from 'vitest';
+import { existsSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { createWorld, addEntity, addComponent } from 'bitecs';
 import type { IWorld } from 'bitecs';
 import { loadLevel } from '@/systems/LevelLoaderSystem';
@@ -22,6 +25,10 @@ import { BEATS, BeatId, BeatKind, monitorLine, STORY_VARIANT_COUNT } from '@/nar
 import { BodyRegion } from '@/narrative/regions';
 import { BODY_REGION_COUNT, bodyProgressLabel } from '@/ui/BodyDiagram';
 import type { MoveAvatarMessage } from '@/network/messages';
+
+const PUBLIC_CUTSCENES = join(
+  dirname(fileURLToPath(import.meta.url)), '..', '..', '..', 'public', 'cutscenes',
+);
 
 function tick(world: IWorld): void {
   runCoreSystems(world, GameState);
@@ -87,6 +94,20 @@ describe('beat registry', () => {
   it('uses unique persistence keys — a collision would silently swallow a beat', () => {
     const keys = Object.values(BEATS).map(b => b.key);
     expect(new Set(keys).size).toBe(keys.length);
+  });
+
+  it('every referenced panel asset actually exists on disk', () => {
+    // The panel art is promoted by hand (artwork_tests/gen_panels.sh → cwebp →
+    // public/cutscenes/). A typo or a forgotten promotion would not throw — the
+    // <img> would just 404 and the player would see an empty tinted box — so
+    // the only place this can be caught is here.
+    for (const beat of Object.values(BEATS)) {
+      for (const panel of beat.panels) {
+        if (!panel.asset) continue;
+        const file = join(PUBLIC_CUTSCENES, panel.asset);
+        expect(existsSync(file), `${beat.key}: missing ${panel.asset}`).toBe(true);
+      }
+    }
   });
 
   it('falls back to variant 0 for beats not yet written per-variant', () => {

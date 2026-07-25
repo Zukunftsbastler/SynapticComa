@@ -79,8 +79,11 @@ const MONITOR = '#16201c';
 const FLUORO  = '#5a6660';
 const DARK    = '#101614';
 
+// Asset filename is derived from the key rather than repeated: every vignette's
+// panel art is promoted as public/cutscenes/<key>.webp, so the two can never
+// drift apart by typo. narrative.test.ts asserts every referenced file exists.
 const vignette = (key: string, tint: string, monitor: string[]): BeatDef => ({
-  key, kind: BeatKind.VIGNETTE, panels: [{ tint, monitor }],
+  key, kind: BeatKind.VIGNETTE, panels: [{ asset: `${key}.webp`, tint, monitor }],
 });
 
 const region = (key: string, r: BodyRegion, monitor: string[]): BeatDef => ({
@@ -92,9 +95,9 @@ export const BEATS: Record<BeatId, BeatDef> = {
   [BeatId.PROLOGUE]: {
     key: 'prologue', kind: BeatKind.PROLOGUE,
     panels: [
-      { tint: DARK,   monitor: ['SUBJECT: COMATOSE. DAY 214.'] },
-      { tint: WARD,   monitor: ['NEURAL SPLIT CONFIRMED. TWO HEMISPHERES, NO BRIDGE.'] },
-      { tint: FLUORO, monitor: ['INITIATING DEEP STIMULATION.'] },
+      { asset: 'prologue_1_flatline.webp', tint: DARK,   monitor: ['SUBJECT: COMATOSE. DAY 214.'] },
+      { asset: 'prologue_2_split.webp',    tint: WARD,   monitor: ['NEURAL SPLIT CONFIRMED. TWO HEMISPHERES, NO BRIDGE.'] },
+      { asset: 'prologue_3_wisps.webp',    tint: FLUORO, monitor: ['INITIATING DEEP STIMULATION.'] },
     ],
   },
 
@@ -136,7 +139,7 @@ export const BEATS: Record<BeatId, BeatDef> = {
   // ── The Fork (~L48) — a choice, not a region (body_awakening.md §4a) ──────
   [BeatId.THE_FORK]: {
     key: 'the_fork', kind: BeatKind.FORK,
-    panels: [{ tint: MONITOR, monitor: ['DAY 300. TWO RECOVERY PATHWAYS VIABLE. SELECT PRIORITY.'] }],
+    panels: [{ asset: 'the_fork.webp', tint: MONITOR, monitor: ['DAY 300. TWO RECOVERY PATHWAYS VIABLE. SELECT PRIORITY.'] }],
   },
 
   // ── Act 3 — chosen track (levels 49–75) ──────────────────────────────────
