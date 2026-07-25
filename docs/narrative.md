@@ -42,7 +42,23 @@ The mid-game board flips (The Threshold mechanic) represent diving deeper into t
 
 ## 5. Narrative Delivery: Static Silent Cutscenes
 
-> **Status (SPRINT_023 audit, `docs/roadmap.md` §0):** this section is a complete design specification — no code implements it yet. There is no panel-display system, no cutscene player, and `public/cutscenes/` is empty. `decisions_needed.md` D13 already decided *which* levels get panels (1, 3, 5, 8, 11, 15) — the design question is answered; only the implementation and the actual artwork are outstanding.
+> **Status (SPRINT_032, 2026-07-25): the runtime is built; the artwork is not.**
+> `src/narrative/` now holds the beat registry (`beats.ts`), the campaign-wide
+> schedule (`beatIndex.ts`), and the panel player (`CutscenePlayer.ts`); the
+> trigger side is an ECS event entity (`NarrativeBeatEvent` → `NarrativeSystem`),
+> and story progress persists in `src/state/NarrativeState.ts`. Beats play
+> **after** the LevelComplete screen (D16), never replay once seen, are
+> skippable, and stay in lockstep across a co-op session via `CUTSCENE_ADVANCE`.
+>
+> What is still outstanding is only the art: `public/cutscenes/` is empty, so
+> every panel currently renders as a tinted placeholder in the clinical-reality
+> palette. Dropping a file in and setting `PanelDef.asset` is the entire
+> integration step — no runtime change.
+>
+> **The schedule now targets 100 levels, superseding D13's original six-panel
+> plan for the 15-level MVP** (D16 fixed the final campaign length). Levels 1–10
+> carry a beat each with no gaps; the cadence then widens. Entries for levels
+> 60–100 are already written and activate untouched as those levels ship.
 
 The game's story is delivered through **language-agnostic static illustration panels** — no text, no voice, no subtitles. This preserves the language-agnostic design principle at the narrative layer.
 
@@ -61,9 +77,17 @@ After completing specific levels, a single narrative panel appears (not every le
 
 The single exception to the wordless world is **The Monitor** — the hospital's bedside machine observing the coma from outside. Its clinical, typed CRT annotations frame the story ("SUBJECT: COMATOSE. DAY 214. INITIATING DEEP STIMULATION.") and carry the entire tutorial layer (`tutorial_design.md`). The rule: *the mind is wordless; the machine watching it is not.* Game pieces and boards never show text; the Monitor overlay may.
 
-### 5.2c The Body: A Meta-Progression Layer (Concept, 2026-07-23)
+### 5.2c The Body: A Meta-Progression Layer (D16 — resolved 2026-07-25, provisionally)
 
-> **Status: concept only, not reviewed, nothing implemented.** Full proposal in `docs/body_awakening.md` — a body-silhouette meta-screen where the patient's regions gradually "wake up," scaled to a planned 100-level campaign (~13 regions, dense guaranteed story beats across levels 1–10), delivered as silent illustrated panels (Monitor text exception for clinical dialogue, same rule as §5.2b) plus a third "clinical reality" visual palette distinct from both dimensions. A single late-game soft fork (Id/motor vs. Superego/perception track) gates the final Head/Consciousness milestone. Proposed as `decisions_needed.md` D16.
+> **Status: greenlit and partly built.** Till resolved D16 by deciding alone,
+> explicitly accepting that Andreas and Chris may still overturn it
+> (`decisions_needed.md` D16). SPRINT_032 shipped the schedule and the state
+> layer: region-unlock beats fire on their scheduled levels and persist into
+> `NarrativeState.unlockedRegions`, and the one player-facing Fork (~L48) is
+> live. The body-silhouette **screen** that visualises those regions is the
+> next sprint. Scope fixed at the same time: 100 levels final, 2–3 story
+> variants (not the 10 first floated), cutscenes after the LevelComplete
+> screen. Full proposal in `docs/body_awakening.md` — a body-silhouette meta-screen where the patient's regions gradually "wake up," scaled to a planned 100-level campaign (~13 regions, dense guaranteed story beats across levels 1–10), delivered as silent illustrated panels (Monitor text exception for clinical dialogue, same rule as §5.2b) plus a third "clinical reality" visual palette distinct from both dimensions. A single late-game soft fork (Id/motor vs. Superego/perception track) gates the final Head/Consciousness milestone. Proposed as `decisions_needed.md` D16.
 
 ### 5.3 The Threshold Transition — cut (SPRINT_026)
 

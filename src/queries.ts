@@ -10,7 +10,7 @@ import {
   Health, Resistances,
   Static, PhaseBarrier,
   Exit,
-  LevelCompleteEvent, AvatarDestroyedEvent, P1ExitedEvent,
+  LevelCompleteEvent, AvatarDestroyedEvent, P1ExitedEvent, NarrativeBeatEvent,
   APPool, APUnlock, Fx, FocusNode, EchoTile,
 } from '@/components';
 
@@ -38,3 +38,4 @@ export const phaseBarrierQuery   = defineQuery([PhaseBarrier, Position]);
 export const levelCompleteQuery     = defineQuery([LevelCompleteEvent]);
 export const avatarDestroyedQuery   = defineQuery([AvatarDestroyedEvent]);
 export const p1ExitedQuery          = defineQuery([P1ExitedEvent]);
+export const narrativeBeatQuery     = defineQuery([NarrativeBeatEvent]);

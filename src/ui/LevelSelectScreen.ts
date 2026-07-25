@@ -9,6 +9,7 @@ import { LEVEL_ORDER, LEVEL_NAMES } from '@/levels/levelIndex';
 import { getLevelMeta } from '@/levels/levelMeta';
 import { ProgressionState, resetProgress } from '@/state/ProgressionState';
 import { resetTutorial } from '@/tutorial/TutorialState';
+import { resetNarrative } from '@/state/NarrativeState';
 
 export class LevelSelectScreen {
   private el: HTMLElement;
@@ -74,9 +75,15 @@ export class LevelSelectScreen {
       'background:#1e0808;color:#8a5050;border:1px solid #4a1010;padding:6px 14px;' +
       'font-family:monospace;font-size:0.7rem;letter-spacing:0.1em;cursor:pointer;';
     resetBtn.addEventListener('click', () => {
-      if (!window.confirm('Delete ALL campaign progress and replay tutorials?')) return;
+      if (!window.confirm('Delete ALL campaign progress and replay tutorials and story?')) return;
       resetProgress();
       resetTutorial();
+      // Story too — and deliberately so: resetNarrative() also rolls a fresh
+      // storyVariant and clears the Fork choice, which is exactly what makes
+      // "a second playthrough reveals the other track" real rather than a
+      // claim (body_awakening.md §4a). The two stores stay separate keys;
+      // this button is simply the one place that clears both.
+      resetNarrative();
       // Rebuild the grid with fresh state.
       this.destroy();
       new LevelSelectScreen(container, onPick, onClose);

@@ -119,6 +119,22 @@ export interface InventoryUpdateMessage {
   entityId:   string;
 }
 
+// Host → Guest only — mirrors a narrative beat (docs/narrative.md §5) so both
+// players watch the same panel at the same time. The Host drives; the Guest
+// displays and never advances on its own, the same authority split the
+// Guest's non-interactive LevelCompleteScreen already uses.
+//   panelIndex >= 0 — show that panel
+//   panelIndex  = -1 — the beat is over, close the overlay
+export interface CutsceneAdvanceMessage {
+  type:       'CUTSCENE_ADVANCE';
+  beatId:     number;
+  panelIndex: number;
+  /** The Host's story variant. Sent rather than read locally because each
+   *  machine picks its own variant at save-file creation — without this the
+   *  two players would read different Monitor logs over the same panel. */
+  storyVariant: number;
+}
+
 // Separate PeerJS channel — no ECS effect, not included in GameMessage union
 export interface ChatMessage {
   type:     'CHAT';
@@ -145,4 +161,5 @@ export type GameMessage =
   | InventoryUpdateMessage
   | CollectedMessage
   | PhaseUpdateMessage
-  | LevelLoadMessage;
+  | LevelLoadMessage
+  | CutsceneAdvanceMessage;

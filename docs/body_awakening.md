@@ -1,6 +1,8 @@
 # The Body: A Meta-Progression Layer (Concept)
 
-> **Status: Concept only — nothing implemented.** This document exists to be built on, not to be built from directly. It has not been reviewed by Andreas or Chris. Per this project's own governance rule (`decisions_needed.md`), a structural/content commitment this size should get a team sign-off before any sprint targets it — see §11.
+> **Status (SPRINT_032, 2026-07-25): greenlit as D16 and partly built.** Till resolved this by deciding alone, explicitly and knowingly provisional — Andreas and Chris have still not reviewed it, and may overturn it (`decisions_needed.md` D16). Four parameters were fixed with the greenlight: **100 levels final**, **2–3 story variants** (the §5 scope-down, not the 10 originally floated), **cutscenes after the LevelComplete screen**, and **nothing blocked on sign-off**.
+>
+> Built so far: the region schedule (§3), the story-beat runtime, the Fork (§4a), and the persistent state this document specified in §10 — `src/state/NarrativeState.ts` holds `unlockedRegions`, `storyVariant`, and `forkChoice`. **Not built yet:** the body-silhouette screen itself (§9) and all artwork (§7, §8). Sections 3's Act-2-to-5 rows remain a pacing proposal for levels that don't exist yet.
 >
 > **Revision (2026-07-23b):** Rescaled for a **100-level campaign** (up from the 29 shipped so far), guaranteed a story beat on every one of the first 10 levels, and added three sections Till asked for explicitly: exact player-role narration (§4), a visual-consistency plan for AI-generated art (§9), and a code-driven (not re-generated) approach to highlighting body regions (§10). Supersedes the milestone table and Fork mechanics of the previous revision.
 
@@ -143,6 +145,10 @@ Till specifically flagged: use the established ECS, don't invent new infrastruct
 - **Unlock computation is a pure function** over `ProgressionState.completedLevels` — `computeUnlockedRegions(completedLevels): BodyRegion[]` — called wherever `advanceToNextLevel` already runs. No new system, no new query.
 - **The Body screen is a new full-screen DOM overlay**, following `LevelCompleteScreen.ts`/`LevelSelectScreen.ts`'s existing convention exactly (plain DOM/CSS, not Pixi, not ECS-driven). Auto-opens once per newly-crossed milestone; `LevelSelectScreen` gains a persistent "check on the patient" entry point to revisit anytime.
 - **Net result: zero new ECS components, zero new systems, zero changes to `pipeline.ts`** — the same "presentation-only, outside the deterministic tick pipeline" reasoning already used for `TutorialDirector`/`RenderSystem` applies here.
+
+> **Correction (SPRINT_032, as built):** the reasoning above holds for *state*, and that part shipped exactly as written — `NarrativeState.ts` is a plain module, no component, for a now-concrete reason this section only implied: `LevelLoaderSystem.loadLevel()` calls `deleteWorld()` on every level load, so a component physically cannot survive the boundary this state exists to cross.
+>
+> But the section overreached in concluding "zero new ECS components, zero new systems" for the *whole* feature, because it only ever considered the state side. The **trigger** side is genuinely ECS and shipped as such: `NarrativeBeatEvent` (an event component) plus `NarrativeSystem` in `pipeline.ts`. A beat coming due is exactly the ephemeral, one-tick, produced-by-one-system-consumed-by-another signal that `architecture.md §4`'s event-entity pattern exists for — and routing it that way is what lets the planned in-world `NarrativeTrigger` hex emit the identical event later at no extra cost. The honest split is three-way, not binary: **ECS for events and in-world triggers, plain state modules for cross-session persistence, DOM for presentation.**
 
 ## 11. Open Questions / Recommended Governance
 

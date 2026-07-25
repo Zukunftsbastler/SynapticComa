@@ -18,17 +18,22 @@ import { Application } from 'pixi.js';
 import { startLoop, world, setWorld, setDriver, setUiHook } from '@/gameLoop';
 import { PixiDriver } from '@/rendering/PixiDriver';
 import { loadLevel } from '@/systems/LevelLoaderSystem';
-import { setGuestLevelLoadHandler } from '@/systems/GuestSyncSystem';
+import { setGuestLevelLoadHandler, setGuestCutsceneHandler } from '@/systems/GuestSyncSystem';
 import { GameState } from '@/state/GameState';
 import { inventory } from '@/state/InventoryState';
 import { scrapPool } from '@/state/ScrapPoolState';
 import { uiState } from '@/ui/uiState';
 import { loadProgress, ProgressionState } from '@/state/ProgressionState';
+import {
+  NarrativeState, loadNarrative, hasSeenBeat, markBeatSeen, unlockRegion, setForkChoice,
+} from '@/state/NarrativeState';
+import { CutscenePlayer } from '@/narrative/CutscenePlayer';
+import { BEATS, BeatId } from '@/narrative/beats';
 import { LEVEL_ORDER } from '@/levels/levelIndex';
 import { initKeyboardInput } from '@/input/KeyboardInput';
 import { initMouseInput } from '@/input/MouseInput';
 import { peerManager } from '@/network/PeerJSManager';
-import type { LevelLoadMessage } from '@/network/messages';
+import type { LevelLoadMessage, CutsceneAdvanceMessage } from '@/network/messages';
 import { LobbyUI } from '@/ui/LobbyUI';
 import type { LobbyResult } from '@/ui/LobbyUI';
 import { HUD } from '@/ui/HUD';
@@ -56,6 +61,16 @@ let transitioning = false;
 // "local-testing flag" precedent (SPRINT_025) — additive, never touched by
 // normal play.
 const debugLevel = new URLSearchParams(location.search).get('debugLevel');
+
+// Narrative beats are campaign flow, not level mechanics, so ?debugLevel=
+// (the Playwright level-verification harness) suppresses them by default —
+// a full-screen cutscene overlay would otherwise swallow the witness's clicks
+// exactly the way a blocking tutorial box did in SPRINT_029. ?narrative=1 opts
+// back in, which is how the narrative e2e spec drives this code path.
+const narrativeEnabled =
+  !debugLevel || new URLSearchParams(location.search).has('narrative');
+
+let cutscene: CutscenePlayer | null = null;
 
 // Read-only introspection surface for e2e/actionToInput.ts (Playwright can't
 // import app modules directly — it drives real clicks/keys from outside the
@@ -103,6 +118,57 @@ async function goToLevel(levelId: string, carriedFailures: number): Promise<void
   transitioning = false;
 }
 
+function broadcastCutscene(beatId: number, panelIndex: number): void {
+  if (!networked || GameState.localPlayerId !== 0) return;
+  const msg: CutsceneAdvanceMessage = {
+    type: 'CUTSCENE_ADVANCE', beatId, panelIndex,
+    storyVariant: NarrativeState.storyVariant,
+  };
+  peerManager.send(msg);
+}
+
+/**
+ * Plays queued beats one after another, then runs `onComplete`.
+ *
+ * Host/local only — on the Guest, GameState.pendingBeats is always empty
+ * (NarrativeBeatEvent is produced by Host-only systems) and the cutscene is
+ * opened by CUTSCENE_ADVANCE instead.
+ *
+ * Beats never auto-replay: revisiting level 5 must not force its cutscene
+ * again, so an already-seen beat is skipped here rather than being filtered
+ * out further upstream — the ECS event stays a pure "this beat is due" signal,
+ * and a future replay-from-gallery entry point can reuse the same path.
+ */
+function playBeatQueue(queue: number[], onComplete: () => void): void {
+  const beatId = queue.shift();
+  if (beatId === undefined) { onComplete(); return; }
+
+  const def = BEATS[beatId as BeatId];
+  if (!def || hasSeenBeat(def.key)) { playBeatQueue(queue, onComplete); return; }
+
+  const player = new CutscenePlayer(document.body, def, {
+    storyVariant: NarrativeState.storyVariant,
+    interactive:  true, // only ever constructed on the Host/local machine
+    onAdvance:    panelIndex => broadcastCutscene(beatId, panelIndex),
+    onDone:       forkChoice => {
+      // The player is presentational; committing story progress happens here,
+      // in the one place that owns campaign state.
+      markBeatSeen(def.key);
+      if (def.region) unlockRegion(def.region);
+      if (forkChoice) setForkChoice(forkChoice);
+      broadcastCutscene(beatId, -1);
+      cutscene = null;
+      overlay  = null;
+      playBeatQueue(queue, onComplete);
+    },
+  });
+  // Occupies the same slot as any other overlay: watchGamePhase must not open
+  // a second LevelCompleteScreen behind a playing beat.
+  cutscene = player;
+  overlay  = player;
+  broadcastCutscene(beatId, 0);
+}
+
 function openLevelSelect(closable: boolean): void {
   overlay?.destroy();
   overlay = new LevelSelectScreen(
@@ -118,10 +184,18 @@ function watchGamePhase(): void {
   // ── Level complete ────────────────────────────────────────────────────────
   if (GameState.phase === 'LEVEL_COMPLETE') {
     const interactive = !networked || GameState.localPlayerId === 0;
+    // Drain here, not at playback time: goToLevel() calls resetGameState(),
+    // which would clear the queue before the player ever dismisses this
+    // screen. Always drained, even with narrative off, so the queue can never
+    // leak into a later level.
+    const drained = GameState.pendingBeats.splice(0);
+    const queued  = narrativeEnabled ? drained : [];
+    // D16: the beat plays AFTER this screen — mechanical resolution first
+    // ("NEXUS CLEARED"), then the story, then the next level.
     overlay = new LevelCompleteScreen(
       document.body,
-      nextId => { overlay = null; void goToLevel(nextId, 0); },
-      ()     => openLevelSelect(false),
+      nextId => { overlay = null; playBeatQueue(queued, () => void goToLevel(nextId, 0)); },
+      ()     => { overlay = null; playBeatQueue(queued, () => openLevelSelect(false)); },
       interactive,
     );
     return;
@@ -225,12 +299,39 @@ function startSession(result: LobbyResult): void {
     void goToLevel(levelId, failureCount);
   });
 
+  // ── Guest watches the same beat, panel for panel ─────────────────────────
+  // Purely reactive: the Guest never advances a beat itself, matching the
+  // "WAITING FOR HOST…" behaviour its LevelCompleteScreen already has.
+  setGuestCutsceneHandler((beatId, panelIndex, storyVariant) => {
+    if (panelIndex < 0) {
+      cutscene?.finishFromRemote();
+      cutscene = null;
+      overlay  = null;
+      return;
+    }
+    if (!cutscene) {
+      const def = BEATS[beatId as BeatId];
+      if (!def) return;
+      overlay?.destroy(); // replaces the Guest's own LevelCompleteScreen
+      cutscene = new CutscenePlayer(document.body, def, {
+        storyVariant,
+        interactive: false,
+        onDone:      () => { cutscene = null; overlay = null; },
+      });
+      overlay = cutscene;
+    }
+    cutscene.showPanel(panelIndex);
+  });
+
   // ── Host/local: choose the level; Guest: load the handshake level and
   //    follow the Host's LEVEL_LOAD messages from there. ────────────────────
   if (debugLevel) {
     void goToLevel(debugLevel, 0);
   } else if (result.role === 0) {
-    openLevelSelect(false);
+    // The opening sequence (narrative.md §5.1) runs once ever, before the
+    // campaign is first entered — hasSeenBeat makes every later session skip
+    // straight to the level select.
+    playBeatQueue(narrativeEnabled ? [BeatId.PROLOGUE] : [], () => openLevelSelect(false));
   } else {
     void goToLevel(result.levelId, 0);
   }
@@ -260,6 +361,7 @@ async function main(): Promise<void> {
   setDriver(driver);
 
   loadProgress();
+  loadNarrative(); // separate storage key: story and campaign progress reset independently
   if (debugLevel) {
     startSession({ role: 0, levelId: debugLevel, networked: false });
   } else {

@@ -42,6 +42,13 @@ export interface GameStateData {
   failureCount:     number;
   // Push attempts written by MovementSystem, consumed by PushSystem each tick.
   pushAttempts:     PushAttempt[];
+  // Narrative beats that came due this tick (BeatId values). NarrativeSystem
+  // drains NarrativeBeatEvent entities into here; the campaign controller in
+  // main.ts drains this in turn and plays them. Event entities live one tick,
+  // but the cutscene is shown only after the player dismisses the
+  // LevelComplete screen — so the beat has to outlive its event, exactly like
+  // p1HasExited outlives P1ExitedEvent.
+  pendingBeats:     number[];
   // Timestamp (ms) of each player's last successful action — feeds the
   // partner-activity pulse in the HUD. Deliberately coarse: it signals THAT
   // the partner acts, never WHAT they see (information asymmetry stays intact).
@@ -72,6 +79,7 @@ function makeInitialState(): GameStateData {
     p1HasExited:      false,
     failureCount:     0,
     pushAttempts:     [],
+    pendingBeats:     [],
     lastActionAt:     [0, 0],
   };
 }

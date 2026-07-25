@@ -37,7 +37,7 @@ Components are pure data. They dictate what an entity is and what state it is cu
 | `Static` | *(tag)* | Entity blocks movement; used for walls, locked doors |
 | `PhaseBarrier` | *(tag)* | Passable only when `Phase Shift` ability is active for that dimension |
 | `Exit` | `playerId: ui8` | Marks a Nexus Hex; P1 exit activates P2 exit on contact |
-| `Events` | *(tags)* | Ephemeral signals: `LevelCompleteEvent`, `AvatarDestroyedEvent`, `P1ExitedEvent`. Created and destroyed within a single tick. |
+| `Events` | *(tags)* | Ephemeral signals: `LevelCompleteEvent`, `AvatarDestroyedEvent`, `P1ExitedEvent`, `NarrativeBeatEvent` (carries `beatId: ui16`). Created and destroyed within a single tick. |
 
 **ActionManager (Singleton Entity):** A single entity holding the global AP state is created on level load and destroyed on level end. Its components are: APPool { current: ui8, max: ui8 }. There is no RoundState component — the pool is persistent and has no round lifecycle. This entity is not rendered; it is queried by APSystem and APUnlockSystem each tick.
 * **Physical Implementation:** * **Inherent Components:** Printed icons on the tokens (e.g., a "Lock" icon represents the `Static` component).
@@ -53,7 +53,7 @@ InputSystem → GuestSyncSystem → APSystem → MatrixRoutingSystem → Ability
 MovementSystem → PushSystem → CollectionSystem → CollisionSystem → ExitSystem →
 APUnlockSystem → FocusVaultSystem → MatrixInsertSystem → MatrixRotateSystem →
 ResonanceSystem → ScrapPoolSystem → FxSystem → LevelTransitionSystem →
-EchoTileSystem → RenderSystem → NetworkSystem
+NarrativeSystem → EchoTileSystem → RenderSystem → NetworkSystem
 ```
 
 **System Responsibilities:**
@@ -75,7 +75,8 @@ EchoTileSystem → RenderSystem → NetworkSystem
 | `AbilitySystem` | Continuous evaluation; adds/removes `Resistances`, `Movable` etc. on avatars. Per-player since D14/SPRINT_024 (`abilityFlags` keyed `0`/`1`) — a `restrictedTo`-marked node only sets its effect for the assigned player; unrestricted nodes (the default) still set it for both, unchanged from before |
 | `CollisionSystem` | Checks avatar vs `Lethal` entities; applies `Health` damage; creates `AvatarDestroyedEvent` |
 | `ExitSystem` | Detects sequential exit: P1 on exit → spectator mode + `P1ExitedEvent`; P2 on exit → `LevelCompleteEvent` |
-| `LevelTransitionSystem` | Queries all event entities; executes effects; destroys event entities at end of tick |
+| `LevelTransitionSystem` | Queries all event entities; executes effects; destroys event entities at end of tick. Also emits `NarrativeBeatEvent` when the completed level has a scheduled story beat (`narrative/beatIndex.ts`) |
+| `NarrativeSystem` | Consumes `NarrativeBeatEvent` into `GameState.pendingBeats` and destroys it (SPRINT_032). Deliberately does not *show* anything — the cutscene plays after the LevelComplete screen, a UI-flow decision the tick pipeline has no business making, same split as `APUnlockSystem` changing the pool and letting the HUD notice |
 | `RenderSystem` | Writes `RenderCommandBuffer`; applies dimension visibility mask |
 | `TutorialTriggerSystem` | Read-only, local per client; detects first encounters with registered concepts and feeds the `TutorialDirector` (`tutorial_design.md §4`) |
 | `NetworkSystem` | Drains `outboundMessages` via PeerJS; applies incoming `STATE_UPDATE` / `MATRIX_STATE_UPDATE` messages |
@@ -99,7 +100,8 @@ The Threshold (a one-way board-flip mid-level) was formally removed from the pro
 
 ## 6. Non-ECS Modules
 
-Two subsystems deliberately live **outside** the ECS pipeline because they operate on data, not on the live world:
+Three subsystems deliberately live **outside** the ECS pipeline because they operate on data, not on the live world:
 
 * **`src/generation/`** — level solver, generator, and difficulty model (`generative_levels.md`). Pure functions over `LevelDef` and an abstract solver state. The runtime Dead End check calls into the solver's reachability core; everything else runs at build time or on level creation.
 * **`src/tutorial/`** — `TutorialDirector` (sequencing, script playback) and `TutorialOverlay` (dim/frame/arrow rendering). Only `TutorialTriggerSystem` touches the ECS, and only reads. Tutorial state is local per client and never networked.
+* **`src/narrative/`** — the beat registry, the campaign story schedule, and `CutscenePlayer` (`narrative.md §5`). The **trigger** side is genuinely ECS (`NarrativeBeatEvent` → `NarrativeSystem`); everything downstream of it is presentation. `NarrativeState` (which beats have played, which body regions are awake) is deliberately **not** a component: `LevelLoaderSystem.loadLevel()` calls `deleteWorld()` on every level load, so a component could not survive the exact boundary this state exists to cross. It belongs in the same category as `ProgressionState` — meta-state read at level boundaries, not per-tick simulation state.

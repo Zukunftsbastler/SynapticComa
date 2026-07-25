@@ -21,13 +21,26 @@
 > | D13 | Panels after levels 1, 3, 5, 8, 11 and 15 (arc: onset → reactivation → confrontation → emergence). Andreas leads panel concepts. |
 > | D14 | **Option C, scoped down** (SPRINT_024, 2026-07-21) — see the D14 section below for the full resolution note and why this departs from the normal three-way sign-off. |
 > | D15 | **Resonance built (scoped down), Threshold cut** (SPRINT_026, 2026-07-21) — see the D15 section below. |
-> | D16 | **Proposed, unresolved** (2026-07-23) — concept only, see the D16 section below. |
+> | D16 | **Build it — Till decided alone, explicitly provisionally** (SPRINT_032, 2026-07-25) — see the D16 section below. |
 >
 > The original questions are preserved below for context and for Chris's review.
 
 ---
 
-## D16 — The Body: A Meta-Progression Layer *(Proposed 2026-07-23, rescaled 2026-07-23b — concept only, unresolved)*
+## D16 — The Body: A Meta-Progression Layer *(Proposed 2026-07-23, rescaled 2026-07-23b, resolved 2026-07-25 — see resolution note)*
+
+> **Resolution note (2026-07-25, SPRINT_032):** Till chose to **build it**, deciding alone again — the fourth time on this project (SPRINT_018, D14, D15, now D16) — and this time he named the trade-off himself rather than being asked to weigh it: *"In Anbetracht des begrenzten Zeitplans und der zu erwartenden Reaktionszeit entscheide ich zunächst selbst, auf die Gefahr hin, dass die Entscheidung später zurückgenommen und eine Neuentwicklung umgesetzt werden muss. Wir blockieren nichts, sondern setzen umfassend um. Es kann noch eine Weile dauern, bis die anderen die Entwicklung abnicken."* So this is explicitly a **provisional** resolution: Andreas and Chris may still overturn it, and the implementation is expected to absorb that if they do. That risk is accepted knowingly, not overlooked.
+>
+> Four concrete parameters fixed at the same time, closing the open items §11 raised:
+>
+> - **Campaign target: 100 levels, final.** The narrative arc, the body-region cadence, and the beat schedule are all laid out against 100 from the start — not against the 59 that exist today. Beats for levels 1–59 are real and shipped; 60–100 are a documented skeleton filled in as those levels get built.
+> - **Story variants: 2–3 to begin with**, not the 10 originally floated — the content-budget scope-down §5 recommended.
+> - **Cutscene placement: after the LevelComplete screen**, not before. The player gets the mechanical resolution ("NEXUS CLEARED") first, then the story beat, then the next level.
+> - **Nothing is blocked on sign-off.** Implementation proceeds across all layers now; the governance flag stays open in parallel.
+>
+> Still genuinely open and **not** decided here: the Fork's exact mechanic commitments (§4a), and who authors the art (§11.3) — Andreas remains the presumed owner, unconfirmed.
+>
+> Full detail: `docs/body_awakening.md`, `SPRINTS/SPRINT_032-...md`.
 
 **Trigger:** Till: give the puzzle-solving a visible "why" by showing the comatose patient's body gradually waking up as levels are completed — a few body regions unlock every so often, delivered through short cutscenes, with some player choice in which region wakes first tied to mechanic flavor (movement vs. perception), the head/consciousness gated behind the most content, and enough narrative variety (~10 story variants) that replays feel different. Follow-up: rescale to a planned **100-level campaign** (up from 29 shipped), guarantee a story beat in every one of the first 10 levels, spell out exactly what each player narratively contributes to each recovery, and solve AI-art consistency/small-image/region-highlighting concretely.
 

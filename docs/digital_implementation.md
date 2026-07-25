@@ -116,7 +116,11 @@ The repository is structured by ECS domain rather than by feature.
 │   └── ExitFactory.ts
 ├── /levels
 │   ├── level_01.json … level_15.json
-│   ├── cutscene_intro.json  # Panel sequence before Level 1
+│   ├── cutscene_intro.json  # SUPERSEDED (SPRINT_032): the opening sequence is
+│   │                        # not level JSON. Beats live in /narrative
+│   │                        # (beats.ts + beatIndex.ts) precisely so the
+│   │                        # narrative layer never touches LevelSchema.ts or
+│   │                        # the solver — see narrative.md §5.
 │   └── levelIndex.ts
 ├── /network
 │   ├── PeerJSManager.ts

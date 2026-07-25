@@ -11,10 +11,12 @@
 // cannot re-trigger its effect in a future tick.
 
 import type { IWorld } from 'bitecs';
-import { removeEntity, hasComponent, removeComponent } from 'bitecs';
+import { removeEntity, hasComponent, removeComponent, addEntity, addComponent } from 'bitecs';
 import {
-  Exit, Static, Dimension,
+  Exit, Static, Dimension, NarrativeBeatEvent,
 } from '@/components';
+import { beatAfterLevel } from '@/narrative/beatIndex';
+import { NarrativeState } from '@/state/NarrativeState';
 import {
   levelCompleteQuery,
   avatarDestroyedQuery,
@@ -55,7 +57,7 @@ export function LevelTransitionSystem(world: IWorld, state: GameStateData): void
   // ── LevelCompleteEvent ─────────────────────────────────────────────────────
   const completes = levelCompleteQuery(world);
   if (completes.length > 0) {
-    executeLevelComplete(state);
+    executeLevelComplete(world, state);
     for (let i = 0; i < completes.length; i++) removeEntity(world, completes[i]);
   }
 
@@ -106,8 +108,21 @@ function executeP1Exited(world: IWorld, state: GameStateData): void {
   broadcastPhase(state);
 }
 
-function executeLevelComplete(state: GameStateData): void {
+function executeLevelComplete(world: IWorld, state: GameStateData): void {
   state.phase = 'LEVEL_COMPLETE';
   broadcastPhase(state);
+
+  // A finished level is the fiction's own "successful reawakening" moment
+  // (body_awakening.md §4) — so story beats hang off the existing win
+  // condition rather than needing any trigger of their own. Emitted as an
+  // event entity, not shown here: NarrativeSystem drains it, and the campaign
+  // controller decides when to play it (after the LevelComplete screen, D16).
+  const beat = beatAfterLevel(state.currentLevel, NarrativeState.forkChoice);
+  if (beat !== null) {
+    const beatEid = addEntity(world);
+    addComponent(world, NarrativeBeatEvent, beatEid);
+    NarrativeBeatEvent.beatId[beatEid] = beat;
+  }
+
   console.debug('[LevelTransitionSystem] Level complete!');
 }

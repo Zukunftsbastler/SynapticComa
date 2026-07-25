@@ -24,6 +24,7 @@ import { ResonanceSystem } from '@/systems/ResonanceSystem';
 import { ScrapPoolSystem } from '@/systems/ScrapPoolSystem';
 import { FxSystem } from '@/systems/FxSystem';
 import { LevelTransitionSystem } from '@/systems/LevelTransitionSystem';
+import { NarrativeSystem } from '@/systems/NarrativeSystem';
 import { EchoTileSystem } from '@/systems/EchoTileSystem';
 
 export function runCoreSystems(w: IWorld, state: GameStateData): void {
@@ -45,5 +46,6 @@ export function runCoreSystems(w: IWorld, state: GameStateData): void {
   ScrapPoolSystem(w, state);
   FxSystem(w);
   LevelTransitionSystem(w, state);
+  NarrativeSystem(w, state); // must follow LevelTransitionSystem — that's what emits the beat
   EchoTileSystem(w, state); // local-only, read-only; see EchoTileSystem.ts
 }

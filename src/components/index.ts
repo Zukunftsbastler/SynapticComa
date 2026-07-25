@@ -23,4 +23,5 @@ export {
   LevelCompleteEvent,
   AvatarDestroyedEvent,
   P1ExitedEvent,
+  NarrativeBeatEvent,
 } from './Events';

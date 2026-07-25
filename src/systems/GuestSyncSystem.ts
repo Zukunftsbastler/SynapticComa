@@ -3,11 +3,13 @@
 // downstream system sees the synced state this tick. No-op on the Host.
 //
 // Handles: STATE_UPDATE, MATRIX_STATE_UPDATE, INVENTORY_UPDATE, COLLECTED,
-// PHASE_UPDATE, LEVEL_LOAD. (AP_UNLOCK stays in APUnlockSystem — each system
-// owns its message types, per the InputSystem convention.)
+// PHASE_UPDATE, LEVEL_LOAD, CUTSCENE_ADVANCE. (AP_UNLOCK stays in
+// APUnlockSystem — each system owns its message types, per the InputSystem
+// convention.)
 //
 // Level loading is async and touches UI lifecycle, so LEVEL_LOAD is delegated
 // to a callback registered by the campaign controller (main.ts).
+// CUTSCENE_ADVANCE is delegated the same way and for the same reason.
 
 import type { IWorld } from 'bitecs';
 import { removeEntity } from 'bitecs';
@@ -35,9 +37,19 @@ export function setGuestLevelLoadHandler(
   onLevelLoad = handler;
 }
 
+// Same delegation as LEVEL_LOAD, for the same reason: a cutscene is UI
+// lifecycle, not world state, so the campaign controller owns it.
+let onCutscene: ((beatId: number, panelIndex: number, storyVariant: number) => void) | null = null;
+
+export function setGuestCutsceneHandler(
+  handler: (beatId: number, panelIndex: number, storyVariant: number) => void,
+): void {
+  onCutscene = handler;
+}
+
 const SYNC_TYPES = new Set([
   'STATE_UPDATE', 'MATRIX_STATE_UPDATE', 'INVENTORY_UPDATE',
-  'COLLECTED', 'PHASE_UPDATE', 'LEVEL_LOAD',
+  'COLLECTED', 'PHASE_UPDATE', 'LEVEL_LOAD', 'CUTSCENE_ADVANCE',
 ]);
 
 export function GuestSyncSystem(world: IWorld, state: GameStateData): void {
@@ -55,6 +67,7 @@ export function GuestSyncSystem(world: IWorld, state: GameStateData): void {
       case 'COLLECTED':           applyCollected(world, state, msg);    break;
       case 'PHASE_UPDATE':        applyPhaseUpdate(world, state, msg);  break;
       case 'LEVEL_LOAD':          applyLevelLoad(msg);                  break;
+      case 'CUTSCENE_ADVANCE':    onCutscene?.(msg.beatId, msg.panelIndex, msg.storyVariant); break;
     }
   }
 }
