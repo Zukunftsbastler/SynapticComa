@@ -84,8 +84,11 @@ The single exception to the wordless world is **The Monitor** — the hospital's
 > (`decisions_needed.md` D16). SPRINT_032 shipped the schedule and the state
 > layer: region-unlock beats fire on their scheduled levels and persist into
 > `NarrativeState.unlockedRegions`, and the one player-facing Fork (~L48) is
-> live. The body-silhouette **screen** that visualises those regions is the
-> next sprint. Scope fixed at the same time: 100 levels final, 2–3 story
+> live. SPRINT_033 added the body itself — and deliberately **not** as a screen
+> of its own: it renders inside the region-unlock beat (the body *is* that
+> beat's panel), on every LevelComplete screen, and in the level-select header,
+> so it is never something the player has to navigate to (`body_awakening.md`
+> §12). Scope fixed at the same time: 100 levels final, 2–3 story
 > variants (not the 10 first floated), cutscenes after the LevelComplete
 > screen. Full proposal in `docs/body_awakening.md` — a body-silhouette meta-screen where the patient's regions gradually "wake up," scaled to a planned 100-level campaign (~13 regions, dense guaranteed story beats across levels 1–10), delivered as silent illustrated panels (Monitor text exception for clinical dialogue, same rule as §5.2b) plus a third "clinical reality" visual palette distinct from both dimensions. A single late-game soft fork (Id/motor vs. Superego/perception track) gates the final Head/Consciousness milestone. Proposed as `decisions_needed.md` D16.
 

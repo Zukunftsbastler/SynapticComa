@@ -20,6 +20,7 @@ import { narrativeBeatQuery } from '@/queries';
 import { beatAfterLevel, BEAT_AFTER_LEVEL } from '@/narrative/beatIndex';
 import { BEATS, BeatId, BeatKind, monitorLine, STORY_VARIANT_COUNT } from '@/narrative/beats';
 import { BodyRegion } from '@/narrative/regions';
+import { BODY_REGION_COUNT, bodyProgressLabel } from '@/ui/BodyDiagram';
 import type { MoveAvatarMessage } from '@/network/messages';
 
 function tick(world: IWorld): void {
@@ -92,6 +93,34 @@ describe('beat registry', () => {
     const panel = BEATS[BeatId.PROLOGUE].panels[0];
     for (let v = 0; v < STORY_VARIANT_COUNT; v++) {
       expect(monitorLine(panel, v)).toBe(panel.monitor[0]);
+    }
+  });
+});
+
+describe('body diagram', () => {
+  it('draws every region the campaign can wake', () => {
+    // A region present in the enum but missing from the shape table would
+    // silently never appear on the silhouette — its beat would fire and the
+    // body would not change, which is exactly the failure a player would
+    // notice and no other test would catch.
+    expect(BODY_REGION_COUNT).toBe(Object.values(BodyRegion).length);
+  });
+
+  it('reports progress against the full region count', () => {
+    expect(bodyProgressLabel(new Set())).toBe(`0 / ${BODY_REGION_COUNT} AWAKE`);
+    expect(bodyProgressLabel(new Set([BodyRegion.EYES, BodyRegion.TORSO])))
+      .toBe(`2 / ${BODY_REGION_COUNT} AWAKE`);
+  });
+
+  it('has a region-unlock beat for every region except the two Fork branches', () => {
+    // Every region must be reachable, or it is dead content. The Fork's two
+    // regions are the deliberate exception: only one wakes per playthrough
+    // (body_awakening.md §4a), and beatAfterLevel resolves which.
+    const woken = new Set(
+      Object.values(BEATS).filter(b => b.region).map(b => b.region as BodyRegion),
+    );
+    for (const region of Object.values(BodyRegion)) {
+      expect(woken.has(region), `${region} has no beat that wakes it`).toBe(true);
     }
   });
 });

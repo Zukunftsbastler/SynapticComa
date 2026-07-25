@@ -17,9 +17,16 @@
 
 import type { BeatDef } from './beats';
 import { BeatKind, monitorLine } from './beats';
+import type { BodyRegion } from './regions';
+import { buildBodyDiagram, bodyProgressLabel } from '@/ui/BodyDiagram';
 
 export interface CutsceneOptions {
   storyVariant: number;
+  /** Regions already awake, for the body reveal on a REGION_UNLOCK beat. The
+   *  waking region itself is `beat.region` and is NOT expected to be in here
+   *  yet — it is committed to NarrativeState only after the beat is dismissed,
+   *  which is precisely what lets this panel show it mid-wake. */
+  awakeRegions: ReadonlySet<BodyRegion>;
   /** false on the Guest — the Host drives advancement (CUTSCENE_ADVANCE). */
   interactive:  boolean;
   /** Host only: fires on every advance so the Guest can be kept in lockstep. */
@@ -86,7 +93,12 @@ export class CutscenePlayer {
       'box-shadow:0 0 60px #000 inset;',
     ].join('');
 
-    if (panel.asset) {
+    if (this.beat.kind === BeatKind.REGION_UNLOCK && this.beat.region) {
+      // The reveal IS the beat. A region waking is shown here, inside the
+      // story moment the player is already watching — never as a separate
+      // screen they have to go and open.
+      frame.appendChild(this.buildRevealPanel(this.beat.region));
+    } else if (panel.asset) {
       const img = document.createElement('img');
       img.src = `/cutscenes/${panel.asset}`;
       img.alt = '';
@@ -110,6 +122,40 @@ export class CutscenePlayer {
     } else {
       this.stage.appendChild(this.renderFooter(isLast));
     }
+  }
+
+  /** The body, with the newly-woken region pulsing and every previously-woken
+   *  one already lit — so the player reads both "this just happened" and "here
+   *  is everything so far" in the same glance, without a second screen. */
+  private buildRevealPanel(region: BodyRegion): HTMLElement {
+    const wrap = document.createElement('div');
+    wrap.dataset.bodyReveal = region;
+    wrap.style.cssText =
+      'display:flex;align-items:center;gap:22px;padding:8px 18px;';
+
+    wrap.appendChild(buildBodyDiagram({
+      awake:  this.opts.awakeRegions,
+      waking: region,
+      width:  108,
+    }));
+
+    const side = document.createElement('div');
+    side.style.cssText = 'display:flex;flex-direction:column;gap:6px;text-align:left;';
+    const now = document.createElement('div');
+    now.textContent = region.replace(/_/g, ' ').toUpperCase();
+    now.style.cssText = 'color:#cfe8da;font-size:0.8rem;letter-spacing:0.2em;';
+    const progress = document.createElement('div');
+    // Counts the waking region: from the player's point of view it is awake
+    // the moment they see it light up, not one screen later.
+    progress.textContent = bodyProgressLabel(
+      new Set([...this.opts.awakeRegions, region]),
+    );
+    progress.style.cssText = 'color:#4f6a5c;font-size:0.62rem;letter-spacing:0.18em;';
+    side.appendChild(now);
+    side.appendChild(progress);
+    wrap.appendChild(side);
+
+    return wrap;
   }
 
   /** The one place a beat asks for input rather than just being watched

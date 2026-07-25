@@ -148,6 +148,7 @@ function playBeatQueue(queue: number[], onComplete: () => void): void {
 
   const player = new CutscenePlayer(document.body, def, {
     storyVariant: NarrativeState.storyVariant,
+    awakeRegions: NarrativeState.unlockedRegions,
     interactive:  true, // only ever constructed on the Host/local machine
     onAdvance:    panelIndex => broadcastCutscene(beatId, panelIndex),
     onDone:       forkChoice => {
@@ -303,20 +304,27 @@ function startSession(result: LobbyResult): void {
   // Purely reactive: the Guest never advances a beat itself, matching the
   // "WAITING FOR HOST…" behaviour its LevelCompleteScreen already has.
   setGuestCutsceneHandler((beatId, panelIndex, storyVariant) => {
+    const def = BEATS[beatId as BeatId];
+    if (!def) return;
+
     if (panelIndex < 0) {
       cutscene?.finishFromRemote();
       cutscene = null;
       overlay  = null;
+      // The Guest keeps its own save, so it must commit the same story
+      // progress the Host just committed — otherwise its body would stay dark
+      // through a co-op campaign it actually played.
+      markBeatSeen(def.key);
+      if (def.region) unlockRegion(def.region);
       return;
     }
     if (!cutscene) {
-      const def = BEATS[beatId as BeatId];
-      if (!def) return;
       overlay?.destroy(); // replaces the Guest's own LevelCompleteScreen
       cutscene = new CutscenePlayer(document.body, def, {
         storyVariant,
-        interactive: false,
-        onDone:      () => { cutscene = null; overlay = null; },
+        awakeRegions: NarrativeState.unlockedRegions,
+        interactive:  false,
+        onDone:       () => { cutscene = null; overlay = null; },
       });
       overlay = cutscene;
     }

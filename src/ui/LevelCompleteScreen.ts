@@ -8,6 +8,8 @@
 import { GameState } from '@/state/GameState';
 import { markLevelComplete, advanceToNextLevel, ProgressionState } from '@/state/ProgressionState';
 import { LEVEL_ORDER } from '@/levels/levelIndex';
+import { NarrativeState } from '@/state/NarrativeState';
+import { buildBodyDiagram, bodyProgressLabel } from '@/ui/BodyDiagram';
 
 type OnNextLevel = (levelId: string) => void;
 type OnNeuralCollapse = () => void;
@@ -39,6 +41,12 @@ export class LevelCompleteScreen {
     levelLabel.style.cssText = 'color:#7a6040;font-size:0.9rem;letter-spacing:0.15em;';
     levelLabel.textContent = GameState.currentLevel.replace('_', ' ').toUpperCase();
 
+    // The patient, on every completion — the standing answer to "why am I
+    // solving these puzzles" (D16's own motivation). Deliberately part of the
+    // screen the player already lands on rather than a destination they have
+    // to navigate to: progress stays visible without ever being opened.
+    const patient = this.buildPatientBlock();
+
     const btnRow = document.createElement('div');
     btnRow.style.cssText = 'display:flex;gap:12px;';
 
@@ -50,6 +58,7 @@ export class LevelCompleteScreen {
       waiting.style.cssText = 'color:#7a6040;letter-spacing:0.2em;';
       this.el.appendChild(heading);
       this.el.appendChild(levelLabel);
+      this.el.appendChild(patient);
       this.el.appendChild(waiting);
       container.appendChild(this.el);
       return;
@@ -79,8 +88,32 @@ export class LevelCompleteScreen {
 
     this.el.appendChild(heading);
     this.el.appendChild(levelLabel);
+    this.el.appendChild(patient);
     this.el.appendChild(btnRow);
     container.appendChild(this.el);
+  }
+
+  /** Compact body readout: silhouette plus "N / 12 AWAKE". Reads as a bedside
+   *  monitor rather than a menu — no controls, nothing to click. */
+  private buildPatientBlock(): HTMLElement {
+    const wrap = document.createElement('div');
+    wrap.dataset.patient = '';
+    wrap.style.cssText =
+      'display:flex;align-items:center;gap:14px;padding:8px 16px;' +
+      'border:1px solid #1e2a24;background:#0b110ecc;';
+
+    wrap.appendChild(buildBodyDiagram({
+      awake: NarrativeState.unlockedRegions,
+      width: 46,
+    }));
+
+    const label = document.createElement('div');
+    label.textContent = bodyProgressLabel(NarrativeState.unlockedRegions);
+    label.style.cssText =
+      'color:#4f6a5c;font-size:0.62rem;letter-spacing:0.18em;white-space:nowrap;';
+    wrap.appendChild(label);
+
+    return wrap;
   }
 
   private makeButton(label: string, bg: string, color: string, border: string): HTMLButtonElement {

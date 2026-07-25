@@ -2,7 +2,7 @@
 
 > **Status (SPRINT_032, 2026-07-25): greenlit as D16 and partly built.** Till resolved this by deciding alone, explicitly and knowingly provisional — Andreas and Chris have still not reviewed it, and may overturn it (`decisions_needed.md` D16). Four parameters were fixed with the greenlight: **100 levels final**, **2–3 story variants** (the §5 scope-down, not the 10 originally floated), **cutscenes after the LevelComplete screen**, and **nothing blocked on sign-off**.
 >
-> Built so far: the region schedule (§3), the story-beat runtime, the Fork (§4a), and the persistent state this document specified in §10 — `src/state/NarrativeState.ts` holds `unlockedRegions`, `storyVariant`, and `forkChoice`. **Not built yet:** the body-silhouette screen itself (§9) and all artwork (§7, §8). Sections 3's Act-2-to-5 rows remain a pacing proposal for levels that don't exist yet.
+> Built so far: the region schedule (§3), the story-beat runtime, the Fork (§4a), and the persistent state this document specified in §10 — `src/state/NarrativeState.ts` holds `unlockedRegions`, `storyVariant`, and `forkChoice`. **SPRINT_033 added the body itself** (`src/ui/BodyDiagram.ts`) — see the §9 note below for the one deliberate deviation (drawn procedurally, not generated as art) and §12 for how it reaches the player without a screen of its own. **Not built yet:** all narrative artwork (§7, §8). Section 3's Act-2-to-5 rows remain a pacing proposal for levels that don't exist yet.
 >
 > **Revision (2026-07-23b):** Rescaled for a **100-level campaign** (up from the 29 shipped so far), guaranteed a story beat on every one of the first 10 levels, and added three sections Till asked for explicitly: exact player-role narration (§4), a visual-consistency plan for AI-generated art (§9), and a code-driven (not re-generated) approach to highlighting body regions (§10). Supersedes the milestone table and Fork mechanics of the previous revision.
 
@@ -132,6 +132,23 @@ Till's specific technical ask: how do you use AI-generated art for a schematic b
 4. **Consequence: exactly one image ever needs to be AI-generated for this entire feature.** The consistency problem from §8 doesn't even apply to the body diagram — it's a HUD/diagram element like the Matrix panel, not a narrative image, so it should be built like one: one asset, code-driven state, forever.
 5. **If a reveal "juice" moment is wanted** (a glow/particle burst when a region newly wakes) — implement it as a CSS/SVG animation over the fixed mask, reusing this project's existing one-shot FX conventions (SPRINT_010's ECS FX system already does exactly this kind of moment for gameplay events), not a new generated image.
 
+> **As built (SPRINT_033) — one deliberate deviation from §9.1–9.2.** The
+> silhouette is **drawn procedurally as SVG** (`src/ui/BodyDiagram.ts`), not
+> generated once as a raster with a rect lookup over it. This follows §9.4's own
+> argument rather than contradicting it: if this is "a HUD/diagram element like
+> the Matrix panel, not a narrative image," then it should be built like the
+> Matrix panel — and `rendering/MatrixRenderer.ts` draws from geometry, not from
+> an asset. Three concrete gains: per-region shapes highlight *exactly* instead
+> of being approximated by bounding rects; the feature shipped with **zero** art
+> dependency, which mattered because `public/cutscenes/` is still empty; and it
+> stays crisp at every size it is drawn at (46px beside a completion banner up
+> to 108px in a reveal). §9.3–9.5 shipped as written — state is pure attribute
+> toggling, and the reveal pulse is a CSS keyframe. Swapping in generated art
+> later needs only this one file changed. The pulse is deliberately **not** an
+> ECS `Fx` entity: those carry `Position` + `Dimension` and are drawn by
+> `RenderSystem` into the hex grid's coordinate space, which this diagram is not
+> in — routing it through the ECS would be ceremony, not architecture.
+
 ## 10. ECS & Architecture Integration
 
 Till specifically flagged: use the established ECS, don't invent new infrastructure.
@@ -160,3 +177,15 @@ This reshapes campaign structure and commits real art/story budget — per this 
 4. Soft fork (§4a, recommended default) vs. a real structural fork with alternate level branches — the latter needs a separate, bigger decision about `LevelSelectScreen`'s unlock model.
 5. Does the Fork's mechanic-flavor promise commit to specific new `mechanic_roadmap.md` proposals now, or stay abstract until those are picked?
 6. The jump from a 29-level to a 100-level campaign is itself a large, separate content commitment (71 new levels) that this document assumes but does not scope — worth its own decision entry independent of the body-awakening feature.
+
+## 12. Reaching the Player Without a Screen of Its Own (SPRINT_033)
+
+Till's constraint when this was built: *"Sorge dafür, dass es sich wie eine sauber integrierte Spielmechanik anfühlt, die nicht extra annavigiert werden muss, sondern sauber in den Spielprozess integriert ist."*
+
+§10 had proposed a dedicated Body screen that auto-opens on a milestone, plus a "check on the patient" entry point in the level select. **That shape was dropped.** An auto-opening screen is still a screen the player is sent to, and a menu entry is exactly the navigation this was supposed to avoid. There is no Body screen and no button that opens one. Instead the body appears at three points the player already passes through anyway:
+
+1. **Inside the region-unlock beat.** A region waking is not "a cutscene, then a body screen" — the body *is* that beat's panel, with the new region pulsing and every earlier one already lit. The reveal happens inside the story moment the player is watching, so the payoff and the progress read land in the same glance. This is the primary integration; the other two are ambient reinforcement.
+2. **On every LevelComplete screen.** A compact silhouette plus "N / 12 AWAKE" sits between the level name and the buttons. Every single level ends with the player seeing the patient — which is precisely D16's original motivation ("give the puzzle-solving a visible *why*") delivered on the screen they already land on, without a click.
+3. **In the level select header**, beside "SELECT DESCENT", as context for choosing a level rather than as a destination.
+
+None of the three is clickable and none has controls — the body reads as a bedside monitor readout, consistent with the Monitor's established role as the one thing observing from outside the mind (`narrative.md §5.2b`). The consequence worth stating plainly: **there is nothing to open, so there is nothing to forget to open.**

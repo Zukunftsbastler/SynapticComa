@@ -9,7 +9,8 @@ import { LEVEL_ORDER, LEVEL_NAMES } from '@/levels/levelIndex';
 import { getLevelMeta } from '@/levels/levelMeta';
 import { ProgressionState, resetProgress } from '@/state/ProgressionState';
 import { resetTutorial } from '@/tutorial/TutorialState';
-import { resetNarrative } from '@/state/NarrativeState';
+import { NarrativeState, resetNarrative } from '@/state/NarrativeState';
+import { buildBodyDiagram, bodyProgressLabel } from '@/ui/BodyDiagram';
 
 export class LevelSelectScreen {
   private el: HTMLElement;
@@ -26,9 +27,28 @@ export class LevelSelectScreen {
       'z-index:180;font-family:monospace;color:#c8a87c;gap:14px;',
     ].join('');
 
+    // Header reads "here is the campaign, here is the patient" in one line.
+    // The body is context on a screen the player already passes through, not
+    // a menu entry of its own — there is deliberately nowhere to click into.
+    const header = document.createElement('div');
+    header.style.cssText = 'display:flex;align-items:center;gap:26px;';
+
     const heading = document.createElement('h2');
     heading.textContent = 'SELECT DESCENT';
     heading.style.cssText = 'margin:0;font-size:1.6rem;letter-spacing:0.3em;color:#c8a87c;';
+
+    const patient = document.createElement('div');
+    patient.dataset.patient = '';
+    patient.style.cssText = 'display:flex;align-items:center;gap:10px;';
+    patient.appendChild(buildBodyDiagram({ awake: NarrativeState.unlockedRegions, width: 34 }));
+    const patientLabel = document.createElement('div');
+    patientLabel.textContent = bodyProgressLabel(NarrativeState.unlockedRegions);
+    patientLabel.style.cssText =
+      'color:#4f6a5c;font-size:0.6rem;letter-spacing:0.18em;white-space:nowrap;';
+    patient.appendChild(patientLabel);
+
+    header.appendChild(heading);
+    header.appendChild(patient);
 
     const grid = document.createElement('div');
     grid.style.cssText =
@@ -100,7 +120,7 @@ export class LevelSelectScreen {
       footer.appendChild(closeBtn);
     }
 
-    this.el.appendChild(heading);
+    this.el.appendChild(header);
     this.el.appendChild(grid);
     this.el.appendChild(footer);
     container.appendChild(this.el);

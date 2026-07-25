@@ -49,6 +49,56 @@ test('the opening sequence plays once, before the campaign is first entered', as
   await expect(page.locator('[data-cutscene="prologue"]')).toHaveCount(0);
 });
 
+test('the body is present in the normal flow and never has to be navigated to', async ({ page }) => {
+  // level_05 ends "The Basics" and is where the first region wakes
+  // (beatIndex.ts: REGION_FINGERS).
+  const def = JSON.parse(readFileSync(join(LEVELS_DIR, 'level_05.json'), 'utf-8')) as LevelDef;
+  const result = solveLevel(def);
+  expect(result.solvable).toBe(true);
+
+  await page.goto('/?debugLevel=level_05&narrative=1');
+  await page.waitForFunction(() => window.__e2e?.GameState.phase === 'PLAYING', undefined, { timeout: 15_000 });
+  await dismissTutorial(page);
+  for (const action of result.solutionPath) {
+    // eslint-disable-next-line no-await-in-loop
+    await performAction(page, action);
+  }
+
+  // 1. On the completion screen the patient is simply there — no click, no
+  //    menu, no entry point of its own.
+  const completeScreenPatient = page.locator('[data-patient]');
+  await expect(completeScreenPatient).toBeVisible({ timeout: 10_000 });
+  await expect(completeScreenPatient).toContainText('/ 12 AWAKE');
+  await expect(
+    completeScreenPatient.locator('[data-region="fingers_toes"]'),
+  ).toHaveAttribute('data-state', 'dormant');
+
+  // 2. The reveal happens inside the story beat the player is already
+  //    watching — the body IS the panel, not a screen behind it.
+  await page.getByRole('button', { name: 'NEXT LEVEL' }).click();
+  const reveal = page.locator('[data-body-reveal="fingers_toes"]');
+  await expect(reveal).toBeVisible();
+  await expect(reveal.locator('[data-region="fingers_toes"]')).toHaveAttribute('data-state', 'waking');
+  await expect(reveal).toContainText('1 / 12 AWAKE');
+
+  await page.locator('[data-cutscene-skip]').click();
+  await expect(reveal).toHaveCount(0);
+
+  // 3. It stays awake, and the level select shows it as context rather than
+  //    offering a "view body" destination.
+  await page.goto('/');
+  await page.locator('#btn-local').click();
+  await page.locator('[data-cutscene-skip]').click(); // opening sequence
+  await expect(page.getByRole('heading', { name: 'SELECT DESCENT' })).toBeVisible();
+
+  const selectPatient = page.locator('[data-patient]');
+  await expect(selectPatient).toBeVisible();
+  await expect(selectPatient).toContainText('1 / 12 AWAKE');
+  await expect(
+    selectPatient.locator('[data-region="fingers_toes"]'),
+  ).toHaveAttribute('data-state', 'awake');
+});
+
 test('a level beat plays after the LevelComplete screen, not before it', async ({ page }) => {
   const def = JSON.parse(readFileSync(join(LEVELS_DIR, 'level_01.json'), 'utf-8')) as LevelDef;
   const result = solveLevel(def);
